@@ -1,0 +1,274 @@
+"""
+geocode_other_routes.py — Geocode Other-routes.csv and merge into existing-routes.csv
+======================================================================================
+Reads the non-standard Other-routes.csv format, cleans location names,
+geocodes using ArcGIS (with cache reuse from latlon.py), and appends
+results to existing-routes.csv in matching column format.
+
+FILTERS:
+  - SKIP EBus routes (already hardcoded as SSCL backbone in transit engine)
+  - SKIP MTS Bus routes (extend beyond Kashmir bounding box)
+======================================================================================
+"""
+import json
+import os
+import re
+import time
+
+import pandas as pd
+from arcgis.geocoding import geocode
+from arcgis.gis import GIS
+
+# ── CONFIG ──
+OTHER_ROUTES_FILE = "Other-routes.csv"
+EXISTING_ROUTES_FILE = "existing-routes.csv"
+CACHE_FILE = "geocode_cache.json"
+API_DELAY = 1.0
+
+# ── ABBREVIATION MAP (Kashmir-specific) ──
+ABBREVIATIONS = {
+    "SGR": "SRINAGAR",
+    "BPR": "BANDIPORA",
+    "BLA": "BARAMULLA",
+    "GBL": "GANDERBAL",
+    "ANG": "ANANTNAG",
+    "TRC": "TRC SRINAGAR",
+    "LD": "LAL DED HOSPITAL SRINAGAR",
+}
+
+gis = GIS()
+
+
+def load_cache():
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+
+def save_cache(cache):
+    with open(CACHE_FILE, "w") as f:
+        json.dump(cache, f, indent=4)
+
+
+def clean_location(loc):
+    """Clean location string: strip noise, expand abbreviations, handle compounds."""
+    if pd.isna(loc):
+        return None
+    loc_str = str(loc).strip()
+    if not loc_str or loc_str.upper() in ("NA", "N/A", ""):
+        return None
+
+    loc_str = loc_str.upper().strip()
+
+    # Remove trailing hyphens/spaces
+    loc_str = loc_str.rstrip("- ")
+
+    # Remove 'AND VICE VERSA' variations
+    for vv in ["AND VICE VERSA", "& VICE VERSA", "-VICE VERSA", "VICE VERSA"]:
+        loc_str = loc_str.replace(vv, "")
+
+    # Handle compound destination names like "Sopore-Srinagar", "Kupwara- Srinagar"
+    # These are "Destination-Origin" patterns — extract just the destination
+    compound_pattern = re.compile(r'^(.+?)[\s]*-[\s]*(SRINAGAR|SGR|ANANTNAG|ANG)$', re.IGNORECASE)
+    match = compound_pattern.match(loc_str)
+    if match:
+        loc_str = match.group(1).strip().rstrip("-")
+
+    # Handle "Keller-Shopian-Sgr" → "KELLER"
+    parts = [p.strip() for p in loc_str.split("-") if p.strip()]
+    if len(parts) > 1:
+        # Remove known city suffixes from compound names
+        filtered = [p for p in parts if p.upper() not in ("SRINAGAR", "SGR", "ANANTNAG", "ANG", "BARAMULLA", "BLA")]
+        if filtered:
+            loc_str = filtered[0]  # Take the first meaningful part
+        else:
+            loc_str = parts[0]
+
+    # Expand abbreviations
+    loc_str = loc_str.strip()
+    if loc_str in ABBREVIATIONS:
+        loc_str = ABBREVIATIONS[loc_str]
+
+    # Remove special characters except spaces and hyphens
+    loc_str = re.sub(r'[^A-Z0-9\s\-]', '', loc_str)
+    loc_str = re.sub(r'\s+', ' ', loc_str).strip()
+
+    return loc_str if loc_str else None
+
+
+def fetch_coordinates(location_name, cache, is_retry=False):
+    """Geocode a location using ArcGIS with Kashmir context."""
+    if location_name in cache:
+        return cache[location_name].get("lat"), cache[location_name].get("lon")
+
+    search_query = f"{location_name}, Srinagar, Kashmir, India"
+    try:
+        results = geocode(search_query)
+        if results:
+            best = results[0]["location"]
+            lat, lon = best["y"], best["x"]
+            status = "[RETRY OK]" if is_retry else "[OK]"
+            print(f"  {status} {location_name} -> {lat:.5f}, {lon:.5f}")
+            cache[location_name] = {"lat": lat, "lon": lon}
+            save_cache(cache)
+            return lat, lon
+        else:
+            status = "[RETRY FAIL]" if is_retry else "[FAIL]"
+            print(f"  {status} Could not locate: {search_query}")
+            return None, None
+    except Exception as e:
+        print(f"  [ERROR] {location_name}: {e}")
+        return None, None
+
+
+def geocode_via_string(via_str, cache):
+    """Parse comma-separated via string and return geocoded coords."""
+    if not via_str:
+        return None
+    points = [p.strip() for p in str(via_str).split(",")]
+    geocoded = []
+    for p in points:
+        cleaned = clean_location(p)
+        if cleaned and cleaned in cache:
+            c = cache[cleaned]
+            if c.get("lat") and c.get("lon"):
+                geocoded.append(f"{c['lat']},{c['lon']}")
+    return ";".join(geocoded) if geocoded else None
+
+
+def main():
+    print("=" * 60)
+    print("OTHER-ROUTES GEOCODER — Kashmir Transit Engine")
+    print("=" * 60)
+
+    # 1. Load Other-routes.csv
+    df = pd.read_csv(OTHER_ROUTES_FILE)
+    print(f"[INFO] Loaded {len(df)} routes from {OTHER_ROUTES_FILE}")
+
+    # Standardise column names
+    df.columns = [c.strip() for c in df.columns]
+
+    # Map to canonical names (the CSV has 'office name', 'Vehicle Category', 'from', 'to', 'via')
+    col_map = {}
+    for c in df.columns:
+        cl = c.lower().strip()
+        if cl == "office name":
+            col_map[c] = "Office_Name"
+        elif cl == "vehicle category":
+            col_map[c] = "Vehicle_Category"
+        elif cl == "from":
+            col_map[c] = "From"
+        elif cl == "to":
+            col_map[c] = "To"
+        elif cl == "via":
+            col_map[c] = "Via"
+    df.rename(columns=col_map, inplace=True)
+
+    # Drop unnamed columns
+    df = df[[c for c in df.columns if not c.startswith("Unnamed")]]
+
+    # 2. Filter out EBus (already SSCL backbone) and MTS Bus (out of bounding box)
+    before = len(df)
+    ebus_count = len(df[df["Vehicle_Category"].str.strip() == "EBus"])
+    mts_count = len(df[df["Vehicle_Category"].str.strip() == "MTS Bus"])
+    df = df[~df["Vehicle_Category"].str.strip().isin(["EBus", "MTS Bus"])]
+    print(f"[INFO] Filtered out {ebus_count} EBus routes (already SSCL backbone)")
+    print(f"[INFO] Filtered out {mts_count} MTS Bus routes (out of bounding box)")
+    print(f"[INFO] Remaining: {len(df)} routes to geocode")
+
+    # 3. Extract unique locations
+    cache = load_cache()
+    unique_locs = set()
+    for col in ["From", "To", "Via"]:
+        if col in df.columns:
+            for val in df[col].dropna():
+                cleaned = clean_location(val)
+                if cleaned:
+                    unique_locs.add(cleaned)
+
+    print(f"[INFO] Found {len(unique_locs)} unique locations")
+    to_fetch = [loc for loc in unique_locs if loc not in cache]
+    print(f"[INFO] Already cached: {len(unique_locs) - len(to_fetch)}")
+    print(f"[INFO] Need to geocode: {len(to_fetch)}")
+
+    # 4. Geocode
+    for i, loc in enumerate(to_fetch):
+        print(f"  [{i+1}/{len(to_fetch)}] Geocoding: '{loc}'")
+        fetch_coordinates(loc, cache)
+        time.sleep(API_DELAY)
+
+    # 5. Build output in existing-routes.csv format
+    print(f"\n{'='*60}")
+    print("BUILDING MERGED OUTPUT")
+    print("=" * 60)
+
+    new_routes = []
+    for _, row in df.iterrows():
+        origin = clean_location(row.get("From"))
+        destination = clean_location(row.get("To"))
+        via_raw = clean_location(row.get("Via"))
+
+        origin_lat = cache.get(origin, {}).get("lat") if origin else None
+        origin_lon = cache.get(origin, {}).get("lon") if origin else None
+        dest_lat = cache.get(destination, {}).get("lat") if destination else None
+        dest_lon = cache.get(destination, {}).get("lon") if destination else None
+
+        # Only include if both origin and destination are geocoded
+        if not (origin_lat and origin_lon and dest_lat and dest_lon):
+            continue
+
+        route_name = f"{origin} to {destination}"
+        if via_raw:
+            route_name += f" via {via_raw}"
+
+        route_data = {
+            "Route_Name": route_name,
+            "Origin": origin,
+            "Origin_Lat": origin_lat,
+            "Origin_Lon": origin_lon,
+            "Destination": destination,
+            "Dest_Lat": dest_lat,
+            "Dest_Lon": dest_lon,
+            "Via_Points_Raw": via_raw,
+            "Via_Points_Geocoded": geocode_via_string(via_raw, cache),
+            "Vehicle_Category": str(row.get("Vehicle_Category", "")).strip(),
+            "Service_Type": "Ordinary Service",
+        }
+        new_routes.append(route_data)
+
+    df_new = pd.DataFrame(new_routes)
+    print(f"[INFO] Successfully geocoded {len(df_new)} routes from Other-routes.csv")
+
+    # 6. Load existing and merge
+    if os.path.exists(EXISTING_ROUTES_FILE):
+        df_existing = pd.read_csv(EXISTING_ROUTES_FILE)
+        print(f"[INFO] Loaded {len(df_existing)} existing routes from {EXISTING_ROUTES_FILE}")
+
+        # Ensure column alignment
+        for col in df_existing.columns:
+            if col not in df_new.columns:
+                df_new[col] = None
+        for col in df_new.columns:
+            if col not in df_existing.columns:
+                df_existing[col] = None
+
+        df_merged = pd.concat([df_existing, df_new], ignore_index=True)
+    else:
+        df_merged = df_new
+
+    df_merged.to_csv(EXISTING_ROUTES_FILE, index=False)
+
+    # 7. Summary
+    print(f"\n{'='*60}")
+    print("SUMMARY")
+    print("=" * 60)
+    print(f"  Total routes in {EXISTING_ROUTES_FILE}: {len(df_merged)}")
+    vc_counts = df_merged["Vehicle_Category"].value_counts()
+    for cat, count in vc_counts.items():
+        print(f"    {cat}: {count}")
+    print(f"[DONE] Merged output saved to {EXISTING_ROUTES_FILE}")
+
+
+if __name__ == "__main__":
+    main()

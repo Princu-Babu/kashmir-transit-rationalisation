@@ -389,7 +389,7 @@ SOCIAL_OBLIGATION_ATTRACTORS = [
 SHEET1_GROUP_A = ["New_Route_ID", "Route_Name", "Action_Taken", "Route_KM",
                   "Route_Type", "Social_Flag"]
 SHEET1_GROUP_B = ["Priority_Band", "Headway_Min", "Cycle_Time_Min",
-                  "Fleet_Required", "HPV_Count", "MPV_Count",
+                  "Fleet_Required", "HPV_Count", "MPV_Count", "LPV_Count",
                   "CMP_Trunk"]
 SHEET1_GROUP_C = ["Pop_Score", "POI_Score", "Road_Multiplier", "Final_CDI",
                   "Population_Served", "Population_Served_Pct",
@@ -518,7 +518,11 @@ import requests
 from shapely.geometry import LineString, MultiLineString, Point, shape, mapping
 from shapely.ops import unary_union
 from shapely.strtree import STRtree
-import rasterstats
+try:
+    import rasterstats
+    _HAS_RASTERSTATS = True
+except ImportError:
+    _HAS_RASTERSTATS = False
 import folium
 from folium.plugins import AntPath, HeatMap
 try:
@@ -643,10 +647,11 @@ def load_routes(path: str) -> pd.DataFrame:
         "End_Lat":            ["end_lat",   "endlat",   "dest_lat",   "to_lat"],
         "End_Lon":            ["end_lon",   "endlon",   "dest_lon",   "end_lng",
                                "to_lon"],
-        "Via_Coordinates":    ["via_coordinates", "via_coords", "waypoints"],
+        "Via_Coordinates":    ["via_coordinates", "via_coords", "waypoints", "via_points_geocoded"],
         "Minibus_Count":      ["minibus_count", "minibuses", "mini_bus_count"],
         "Standard_Bus_Count": ["standard_bus_count", "std_bus", "standard_buses"],
         "Route_Name":         ["route_name", "name", "route"],
+        "Vehicle_Category":   ["vehicle_category", "veh_cat"],
     }
     rename = {}
     for canon, targets in alias.items():
@@ -922,7 +927,13 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
 
         # DIRECTIVE 1: Classify route type — no dropping
         km = max(0.0, dist_km)
-        if km < URBAN_KM_THRESHOLD:
+        cat = str(row.get("Vehicle_Category", "")).strip().lower()
+
+        if "mps" in cat:
+            route_type = "Regional_District"  # Operator hint overrides length
+        elif "city bus" in cat:
+            route_type = "Urban" if km < PERIURBAN_KM_THRESHOLD else "Peri_Urban"
+        elif km < URBAN_KM_THRESHOLD:
             route_type = "Urban"
         elif km < PERIURBAN_KM_THRESHOLD:
             route_type = "Peri_Urban"
@@ -1156,8 +1167,11 @@ def compute_population(gdf: gpd.GeoDataFrame, raster_path: str) -> gpd.GeoDataFr
     log.info("  CMP reference: Year=%d  Total study-area population=%s",
              CMP_REFERENCE_YEAR, f"{CMP_TOTAL_POPULATION:,}")
 
-    if not Path(raster_path).exists():
-        log.warning("  Raster not found — Population_Served = 0 / Pct = 0.00%%.")
+    if not Path(raster_path).exists() or not _HAS_RASTERSTATS:
+        if not _HAS_RASTERSTATS:
+            log.warning("  ⚠ rasterstats missing. Population_Served = 0 / Pct = 0.00%%.")
+        else:
+            log.warning("  Raster not found — Population_Served = 0 / Pct = 0.00%%.")
         gdf["Population_Served"]     = 0
         gdf["Population_Served_Pct"] = 0.0
         return gdf
@@ -1196,7 +1210,7 @@ def compute_network_population_total(gdf: gpd.GeoDataFrame,
                                       raster_path: str) -> int:
     """Deduplicated network population via dissolved catchment union."""
     log.info("Computing deduplicated network population (dissolved union)…")
-    if not Path(raster_path).exists():
+    if not Path(raster_path).exists() or not _HAS_RASTERSTATS:
         return int(gdf["Population_Served"].max())
     valid     = [c for c in gdf["Catchment"]
                  if c is not None and hasattr(c, "is_empty") and not c.is_empty]
@@ -1569,17 +1583,19 @@ def compute_overlap_matrix(gdf: gpd.GeoDataFrame) -> np.ndarray:
 
     with ThreadPoolExecutor() as _dummy: pass # Just ensuring the import is active
     
-    # ProcessPoolExecutor bypasses the GIL to use full CPU power
-    with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
-        futures = {executor.submit(_intersection_worker, task): task[0] for task in tasks}
-
-        for future in concurrent.futures.as_completed(futures):
-            i, results = future.result()
+    # OpenBLAS failure on Windows multiprocessing forces sequential fallback
+    # with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
+    #     futures = {executor.submit(_intersection_worker, task): task[0] for task in tasks}
+    #
+    #     for future in concurrent.futures.as_completed(futures):
+    #         i, results = future.result()
+    for task in tasks:
+        i, results = _intersection_worker(task)
             
-            # Populate matrix symmetrically
-            for j, ratio_i_j, ratio_j_i in results:
-                matrix[i, j] = ratio_i_j
-                matrix[j, i] = ratio_j_i
+        # Populate matrix symmetrically
+        for j, ratio_i_j, ratio_j_i in results:
+            matrix[i, j] = ratio_i_j
+            matrix[j, i] = ratio_j_i
 
             # 4. PROGRESS BAR UPDATE
             completed += 1
@@ -2021,6 +2037,15 @@ def step6_assign_headways(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
         band       = row["Priority_Band"]
         route_type = row.get("Route_Type", "Urban")
+        cat        = str(row.get("Vehicle_Category", "")).strip().lower()
+
+        # Operator-specific overrides
+        if "city bus" in cat:
+            return max(20, HEADWAY_HP_MIN if band == "HP" else HEADWAY_MP_MIN)
+        if "mps" in cat:
+            return max(45, HEADWAY_HP_MIN if band == "HP" else HEADWAY_MP_MIN)
+        if "regular" in cat:
+            return 60
 
         if route_type == "Regional_District":
             if band == "HP": return HEADWAY_REGIONAL_HP_MIN
@@ -2043,16 +2068,13 @@ def step8_compute_fleet_required(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Step 8: Fleet_Required = CEILING(Cycle_Time_Min / Headway_Min).
 
-    v3 CHANGE — LPV Downgrade Removed:
-    v2 would downgrade routes with fleet < MIN_FLEET_THRESHOLD to LPVs.
-    v3 eliminates LPVs entirely from the fleet.  Instead, any route whose
-    computed fleet falls below MIN_FLEET_THRESHOLD is raised directly to
-    MIN_FLEET_THRESHOLD (no class change, no LPV substitution).
-    This maintains minimum operational viability while keeping all vehicles
-    in the HPV/MPV category.
+    v3.1 CHANGE — LPV Downgrade Restored context:
+    v3 eliminated LPVs entirely. v3.1 retains LPVs based on Vehicle_Category.
+    Any route whose computed fleet falls below MIN_FLEET_THRESHOLD is raised
+    directly to MIN_FLEET_THRESHOLD to maintain minimum operational viability.
     """
     log.info("Step 8: Computing Fleet_Required = CEILING(Cycle_Time / Headway), "
-             "floor at MIN_FLEET_THRESHOLD=%d (no LPV downgrade in v3)…",
+             "floor at MIN_FLEET_THRESHOLD=%d…",
              MIN_FLEET_THRESHOLD)
 
     fleet_required_list = []
@@ -2061,7 +2083,7 @@ def step8_compute_fleet_required(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         raw_fleet = max(1, math.ceil(
             row["Cycle_Time_Min"] / max(1, row["Headway_Min"])))
 
-        # Floor at MIN_FLEET_THRESHOLD — no downgrade, no LPV
+        # Floor at MIN_FLEET_THRESHOLD
         fleet_required_list.append(max(raw_fleet, MIN_FLEET_THRESHOLD))
 
     gdf = gdf.copy()
@@ -2084,59 +2106,60 @@ def step8_compute_fleet_required(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Step 9: HPV/MPV vehicle type split  (LPV eliminated in v3).
+    Step 9: HPV/MPV/LPV vehicle type split.
 
-    Split rules:
-      UPGRADED_TO_TRUNK or MERGED_INTO_TRUNK → 85% HPV  15% MPV  (0% LPV)
-        Rationale: Trunk corridors carry the highest sustained passenger loads.
-        Aggressively favouring HPVs maximises capacity, reduces per-seat cost,
-        and aligns with CMP BRT intent.  The 15% MPV buffer handles off-peak /
-        terminal layover slots without over-committing large vehicles.
+    Split rules with Vehicle_Category hints:
+      UPGRADED_TO_TRUNK or MERGED_INTO_TRUNK:
+        - Regular Bus / MPS Bus: 85% HPV, 15% MPV
+        - City Bus / LPV: 70% HPV, 30% MPV
+        - Else: 85% HPV, 15% MPV
 
-      RETAINED_AS_FEEDER → 0% HPV  100% MPV  (0% LPV)
-        Rationale: Feeder routes serve last-mile and low-frequency corridors.
-        MPVs offer better maneuverability on narrow feeder roads and flexible
-        scheduling.  No HPV allocation — these routes cannot justify large
-        vehicle operations financially or operationally.
-
-    QC: HPV is STRICTLY reserved for Trunk corridors (HPV_Count > 0 only on
-    UPGRADED_TO_TRUNK / MERGED_INTO_TRUNK).  RETAINED_AS_FEEDER routes always
-    have HPV_Count = 0 and LPV_Count = 0.
+      RETAINED_AS_FEEDER:
+        - City Bus: 100% MPV
+        - LPV: 100% LPV (retention policy)
+        - Regular Bus / MPS Bus: 30% HPV, 70% MPV
+        - Else: 100% MPV
     """
-    log.info("Step 9: Computing HPV/MPV vehicle split (LPV removed in v3)…")
-    log.info("  Trunk/Merged: 85%% HPV + 15%% MPV | Feeder: 100%% MPV")
+    log.info("Step 9: Computing HPV/MPV/LPV vehicle split (LPV retained in v3.1)…")
     gdf = gdf.copy()
 
     def _split(row) -> pd.Series:
         fleet  = int(row["Fleet_Required"])
         action = row["Action_Taken"]
+        cat    = str(row.get("Vehicle_Category", "")).strip().lower()
 
         if fleet == 0:
-            return pd.Series({"HPV_Count": 0, "MPV_Count": 0})
+            return pd.Series({"HPV_Count": 0, "MPV_Count": 0, "LPV_Count": 0})
+
+        hpv = 0
+        mpv = 0
+        lpv = 0
 
         if action in ("UPGRADED_TO_TRUNK", "MERGED_INTO_TRUNK"):
-            # 85% HPV, 15% MPV — ceiling arithmetic, then clip to fleet total
-            hpv = math.ceil(fleet * 0.85)
-            mpv = fleet - hpv   # remainder goes to MPV
-            mpv = max(0, mpv)   # safety floor
-            if hpv + mpv > fleet:
-                mpv = max(0, fleet - hpv)
+            if "city bus" in cat or "lpv" in cat:
+                hpv = math.ceil(fleet * 0.70)
+            else:
+                hpv = math.ceil(fleet * 0.85)
+            mpv = fleet - hpv
         else:
-            # RETAINED_AS_FEEDER → 100% MPV
-            hpv = 0
-            mpv = fleet
+            # RETAINED_AS_FEEDER
+            if "lpv" in cat:
+                lpv = fleet
+            elif "regular" in cat or "mps" in cat:
+                hpv = math.ceil(fleet * 0.30)
+                mpv = fleet - hpv
+            else:
+                mpv = fleet
 
-        return pd.Series({"HPV_Count": hpv, "MPV_Count": mpv})
+        return pd.Series({"HPV_Count": hpv, "MPV_Count": mpv, "LPV_Count": lpv})
 
     split_df          = gdf.apply(_split, axis=1)
     gdf["HPV_Count"]  = split_df["HPV_Count"].astype(int)
     gdf["MPV_Count"]  = split_df["MPV_Count"].astype(int)
+    gdf["LPV_Count"]  = split_df["LPV_Count"].astype(int)
 
-    # v3: no LPV column — set to zero for any legacy references
-    gdf["LPV_Count"]  = 0
-
-    log.info("  HPV total: %d  MPV total: %d  (LPV: 0 by policy)",
-             gdf["HPV_Count"].sum(), gdf["MPV_Count"].sum())
+    log.info("  HPV total: %d  MPV total: %d  LPV total: %d",
+             gdf["HPV_Count"].sum(), gdf["MPV_Count"].sum(), gdf["LPV_Count"].sum())
     return gdf
 
 
@@ -2164,31 +2187,21 @@ def run_all_qc_checks(gdf: gpd.GeoDataFrame) -> None:
     log.info("Running QC checks (8 checks — v3 HPV/MPV only policy)…")
     failures = []
 
-    # Check 1: HPV + MPV = Fleet_Required for every row
-    check1 = gdf[gdf["HPV_Count"] + gdf["MPV_Count"] != gdf["Fleet_Required"]]
+    # Check 1: HPV + MPV + LPV = Fleet_Required for every row
+    check1 = gdf[gdf["HPV_Count"] + gdf["MPV_Count"] + gdf["LPV_Count"] != gdf["Fleet_Required"]]
     if not check1.empty:
         failures.append(
-            f"CHECK 1 FAIL — {len(check1)} rows where HPV+MPV ≠ Fleet_Required "
-            f"(LPV_Count should be 0 for all rows in v3)")
+            f"CHECK 1 FAIL — {len(check1)} rows where HPV+MPV+LPV ≠ Fleet_Required")
         for _, r in check1.iterrows():
             failures.append(
                 f"  {r['Route_ID']} | Fleet={r['Fleet_Required']} | "
-                f"HPV={r['HPV_Count']} MPV={r['MPV_Count']}"
+                f"HPV={r['HPV_Count']} MPV={r['MPV_Count']} LPV={r['LPV_Count']}"
             )
     else:
-        log.info("  ✓ Check 1: Vehicle count integrity — HPV+MPV = Fleet_Required for all rows.")
+        log.info("  ✓ Check 1: Vehicle count integrity — HPV+MPV+LPV = Fleet_Required for all rows.")
 
-    # Check 2: Zero LPV across the entire dataset (v3 policy: LPV eradicated)
-    if "LPV_Count" in gdf.columns:
-        check2 = gdf[gdf["LPV_Count"] > 0]
-        if not check2.empty:
-            failures.append(
-                f"CHECK 2 FAIL — {len(check2)} rows still have LPV_Count > 0. "
-                f"LPV is eradicated in v3 — step9 may have a regression.")
-        else:
-            log.info("  ✓ Check 2: LPV_Count = 0 for all rows (v3 policy confirmed).")
-    else:
-        log.info("  ✓ Check 2: LPV_Count column absent — LPV fully eradicated.")
+    # Check 2: (Removed - LPVs are now permitted)
+    log.info("  ✓ Check 2: LPV check bypassed — LPV retention enabled in v3.1.")
 
     # Check 3: No null Priority_Band
     check3 = gdf[gdf["Priority_Band"].isna() | (gdf["Priority_Band"] == "")]
@@ -2777,7 +2790,7 @@ def export_passenger_impact(gdf: gpd.GeoDataFrame, out_path: str) -> None:
     cols   = [c for c in [
         "New_Route_ID", "Route_Name", "Action_Taken", "Route_Type",
         "Priority_Band", "Headway_Min", "Fleet_Required",
-        "HPV_Count", "MPV_Count",
+        "HPV_Count", "MPV_Count", "LPV_Count",
         "CMP_Trunk", "CMP_Route_ID",
         "Population_Served", "Social_Flag",
     ] if c in active.columns]

@@ -58,6 +58,20 @@ def clean_location(loc):
     
     return loc_str.strip() if loc_str.strip() else None
 
+def geocode_via_string(via_str, cache):
+    """Parses a comma-separated via string and returns geocoded coordinates."""
+    if not via_str:
+        return None
+    points = [p.strip() for p in str(via_str).split(',')]
+    geocoded = []
+    for p in points:
+        cleaned = clean_location(p)
+        if cleaned and cleaned in cache:
+            c = cache[cleaned]
+            if c.get('lat') and c.get('lon'):
+                geocoded.append(f"{c['lat']},{c['lon']}")
+    return ";".join(geocoded) if geocoded else None
+
 def extract_unique_locations(df):
     """Scans the dataframe and returns a set of unique stops."""
     unique_locations = set()
@@ -104,6 +118,13 @@ def main():
     try:
         df_minibus = pd.read_excel(MINI_BUS_FILE)
         print(f"[INFO] Loaded dataset with {len(df_minibus)} routes.")
+
+        # Filter for SRINAGAR RTO
+        if 'Office Name' in df_minibus.columns:
+            df_minibus = df_minibus[df_minibus['Office Name'] == 'SRINAGAR RTO'].copy()
+            print(f"[INFO] Filtered for 'SRINAGAR RTO'. Remaining routes: {len(df_minibus)}")
+        else:
+            print(f"[WARNING] 'Office Name' column not found. Processing all routes.")
     except FileNotFoundError:
         print(f"[FATAL] Could not find {MINI_BUS_FILE}. Please check the filename.")
         return
@@ -163,15 +184,25 @@ def main():
         if not origin and not destination:
             continue
             
+        origin_lat = coord_cache.get(origin, {}).get('lat') if origin else None
+        origin_lon = coord_cache.get(origin, {}).get('lon') if origin else None
+        dest_lat = coord_cache.get(destination, {}).get('lat') if destination else None
+        dest_lon = coord_cache.get(destination, {}).get('lon') if destination else None
+        
+        # Only include route if BOTH origin and destination were successfully geocoded
+        if not (origin_lat and origin_lon and dest_lat and dest_lon):
+            continue
+            
         route_data = {
             'Route_Name': row.get('Route Covered', f"Route_{index}"),
             'Origin': origin,
-            'Origin_Lat': coord_cache.get(origin, {}).get('lat') if origin else None,
-            'Origin_Lon': coord_cache.get(origin, {}).get('lon') if origin else None,
+            'Origin_Lat': origin_lat,
+            'Origin_Lon': origin_lon,
             'Destination': destination,
-            'Dest_Lat': coord_cache.get(destination, {}).get('lat') if destination else None,
-            'Dest_Lon': coord_cache.get(destination, {}).get('lon') if destination else None,
+            'Dest_Lat': dest_lat,
+            'Dest_Lon': dest_lon,
             'Via_Points_Raw': via_raw,
+            'Via_Points_Geocoded': geocode_via_string(via_raw, coord_cache),
             'Vehicle_Category': row.get('Vehicle Category'),
             'Service_Type': row.get('Permit Service Type Name')
         }
@@ -179,14 +210,13 @@ def main():
 
     df_output = pd.DataFrame(final_routes)
     
-    # Calculate success metrics
-    total_origins = df_output['Origin'].notna().sum()
-    geocoded_origins = df_output['Origin_Lat'].notna().sum()
+    # All rows in df_output now have valid coordinates
+    geocoded_count = len(df_output)
     
     df_output.to_csv(OUTPUT_FILE, index=False)
     print(f"[INFO] Processing Complete!")
-    print(f"[INFO] Successfully geocoded ~{(geocoded_origins/total_origins)*100:.1f}% of origin points.")
-    print(f"[INFO] Exported {len(df_output)} mapped routes to {OUTPUT_FILE}")
+    print(f"[INFO] Exported {geocoded_count} routes where BOTH origin and destination were successfully geocoded.")
+    print(f"[INFO] Output saved to {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     main()
