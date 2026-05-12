@@ -1,0 +1,32 @@
+# ── Large data files (not needed in repo) ──
+*.osm.pbf
+*.tif
+
+# ── Generated output (reproducible from engine run) ──
+route_maps_kashmir/
+*.html
+*.xlsx
+*.geojson
+transit_v3.log
+Rationalisation_Log_Kashmir_v3.csv
+Rationalised_Routes_Kashmir_v3.csv
+Passenger_Impact_Kashmir_v3.csv
+Kashmir_Route_Frequency_Plan_v3.xlsx
+Rationalised_Routes_Kashmir_v3.geojson
+Master_Transit_Map_Kashmir_v3.html
+
+# ── Caches ──
+geocode_cache.json
+kashmir_location_cache.json
+__pycache__/
+*.pyc
+
+# ── IDE / OS ──
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# ── PDF docs (too large) ──
+*.pdf

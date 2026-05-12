@@ -1,0 +1,21 @@
+# Core Engine
+numpy
+pandas
+geopandas
+shapely>=2.0
+requests
+rasterio
+rasterstats
+folium>=0.14
+openpyxl
+jenkspy
+
+# POI Extractor (extract_pois_kashmir.py)
+# requests  (already listed above)
+# pandas    (already listed above)
+
+# Geocoder utility (latlon.py) — optional
+arcgis
+
+# PBF POI extractor (poiK.py) — optional
+osmium
