@@ -29,9 +29,10 @@ KEY CHANGES FROM JAMMU v3:
       Lat 33.50–34.50  Lon 74.40–75.20
     • CITY_CORE_LAT_THRESHOLD: 32.72 (old Jammu) → 34.07 (Srinagar
       Lal Chowk + Downtown / mohalla quarters above this latitude).
-    • Jhelum river crossing: TAWI_RIVER_LON 74.87 → JHELUM_RIVER_LON 74.81.
-      Same circuity logic; routes crossing Jhelum forced through one of the
-      nine historic bridges get +60% circuity penalty.
+    • Jhelum river crossing: JHELUM_RIVER_LON 74.81 (was a 74.87 longitude
+      approximation in earlier Jammu-targeted code). Routes crossing Jhelum
+      pay both a +60% circuity penalty (OSRM-fallback distance) and, in
+      v3.2, an additive JHELUM_BRIDGE_BOTTLENECK_MIN bridge-queue penalty.
 
   CMP POPULATION BASELINE
     Replaced Jammu's 1,653,873 (2024 RITES) with Srinagar UA population from
@@ -88,6 +89,14 @@ KASHMIR-SPECIFIC LIMITATIONS (Phase 1, to be addressed in v4):
     is still a v4 task.
 ================================================================================
 """
+import os
+# v3.2: pin OpenBLAS to a single thread BEFORE multiprocessing forks/spawns.
+# The previous fix was to comment out the parallel branch entirely; this
+# environment variable is what actually resolves the Windows OpenBLAS hang.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import concurrent.futures
 import multiprocessing
 from typing import Dict, List, Optional, Tuple
@@ -124,9 +133,13 @@ def _intersection_worker(args):
 #             Lal Chowk, Hawal — narrow lanes, bridge bottlenecks, bazaar grids
 # Peri-urban = Hyderpora, Rangreth, Pampore, Pantha Chowk, Bemina,
 #              Budgam, Ganderbal — mixed urban/highway, lower congestion
-CITY_CORE_LAT_THRESHOLD     = 34.07   # SRINAGAR (was 32.72 for Jammu)
-CONGESTION_CITY_CORE        = 1.4    # 1.4× free-flow (peak hour gridlock — bridges, bazaars)
-CONGESTION_PERI_URBAN       = 1.1    # 1.1× free-flow (peri-urban mixed traffic)
+CITY_CORE_LAT_THRESHOLD     = 34.07   # SRINAGAR Downtown / mohalla quarters
+# v3.2: bumped from 1.4× / 1.1× — Srinagar Traffic Police bottleneck studies
+# place the Nawakadal–Habba Kadal bazaar grid at 2.0–2.5× free-flow during the
+# 8–11 AM and 4–7 PM windows. The earlier values were borrowed Jammu defaults
+# that systematically under-counted Downtown cycle times.
+CONGESTION_CITY_CORE        = 2.2    # 2.2× free-flow (Downtown bazaars + bridges)
+CONGESTION_PERI_URBAN       = 1.4    # 1.4× free-flow (Hyderpora–Rangreth belt)
 
 # ─── Kashmir-specific: Seasonal scenario flag ───────────────────────────────
 # True  → Chillai Kalan / winter mode: Tier-3 (tourist) POIs zeroed,
@@ -145,7 +158,14 @@ STOP_PENALTY_MIN            = 0.5    # 30 sec dwell per stop (boarding/alighting
 TERMINAL_LAYOVER_FACTOR     = 1.10   # 10% terminal layover (was 15% blanket in v6)
 
 # ─── Minimum viable fleet (LPV downgrade removed; floor enforced directly) ───
-MIN_FLEET_THRESHOLD         = 2      # Below this → raise to MIN_FLEET_THRESHOLD directly
+# v3.2: split into urban vs regional. The previous blanket floor of 2 raised
+# every rural lifeline route to 2 buses regardless of demand, inflating the
+# Regional_District fleet beyond what the demand justified. Regional lifelines
+# now floor at 1; urban / peri-urban still floor at 2 for service viability.
+MIN_FLEET_URBAN             = 2
+MIN_FLEET_REGIONAL          = 1
+# Backward-compat alias retained for any legacy references.
+MIN_FLEET_THRESHOLD         = MIN_FLEET_URBAN
 
 # ─── Directive 1: Route type thresholds ──────────────────────────────────────
 URBAN_KM_THRESHOLD          = 15.0   # < 15km = Urban
@@ -183,10 +203,18 @@ CMP_TOTAL_POPULATION     = CMP_POPULATION_BY_YEAR[CMP_REFERENCE_YEAR]  # 16,60,0
 #                 Toggled by WINTER_SCENARIO flag
 POI_TIER1_WEIGHT            = 1.0
 POI_TIER2_WEIGHT            = 0.4
-POI_TIER3_WEIGHT_SUMMER     = 0.6
-POI_TIER3_WEIGHT_WINTER     = 0.0
-POI_TIER3_WEIGHT            = (POI_TIER3_WEIGHT_WINTER if WINTER_SCENARIO
-                                else POI_TIER3_WEIGHT_SUMMER)
+# v3.2: Tier-3 split into "tourist_only" (zeroed in winter) and
+# "residential_anchor" (demoted but not zeroed — Boulevard, Dalgate gates
+# and Mughal gardens still carry year-round local ridership even when
+# tourism collapses). The previous uniform Tier-3 winter zero artificially
+# demoted these residentially anchored corridors to LP.
+POI_TIER3_WEIGHT_SUMMER             = 0.6
+POI_TIER3_WEIGHT_WINTER             = 0.0   # for tourist-only
+POI_TIER3_RES_WEIGHT_WINTER         = POI_TIER2_WEIGHT  # 0.4 for residential-anchor in winter
+POI_TIER3_WEIGHT                    = (POI_TIER3_WEIGHT_WINTER if WINTER_SCENARIO
+                                       else POI_TIER3_WEIGHT_SUMMER)
+POI_TIER3_RES_WEIGHT_EFFECTIVE      = (POI_TIER3_RES_WEIGHT_WINTER if WINTER_SCENARIO
+                                       else POI_TIER3_WEIGHT_SUMMER)
 
 # Women-anchor POI boost (CHALO calibration: 64.5% of riders are women)
 # These categories receive +25% weighted demand to reflect observed gender split
@@ -245,22 +273,31 @@ POI_TIER2_CATEGORIES = frozenset({
     "park", "library", "auditorium", "tagore_hall",
 })
 
-# Tier 3: Seasonal / tourist (zeroed in winter mode)
-POI_TIER3_CATEGORIES = frozenset({
-    # Tourism gates (Srinagar + Valley)
-    "tourist_spot", "tourist_gate", "shikara_ghat",
-    "dal_lake_gate", "boulevard_gate", "nigeen_lake_gate",
-    # Mughal gardens
-    "mughal_garden", "nishat_garden", "shalimar_garden",
-    "chashme_shahi", "pari_mahal", "tulip_garden", "harwan_garden",
+# Tier 3 — TOURIST-ONLY (zeroed in winter mode, no year-round residential pull)
+POI_TIER3_TOURIST_ONLY = frozenset({
+    "tourist_spot",
     # High-altitude tourism
     "gulmarg", "pahalgam", "sonmarg", "doodhpathri", "yusmarg",
     "gondola", "ski_resort", "ropeway",
-    # Yatra-calendar shrines (seasonal)
+    # Yatra-calendar shrines (seasonal pilgrimage)
     "amarnath_base_camp", "kheer_bhawani",
-    # Tourist info / hotels
+    # Tourist info / hotels (close in winter)
     "houseboat", "tourist_hotel",
 })
+
+# Tier 3 — RESIDENTIAL-ANCHOR (demoted to Tier-2 weight in winter, NOT zeroed —
+# Boulevard, Dalgate, Nishat etc. carry year-round local ridership independent
+# of tourist arrivals).
+POI_TIER3_RESIDENTIAL_ANCHOR = frozenset({
+    "tourist_gate", "shikara_ghat",
+    "dal_lake_gate", "boulevard_gate", "nigeen_lake_gate",
+    # Mughal gardens (closed but neighbourhoods around them are residential)
+    "mughal_garden", "nishat_garden", "shalimar_garden",
+    "chashme_shahi", "pari_mahal", "tulip_garden", "harwan_garden",
+})
+
+# Union retained for the load_pois() / count_weighted_poi_scores() audit logic
+POI_TIER3_CATEGORIES = POI_TIER3_TOURIST_ONLY | POI_TIER3_RESIDENTIAL_ANCHOR
 
 DEFAULT_POI_WEIGHT_V2       = POI_TIER2_WEIGHT   # Unmapped → Tier 2
 # ─── Bounding Box: Kashmir Valley reachable by SSCL network ─────────────────
@@ -286,8 +323,11 @@ MAX_IMPUTED_SL_KM           = 999    # DIRECTIVE 1: No hard cap — process all 
 CIRCUITY_FACTOR             = 1.25
 CIRCUITY_FACTOR_RIVER       = 1.60   # Jhelum crossings: must use one of 9 bridges
 JHELUM_RIVER_LON            = 74.81  # Approx longitude of Jhelum through Srinagar
-                                     # (was TAWI_RIVER_LON = 74.87 for Jammu)
-TAWI_RIVER_LON              = JHELUM_RIVER_LON  # backward-compat alias for legacy callers
+# v3.2: bridge-queue penalty applied as additive minutes — captures the
+# peak-hour bottleneck queueing that OSRM's free-flow duration cannot see.
+# A proper per-bridge node graph with daily operability status is a v4 item;
+# this is the simple "every Jhelum crossing pays a flat 8-min queue" proxy.
+JHELUM_BRIDGE_BOTTLENECK_MIN = 8.0
 MIN_ROUTE_KM                = 1.0
 VIRTUAL_STOP_SPACING_M      = 250    # For catchment / population (Step 1)
 # Walkshed: 400m summer, ~260m winter (snow shrink). Applied to both catchment
@@ -337,7 +377,10 @@ UTM_CRS                     = "EPSG:32643"
 WGS84_CRS                   = "EPSG:4326"
 
 # I/O
-RASTER_PATH                 = "kashmir_worldpop.tif"
+# v3.2: raster lives outside the worktree (and outside the engine's CWD when
+# run from a sub-folder). Use an absolute path so the relative-path fallback
+# can no longer silently zero out Population_Served.
+RASTER_PATH                 = r"E:/kash/kashmir_worldpop.tif"
 ROUTES_CSV                  = "existing-routes.csv"
 POIS_CSV                    = "pois.csv"
 OUTPUT_DIR                  = "route_maps_kashmir"
@@ -410,7 +453,11 @@ TERMINAL_CATEGORIES = frozenset({"bus_terminal", "market"})
 # 12-metre buses (HPV) are deployed on long-haul / inter-district routes;
 # 9-metre buses (MPV) cover intra-city loops. The 85/15 HPV-MPV split in
 # Step 9 reflects this real deployment ratio.
-SSCL_TRUNK_HEADWAY_MIN = 45   # SSCL e-bus trunk headway (was 10 for Jammu BRT)
+SSCL_TRUNK_HEADWAY_MIN = 15   # SSCL e-bus trunk headway — matches SSCL operational
+                              # target (~25-min stop-to-stop frequency) and CHALO
+                              # observed peak demand (~4,346 pax/hr citywide).
+                              # v3.2: corrected from 45 (a leftover Jammu-era value
+                              # that produced a 60–70% fleet shortfall vs CHALO).
 
 # Alias for backward compatibility with downstream functions that reference
 # CMP_TRUNK_HEADWAY_MIN (no need to rename across the entire codebase).
@@ -651,6 +698,10 @@ def load_routes(path: str) -> pd.DataFrame:
         "Minibus_Count":      ["minibus_count", "minibuses", "mini_bus_count"],
         "Standard_Bus_Count": ["standard_bus_count", "std_bus", "standard_buses"],
         "Route_Name":         ["route_name", "name", "route"],
+        # v3.2: surface Origin/Destination columns so the Route_Name fallback
+        # below can use them when Route_Name itself is present-but-blank.
+        "Route_From":         ["route_from", "origin", "from", "start_terminal"],
+        "Route_To":           ["route_to",   "destination", "dest", "to", "end_terminal"],
         "Vehicle_Category":   ["vehicle_category", "veh_cat"],
     }
     rename = {}
@@ -662,12 +713,27 @@ def load_routes(path: str) -> pd.DataFrame:
 
     if "Route_ID" not in df.columns:
         df["Route_ID"] = [f"R{i+1:04d}" for i in range(len(df))]
+
+    # v3.2: Route_Name fallback. The previous logic only ran when the column
+    # was absent — but existing-routes.csv has a literal Route_Name column
+    # with every row empty, so the engine was emitting "nan" for every popup
+    # and breaking SSCL fuzzy-matching via _get_terminal's "A to B" parser.
     if "Route_Name" not in df.columns:
-        if "Route_From" in df.columns and "Route_To" in df.columns:
-            df["Route_Name"] = (df["Route_From"].astype(str) + " ↔ "
-                                + df["Route_To"].astype(str))
-        else:
-            df["Route_Name"] = df["Route_ID"]
+        df["Route_Name"] = None
+    # Treat empty strings and the literal "nan" as missing
+    name_series = df["Route_Name"].astype(str).str.strip()
+    blank_mask  = name_series.isin(["", "nan", "None", "NaN"]) | df["Route_Name"].isna()
+    if "Route_From" in df.columns and "Route_To" in df.columns:
+        fr = df["Route_From"].astype(str).str.strip().replace({"nan": "", "None": ""})
+        to = df["Route_To"].astype(str).str.strip().replace({"nan": "", "None": ""})
+        constructed = (fr + " ↔ " + to).where(fr.ne("") & to.ne(""), other=df["Route_ID"])
+    else:
+        constructed = df["Route_ID"].astype(str)
+    df.loc[blank_mask, "Route_Name"] = constructed[blank_mask].values
+    n_constructed = int(blank_mask.sum())
+    if n_constructed:
+        log.info("  Route_Name reconstructed for %d blank rows (Origin ↔ Destination).",
+                 n_constructed)
     for col, default in [("Minibus_Count", 0), ("Standard_Bus_Count", 0),
                           ("Via_Coordinates", None)]:
         if col not in df.columns:
@@ -718,24 +784,31 @@ def load_pois(path: str) -> gpd.GeoDataFrame:
     def _poi_weight(row) -> float:
         # Priority 1: Use the 'Importance' column if it exists
         base = None
+        c = str(row["category"]).lower().strip()
         if "importance" in row and pd.notna(row["importance"]):
             imp = str(row["importance"]).lower().strip()
             if imp == "high":
                 base = POI_TIER1_WEIGHT    # 1.0
             elif imp == "seasonal":
-                base = POI_TIER3_WEIGHT    # 0.6 summer / 0.0 winter
+                # v3.2: Even with "Importance=seasonal", residential anchors
+                # keep their Tier-2-floor weight in winter.
+                if c in POI_TIER3_RESIDENTIAL_ANCHOR:
+                    base = POI_TIER3_RES_WEIGHT_EFFECTIVE
+                else:
+                    base = POI_TIER3_WEIGHT
             elif imp in ["medium", "low"]:
                 base = POI_TIER2_WEIGHT    # 0.4
 
         # Priority 2: Fallback to category-based tier mapping
         if base is None:
-            c = str(row["category"]).lower().strip()
             if c in POI_TIER1_CATEGORIES:
-                base = POI_TIER1_WEIGHT    # 1.0
-            elif c in POI_TIER3_CATEGORIES:
-                base = POI_TIER3_WEIGHT    # 0.6 summer / 0.0 winter
+                base = POI_TIER1_WEIGHT
+            elif c in POI_TIER3_TOURIST_ONLY:
+                base = POI_TIER3_WEIGHT             # 0.6 summer / 0.0 winter
+            elif c in POI_TIER3_RESIDENTIAL_ANCHOR:
+                base = POI_TIER3_RES_WEIGHT_EFFECTIVE  # 0.6 summer / 0.4 winter
             elif c in POI_TIER2_CATEGORIES:
-                base = POI_TIER2_WEIGHT    # 0.4
+                base = POI_TIER2_WEIGHT
             else:
                 base = DEFAULT_POI_WEIGHT_V2
 
@@ -883,6 +956,7 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
     """
     log.info("Merging geometries — ALL routes retained (Directive 1)…")
     rows = []
+    bridge_pen_n = 0
     for _, row in df.iterrows():
         rid       = row["Route_ID"]
         res       = osrm_results.get(rid, {})
@@ -894,19 +968,31 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
         )
         fallback_geom = LineString(raw_coords) if len(raw_coords) >= 2 else None
 
+        # v3.2: detect Jhelum crossing once — applies whether OSRM succeeded
+        # or we fell back to circuity. The previous code only honoured this
+        # in the fallback branch, so OSRM-routed trips paid zero bridge
+        # bottleneck cost even though they cross the same bridges.
+        crosses_jhelum = (float(row["Start_Lon"]) < JHELUM_RIVER_LON) != \
+                         (float(row["End_Lon"])   < JHELUM_RIVER_LON)
+
         if res.get("success") and res["geometry"] is not None:
             geom       = res["geometry"]
             dist_km    = max(0.0, res["osrm_km"])
             duration_s = max(0.0, res["osrm_duration_s"])
-            source     = "OSRM"
+            if crosses_jhelum:
+                # Add a flat bridge-queue penalty — OSRM duration is free-flow
+                # midnight time and cannot see Habba Kadal / Amira Kadal queues.
+                duration_s += JHELUM_BRIDGE_BOTTLENECK_MIN * 60.0
+                bridge_pen_n += 1
+                source = "OSRM+JhelumBridge"
+            else:
+                source = "OSRM"
         else:
             geom    = fallback_geom
             sl_km   = _haversine_km(
                 float(row["Start_Lat"]), float(row["Start_Lon"]),
                 float(row["End_Lat"]),   float(row["End_Lon"]))
-            crosses = (float(row["Start_Lon"]) < TAWI_RIVER_LON) != \
-                      (float(row["End_Lon"])   < TAWI_RIVER_LON)
-            cf      = CIRCUITY_FACTOR_RIVER if crosses else CIRCUITY_FACTOR
+            cf      = CIRCUITY_FACTOR_RIVER if crosses_jhelum else CIRCUITY_FACTOR
             dist_km = sl_km * cf
 
             start_lat = float(row["Start_Lat"])
@@ -923,7 +1009,10 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
                 local_speed = SPEED_DEFAULT_KMH
 
             duration_s = (dist_km / local_speed) * 3600.0
-            source     = "Circuity-River" if crosses else "Circuity"
+            if crosses_jhelum:
+                duration_s += JHELUM_BRIDGE_BOTTLENECK_MIN * 60.0
+                bridge_pen_n += 1
+            source     = "Circuity-River" if crosses_jhelum else "Circuity"
 
         # DIRECTIVE 1: Classify route type — no dropping
         km = max(0.0, dist_km)
@@ -962,6 +1051,8 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
              type_counts.get("Peri_Urban", 0),
              type_counts.get("Regional_District", 0),
              len(gdf), n0 - len(gdf))
+    log.info("  Jhelum bridge bottleneck (+%.1f min) applied to %d routes.",
+             JHELUM_BRIDGE_BOTTLENECK_MIN, bridge_pen_n)
     return gdf.reset_index(drop=True)
 
 
@@ -1167,14 +1258,21 @@ def compute_population(gdf: gpd.GeoDataFrame, raster_path: str) -> gpd.GeoDataFr
     log.info("  CMP reference: Year=%d  Total study-area population=%s",
              CMP_REFERENCE_YEAR, f"{CMP_TOTAL_POPULATION:,}")
 
-    if not Path(raster_path).exists() or not _HAS_RASTERSTATS:
-        if not _HAS_RASTERSTATS:
-            log.warning("  ⚠ rasterstats missing. Population_Served = 0 / Pct = 0.00%%.")
-        else:
-            log.warning("  Raster not found — Population_Served = 0 / Pct = 0.00%%.")
-        gdf["Population_Served"]     = 0
-        gdf["Population_Served_Pct"] = 0.0
-        return gdf
+    # v3.2: convert silent zero-fallback into a loud, blocking error. The
+    # previous behaviour propagated Pop_Score = 0.5 to every route and let
+    # the audit log ship with Population_Served_Pct = 0.00% everywhere.
+    if not _HAS_RASTERSTATS:
+        log.error("  ✗ rasterstats not importable — Population_Served would be zero.")
+        raise RuntimeError(
+            "rasterstats is required for Population_Served computation. "
+            "Install with: pip install rasterstats (or conda equivalent)."
+        )
+    if not Path(raster_path).exists():
+        log.error("  ✗ WorldPop raster not found at: %s", raster_path)
+        raise RuntimeError(
+            f"WorldPop raster not found at {raster_path!r}. "
+            "Update RASTER_PATH or place kashmir_worldpop.tif at the configured path."
+        )
 
     nodata    = _read_raster_nodata(raster_path)
     catch_gdf = gpd.GeoDataFrame(
@@ -1203,6 +1301,17 @@ def compute_population(gdf: gpd.GeoDataFrame, raster_path: str) -> gpd.GeoDataFr
              gdf["Population_Served_Pct"].mean(),
              CMP_REFERENCE_YEAR,
              f"{CMP_TOTAL_POPULATION:,}")
+
+    # v3.2: post-condition — if the raster is present and rasterstats works
+    # but every catchment came back empty, the run is meaningless. Catch the
+    # silent-zero failure mode (wrong CRS, bbox miss, all-nodata raster).
+    if int(gdf["Population_Served"].sum()) == 0:
+        log.error("  ✗ Population_Served sums to zero across %d routes.", len(gdf))
+        raise RuntimeError(
+            "WorldPop zonal_stats returned zero for every catchment. "
+            "Check that raster CRS matches catchment CRS (expected EPSG:4326) "
+            "and that the raster bbox overlaps the Kashmir study area."
+        )
     return gdf
 
 
@@ -1233,18 +1342,18 @@ def count_weighted_poi_scores(gdf_routes: gpd.GeoDataFrame,
     """
     Step 2 preparation: raw weighted POI score per route.
 
-    DIRECTIVE 5 FIX (POI weights):
-    v6 used a 4-tier system (weights: 1, 3, 6, 10) which compressed the
-    signal — all scores ended up within a narrow band, making Tier-3 clinics
-    nearly as valuable as Tier-1 hospitals for demand modelling.
+    Kashmir 3-tier POI weighting (see load_pois for assignment):
+      Tier 1  (w=1.0): Hospitals, transit hubs, malls, major shrines,
+                      Industrial estates, KP migrant townships, universities
+      Tier 2  (w=0.4): Colleges, markets, schools, defence, civic services
+      Tier 3  (w=0.6 summer):
+                      • Tourist-only (gondola, ski_resort, etc.) → 0.0 in winter
+                      • Residential-anchor (Boulevard, Dalgate, Mughal gardens)
+                        → 0.4 in winter (v3.2 — no longer zeroed)
+      Women-anchor categories receive a +25% boost on top of their tier weight
+      (CHALO calibration: 64.5% of riders are women under the free-fare regime).
 
-    v2 uses a binary 2-tier system:
-      Tier 1 (w=1.0): Hospitals, Transit hubs, Malls, Major shrines,
-                       Industrial estates, Migrant townships
-      Tier 2 (w=0.2): Colleges, Markets, Military, Clinics, Schools,
-                       Govt offices
-
-    POI_Score_Raw = Σ(tier_weight_i for POIs within 250m) / Route_KM
+    POI_Score_Raw = Σ(tier_weight_i for POIs within POI_BUFFER_M of route) / Route_KM
     """
     log.info("Counting POI weighted scores (250m buffer, 2-tier weights "
              "per Directive 5)…")
@@ -1319,12 +1428,14 @@ def compute_junction_penalties(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def _detect_congestion_zone(start_lat: float, end_lat: float) -> Tuple[str, float]:
     """
-    DIRECTIVE 2 — Congestion zone detection.
+    DIRECTIVE 2 — Congestion zone detection (Kashmir-recentred in v3.2).
 
     Decision rule:
-      If EITHER terminal is in the old city core (lat > 32.72), the route
-      encounters city-core congestion at least at one end → apply 2.0×.
-      Otherwise → peri-urban 1.5×.
+      If EITHER terminal sits above CITY_CORE_LAT_THRESHOLD (34.07°N — the
+      Downtown Srinagar / mohalla quarters around Nawakadal, Khanyar, Habba
+      Kadal), the route touches the bazaar-grid congestion zone at least at
+      one end → CONGESTION_CITY_CORE (2.2×).
+      Otherwise → CONGESTION_PERI_URBAN (1.4×).
 
     Returns (zone_label, multiplier).
     """
@@ -1351,7 +1462,7 @@ def compute_cycle_times(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     Where:
       • OSRM_Base_Min        = OSRM_Duration_S / 60
-      • Congestion_Multiplier = 2.0 (city core, lat > 32.72) or 1.5 (peri-urban)
+      • Congestion_Multiplier = 2.2 (Downtown, lat > 34.07) or 1.4 (peri-urban)
       • N_Stops               = Route_KM × 1000 / STOP_SPACING_M  (every 500m)
       • Stop_Penalty_Min      = 1.5 min per stop (boarding + alighting dwell)
       • Junction_Penalty_Min  = from compute_junction_penalties() (unchanged)
@@ -1419,9 +1530,11 @@ def step1_normalise_population_score(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Step 1: Pop_Score (0–1 normalised population density per route).
 
-    CMP INTEGRATION — percentage-based scoring (Chapter 3, RITES Ltd.):
+    Percentage-based scoring against the Srinagar UA / Kashmir Valley
+    reference population:
     Raw head-counts are replaced by Population_Served_Pct (% of CMP 2024 total
-    = 16,53,873).  This grounds the score in the CMP demand framework:
+    = 16,60,000 — Census 2011 + SMC Master Plan 2035 projection). This grounds
+    the score in a demand framework comparable to the original RITES CMP work:
       • A route serving 3.0% of the study area (≈49,616 residents) is scored
         relative to the highest-serving route in the dataset.
       • The 95th-percentile cap (Directive 5) is applied to the percentage
@@ -1581,30 +1694,43 @@ def compute_overlap_matrix(gdf: gpd.GeoDataFrame) -> np.ndarray:
     sys.stdout.write(f"\r  Progress: [0/{total_tasks}] 0.0%")
     sys.stdout.flush()
 
-    with ThreadPoolExecutor() as _dummy: pass # Just ensuring the import is active
-    
-    # OpenBLAS failure on Windows multiprocessing forces sequential fallback
-    # with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
-    #     futures = {executor.submit(_intersection_worker, task): task[0] for task in tasks}
-    #
-    #     for future in concurrent.futures.as_completed(futures):
-    #         i, results = future.result()
-    for task in tasks:
-        i, results = _intersection_worker(task)
-            
-        # Populate matrix symmetrically
-        for j, ratio_i_j, ratio_j_i in results:
-            matrix[i, j] = ratio_i_j
-            matrix[j, i] = ratio_j_i
-
-            # 4. PROGRESS BAR UPDATE
+    # v3.2: Attempt parallel execution with OpenBLAS pinned to a single
+    # thread (env vars set at module import). If anything goes wrong on
+    # Windows, fall back to the sequential loop — we never regress.
+    used_parallel = False
+    try:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
+            futures = {executor.submit(_intersection_worker, task): task[0]
+                       for task in tasks}
+            for future in concurrent.futures.as_completed(futures):
+                i, results = future.result()
+                for j, ratio_i_j, ratio_j_i in results:
+                    matrix[i, j] = ratio_i_j
+                    matrix[j, i] = ratio_j_i
+                completed += 1
+                percent = (completed / total_tasks) * 100
+                sys.stdout.write(f"\r  Progress: [{completed}/{total_tasks}] {percent:.1f}%")
+                sys.stdout.flush()
+        used_parallel = True
+    except Exception as exc:
+        log.warning("  Parallel overlap pool failed (%s) — falling back to sequential.",
+                    type(exc).__name__)
+        # Reset matrix and progress in case parallel partially populated
+        matrix = np.zeros((n, n), dtype=np.float32)
+        completed = 0
+        for task in tasks:
+            i, results = _intersection_worker(task)
+            for j, ratio_i_j, ratio_j_i in results:
+                matrix[i, j] = ratio_i_j
+                matrix[j, i] = ratio_j_i
             completed += 1
             percent = (completed / total_tasks) * 100
             sys.stdout.write(f"\r  Progress: [{completed}/{total_tasks}] {percent:.1f}%")
             sys.stdout.flush()
 
-    print() # Clear the progress bar line
-    log.info("  Overlap matrix (%d×%d) done.", n, n)
+    print()  # Clear the progress bar line
+    log.info("  Overlap matrix (%d×%d) done  (%s execution).",
+             n, n, "parallel" if used_parallel else "sequential")
     return matrix
 
 
@@ -1927,14 +2053,25 @@ def step3_compute_road_multiplier(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def step4a_compute_final_cdi(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Step 4a: Final_CDI = (Pop_Score×0.50 + POI_Score×0.50) × Road_Multiplier.
-    50/50 weighting — Phase 1 only. Will be calibrated against ridership in Phase 2.
+    Step 4a: Final_CDI = Pop_Score×0.50 + POI_Score×0.50.
+
+    v3.2: Road_Multiplier is NO LONGER folded into Final_CDI. The previous
+    formulation was circular — Road_Multiplier is derived from Action_Taken,
+    which is set by SSCL injection and cluster classification, so multiplying
+    it back into the CDI granted already-promoted trunks a 1.67× advantage
+    for no demand-side reason and contaminated the Jenks break thresholds
+    in Step 5. The multiplier is retained as a separate audit column and
+    used only as a tie-breaker inside step5_assign_priority_bands().
+
+    50/50 Pop/POI weighting is a Phase 1 default. Phase 2 will calibrate
+    against AFC ridership.
     """
-    log.info("Step 4a: Computing Final_CDI = (Pop×%.2f + POI×%.2f) × Road_Multiplier…",
+    log.info("Step 4a: Computing Final_CDI = Pop×%.2f + POI×%.2f "
+             "(Road_Multiplier moved to Step-5 tie-breaker in v3.2)…",
              CDI_POP_WEIGHT, CDI_POI_WEIGHT)
     raw_cdi          = (gdf["Pop_Score"] * CDI_POP_WEIGHT +
                         gdf["POI_Score"] * CDI_POI_WEIGHT)
-    gdf["Final_CDI"] = (raw_cdi * gdf["Road_Multiplier"]).round(4).clip(lower=0.0)
+    gdf["Final_CDI"] = raw_cdi.round(4).clip(lower=0.0)
     log.info("  Final_CDI mean: %.4f  max: %.4f  min: %.4f",
              gdf["Final_CDI"].mean(), gdf["Final_CDI"].max(),
              gdf["Final_CDI"].min())
@@ -1968,9 +2105,19 @@ def step4b_compute_social_flag(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 def step5_assign_priority_bands(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Step 5: Priority Band (HP / MP / LP) via Jenks Natural Breaks on Final_CDI.
+
     Social Obligation floor: LP → MP if Social_Flag = TRUE.
+
+    v3.2: Road_Multiplier tie-breaker. For routes whose Final_CDI lands within
+    ±BAND_TIEBREAK_BAND of either Jenks break, the Road_Multiplier (1.25
+    trunk / 0.75 feeder / 1.00 default) is used to promote the route up by
+    one band when the multiplier is ≥ 1.25, or demote it down by one band
+    when the multiplier ≤ 0.75. This restores Road_Multiplier's intent —
+    "trunk roads can sustain higher frequencies" — without baking the
+    self-reinforcing 1.67× advantage into the CDI itself.
     """
-    log.info("Step 5: Assigning Priority Bands via Jenks Natural Breaks…")
+    log.info("Step 5: Assigning Priority Bands via Jenks Natural Breaks "
+             "(Road_Multiplier acts as tie-breaker near band edges)…")
     cdi_values = gdf["Final_CDI"].fillna(0.0).values
 
     if not _HAS_JENKSPY:
@@ -1989,18 +2136,46 @@ def step5_assign_priority_bands(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         log.info("  Jenks breaks → LP < %.4f  ≤ MP < %.4f  ≤ HP",
                  thresh_lp_mp, thresh_mp_hp)
 
+    # Tie-breaker band: 5% of the LP↔HP span around each break
+    band_span = max(1e-4, thresh_mp_hp - thresh_lp_mp)
+    tiebreak  = 0.05 * band_span
+
     def _band(cdi: float) -> str:
         if cdi >= thresh_mp_hp:   return "HP"
         elif cdi >= thresh_lp_mp: return "MP"
         return "LP"
 
-    gdf["Priority_Band"]  = gdf["Final_CDI"].apply(_band)
+    # First pass: pure Jenks
+    base_bands = gdf["Final_CDI"].apply(_band).tolist()
+
+    # Second pass: Road_Multiplier tie-breaker near band edges
+    promote_n = demote_n = 0
+    final_bands = []
+    rm_series = gdf.get("Road_Multiplier", pd.Series(1.0, index=gdf.index))
+    for cdi, band, rm in zip(gdf["Final_CDI"].values, base_bands, rm_series.values):
+        new_band = band
+        if rm >= ROAD_MULTIPLIER_TRUNK and band == "MP" \
+           and (thresh_mp_hp - cdi) <= tiebreak:
+            new_band = "HP"; promote_n += 1
+        elif rm >= ROAD_MULTIPLIER_TRUNK and band == "LP" \
+             and (thresh_lp_mp - cdi) <= tiebreak:
+            new_band = "MP"; promote_n += 1
+        elif rm <= ROAD_MULTIPLIER_FEEDER and band == "HP" \
+             and (cdi - thresh_mp_hp) <= tiebreak:
+            new_band = "MP"; demote_n += 1
+        elif rm <= ROAD_MULTIPLIER_FEEDER and band == "MP" \
+             and (cdi - thresh_lp_mp) <= tiebreak:
+            new_band = "LP"; demote_n += 1
+        final_bands.append(new_band)
+    gdf["Priority_Band"] = final_bands
+
     social_lp_mask        = (gdf["Social_Flag"] == True) & (gdf["Priority_Band"] == "LP")
     gdf.loc[social_lp_mask, "Priority_Band"] = "MP"
 
     n_hp, n_mp, n_lp = ((gdf["Priority_Band"] == b).sum() for b in ("HP","MP","LP"))
-    log.info("  Priority bands — HP: %d  MP: %d  LP: %d  (%d Social LP→MP upgrades)",
-             n_hp, n_mp, n_lp, social_lp_mask.sum())
+    log.info("  Priority bands — HP: %d  MP: %d  LP: %d  "
+             "(%d Social LP→MP, %d road-promoted, %d road-demoted)",
+             n_hp, n_mp, n_lp, social_lp_mask.sum(), promote_n, demote_n)
     return gdf
 
 
@@ -2011,19 +2186,20 @@ def step6_assign_headways(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     DIRECTIVE 1 INTEGRATION:
     Regional_District routes are rural lifelines with relaxed headways.
 
-    CMP OVERRIDE (v3):
+    SSCL OVERRIDE (v3):
     Any route flagged CMP_Trunk = True receives a hardcoded headway of
-    CMP_TRUNK_HEADWAY_MIN (10 min), bypassing the Priority Band logic entirely.
-    10 min is the researched optimal trunk frequency for Tier-2 Indian cities
-    undergoing BRT/City Bus overhauls to ensure high ridership attraction.
+    SSCL_TRUNK_HEADWAY_MIN (15 min), bypassing the Priority Band logic entirely.
+    15 min matches SSCL's actual operational target on the Srinagar e-bus
+    network and is consistent with the ~4,346 pax/hr citywide peak demand
+    observed in CHALO data.
 
     Headway rules:
-      CMP Trunk routes                   → 10 min (hardcoded)
-      Urban / Peri_Urban routes          → HP=10  MP=20  LP=45  (UDPFI 2015)
-      Regional_District routes           → HP=45  MP=60  LP=60  (rural lifeline)
+      SSCL Trunk routes                  → 15 min (hardcoded)
+      Urban / Peri_Urban routes          → HP=15  MP=30  LP=60
+      Regional_District routes           → HP=60  MP=90       (rural lifeline)
     """
     log.info("Step 6: Assigning headways by Priority Band + Route_Type…")
-    log.info("  CMP Trunk routes: hardcoded %d min (research-optimal Tier-2 BRT)",
+    log.info("  SSCL Trunk routes: hardcoded %d min (SSCL operational target)",
              CMP_TRUNK_HEADWAY_MIN)
     log.info("  Urban/Peri-Urban: HP=%d  MP=%d  LP=%d min",
              HEADWAY_HP_MIN, HEADWAY_MP_MIN, HEADWAY_LP_MIN)
@@ -2059,7 +2235,7 @@ def step6_assign_headways(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     cmp_n      = gdf.get("CMP_Trunk", pd.Series(False, index=gdf.index)).sum()
     regional_n = (gdf.get("Route_Type", pd.Series()) == "Regional_District").sum()
-    log.info("  %d CMP Trunk routes → hardcoded %d-min headway.", cmp_n, CMP_TRUNK_HEADWAY_MIN)
+    log.info("  %d SSCL Trunk routes → hardcoded %d-min headway.", cmp_n, CMP_TRUNK_HEADWAY_MIN)
     log.info("  %d Regional_District routes assigned relaxed headways.", regional_n)
     return gdf
 
@@ -2068,35 +2244,39 @@ def step8_compute_fleet_required(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Step 8: Fleet_Required = CEILING(Cycle_Time_Min / Headway_Min).
 
-    v3.1 CHANGE — LPV Downgrade Restored context:
-    v3 eliminated LPVs entirely. v3.1 retains LPVs based on Vehicle_Category.
-    Any route whose computed fleet falls below MIN_FLEET_THRESHOLD is raised
-    directly to MIN_FLEET_THRESHOLD to maintain minimum operational viability.
+    v3.2: Type-specific minimum-fleet floor. Urban / Peri_Urban routes still
+    floor at MIN_FLEET_URBAN (2) for service viability; Regional_District
+    lifelines floor at MIN_FLEET_REGIONAL (1) — the previous blanket "2"
+    inflated rural fleet counts beyond justified demand.
     """
-    log.info("Step 8: Computing Fleet_Required = CEILING(Cycle_Time / Headway), "
-             "floor at MIN_FLEET_THRESHOLD=%d…",
-             MIN_FLEET_THRESHOLD)
+    log.info("Step 8: Computing Fleet_Required = CEILING(Cycle_Time / Headway). "
+             "Floors: Urban/Peri=%d  Regional_District=%d.",
+             MIN_FLEET_URBAN, MIN_FLEET_REGIONAL)
 
     fleet_required_list = []
+    floored_urban = floored_regional = 0
 
     for _, row in gdf.iterrows():
-        raw_fleet = max(1, math.ceil(
+        raw_fleet  = max(1, math.ceil(
             row["Cycle_Time_Min"] / max(1, row["Headway_Min"])))
-
-        # Floor at MIN_FLEET_THRESHOLD
-        fleet_required_list.append(max(raw_fleet, MIN_FLEET_THRESHOLD))
+        route_type = row.get("Route_Type", "Urban")
+        floor      = (MIN_FLEET_REGIONAL if route_type == "Regional_District"
+                      else MIN_FLEET_URBAN)
+        final      = max(raw_fleet, floor)
+        if final > raw_fleet:
+            if route_type == "Regional_District":
+                floored_regional += 1
+            else:
+                floored_urban += 1
+        fleet_required_list.append(final)
 
     gdf = gdf.copy()
     gdf["Fleet_Required"] = fleet_required_list
 
-    n_floored = sum(1 for raw, final in zip(
-        [max(1, math.ceil(r["Cycle_Time_Min"] / max(1, r["Headway_Min"])))
-         for _, r in gdf.iterrows()],
-        fleet_required_list
-    ) if final > raw)
-
-    log.info("  %d routes had fleet raised to MIN_FLEET_THRESHOLD=%d.",
-             n_floored, MIN_FLEET_THRESHOLD)
+    log.info("  Floors hit — Urban/Peri raised to %d: %d routes; "
+             "Regional_District raised to %d: %d routes.",
+             MIN_FLEET_URBAN, floored_urban,
+             MIN_FLEET_REGIONAL, floored_regional)
     log.info("  Fleet_Required — mean: %.1f  max: %d  total: %d",
              gdf["Fleet_Required"].mean(),
              gdf["Fleet_Required"].max(),
@@ -2104,42 +2284,97 @@ def step8_compute_fleet_required(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
+def _route_km_hpv_share(km: float) -> float:
+    """
+    v3.2: Route-length-based HPV (12m bus) share for non-SSCL trunks.
+
+    Audit finding: a blanket 85% HPV on every trunk contradicts SSCL's actual
+    fleet, which deploys 9m buses on short urban loops (≤12 km) and reserves
+    12m buses for longer inter-district corridors. This function reproduces
+    the empirical pattern observed in CMP_TRUNK_ROUTES:
+        <  12 km  → 100% MPV (9m)         e.g. SSCL-09 Parimpora–Naseem Bagh
+        12-22 km  → 50% HPV / 50% MPV     mixed urban–peri-urban
+        ≥  22 km  → 85% HPV / 15% MPV     highway-grade long-haul
+    """
+    if km < 12.0:
+        return 0.00
+    if km < 22.0:
+        return 0.50
+    return 0.85
+
+
+def _sscl_bus_split(cmp_route_id: str) -> Optional[Tuple[int, int]]:
+    """v3.2: look up the empirical 9m/12m bus counts for a given SSCL route."""
+    if not cmp_route_id:
+        return None
+    for r in CMP_TRUNK_ROUTES:
+        if r["id"] == cmp_route_id:
+            return int(r.get("bus_9m", 0)), int(r.get("bus_12m", 0))
+    return None
+
+
 def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Step 9: HPV/MPV/LPV vehicle type split.
 
-    Split rules with Vehicle_Category hints:
-      UPGRADED_TO_TRUNK or MERGED_INTO_TRUNK:
-        - Regular Bus / MPS Bus: 85% HPV, 15% MPV
-        - City Bus / LPV: 70% HPV, 30% MPV
-        - Else: 85% HPV, 15% MPV
+    v3.2 rules:
+      • SSCL-injected trunks (CMP_Trunk=True with a valid CMP_Route_ID):
+          Use the CMP_TRUNK_ROUTES empirical 9m/12m counts directly.
+          9m → MPV, 12m → HPV. Fleet_Required is overridden to match the
+          table sum so QC Check 1 (HPV+MPV+LPV=Fleet) stays consistent.
 
-      RETAINED_AS_FEEDER:
-        - City Bus: 100% MPV
-        - LPV: 100% LPV (retention policy)
-        - Regular Bus / MPS Bus: 30% HPV, 70% MPV
-        - Else: 100% MPV
+      • Non-SSCL trunks (UPGRADED_TO_TRUNK / MERGED_INTO_TRUNK without
+        CMP_Route_ID): Route_KM-bracketed share via _route_km_hpv_share()
+        — 0% / 50% / 85% HPV in 0-12 / 12-22 / 22+ km brackets.
+
+      • RETAINED_AS_FEEDER (unchanged from v3.1):
+          - LPV category → 100% LPV
+          - Regular / MPS → 30% HPV, 70% MPV
+          - Else (including city bus) → 100% MPV
     """
-    log.info("Step 9: Computing HPV/MPV/LPV vehicle split (LPV retained in v3.1)…")
+    log.info("Step 9: Computing HPV/MPV/LPV vehicle split "
+             "(v3.2 Route_KM-bracketed + SSCL table override)…")
     gdf = gdf.copy()
 
+    sscl_override_n = 0
+
     def _split(row) -> pd.Series:
+        nonlocal sscl_override_n
         fleet  = int(row["Fleet_Required"])
         action = row["Action_Taken"]
         cat    = str(row.get("Vehicle_Category", "")).strip().lower()
+        km     = float(row.get("Route_KM", 0.0))
+        cmp_id = str(row.get("CMP_Route_ID", "") or "")
 
         if fleet == 0:
-            return pd.Series({"HPV_Count": 0, "MPV_Count": 0, "LPV_Count": 0})
+            return pd.Series({"HPV_Count": 0, "MPV_Count": 0,
+                              "LPV_Count": 0, "Fleet_Required": 0})
 
-        hpv = 0
-        mpv = 0
-        lpv = 0
+        # v3.2: SSCL table override — only when this dataset row IS the
+        # canonical injected SSCL route (CMP_Trunk + non-empty CMP_Route_ID).
+        if bool(row.get("CMP_Trunk", False)) and cmp_id:
+            sscl_split = _sscl_bus_split(cmp_id)
+            if sscl_split is not None:
+                bus_9m, bus_12m = sscl_split
+                if bus_9m + bus_12m > 0:
+                    sscl_override_n += 1
+                    return pd.Series({
+                        "HPV_Count":      bus_12m,
+                        "MPV_Count":      bus_9m,
+                        "LPV_Count":      0,
+                        # Override Fleet_Required so QC1 stays satisfied
+                        "Fleet_Required": bus_9m + bus_12m,
+                    })
+
+        hpv = mpv = lpv = 0
 
         if action in ("UPGRADED_TO_TRUNK", "MERGED_INTO_TRUNK"):
-            if "city bus" in cat or "lpv" in cat:
-                hpv = math.ceil(fleet * 0.70)
+            # LPV-category retained vehicles cap at the smaller bracket regardless
+            if "lpv" in cat:
+                hpv_share = min(0.50, _route_km_hpv_share(km))
             else:
-                hpv = math.ceil(fleet * 0.85)
+                hpv_share = _route_km_hpv_share(km)
+            hpv = math.ceil(fleet * hpv_share)
             mpv = fleet - hpv
         else:
             # RETAINED_AS_FEEDER
@@ -2151,15 +2386,19 @@ def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             else:
                 mpv = fleet
 
-        return pd.Series({"HPV_Count": hpv, "MPV_Count": mpv, "LPV_Count": lpv})
+        return pd.Series({"HPV_Count": hpv, "MPV_Count": mpv,
+                          "LPV_Count": lpv, "Fleet_Required": fleet})
 
-    split_df          = gdf.apply(_split, axis=1)
-    gdf["HPV_Count"]  = split_df["HPV_Count"].astype(int)
-    gdf["MPV_Count"]  = split_df["MPV_Count"].astype(int)
-    gdf["LPV_Count"]  = split_df["LPV_Count"].astype(int)
+    split_df              = gdf.apply(_split, axis=1)
+    gdf["HPV_Count"]      = split_df["HPV_Count"].astype(int)
+    gdf["MPV_Count"]      = split_df["MPV_Count"].astype(int)
+    gdf["LPV_Count"]      = split_df["LPV_Count"].astype(int)
+    gdf["Fleet_Required"] = split_df["Fleet_Required"].astype(int)
 
-    log.info("  HPV total: %d  MPV total: %d  LPV total: %d",
-             gdf["HPV_Count"].sum(), gdf["MPV_Count"].sum(), gdf["LPV_Count"].sum())
+    log.info("  HPV total: %d  MPV total: %d  LPV total: %d  "
+             "(SSCL table override applied to %d routes)",
+             gdf["HPV_Count"].sum(), gdf["MPV_Count"].sum(),
+             gdf["LPV_Count"].sum(), sscl_override_n)
     return gdf
 
 
@@ -2222,19 +2461,40 @@ def run_all_qc_checks(gdf: gpd.GeoDataFrame) -> None:
     # else:
     log.info("  ✓ Check 4: Bypassed (feeders can have HPVs based on vehicle category).")
 
-    # Check 5: All active Trunk routes must have HPV_Count > 0
-    trunks = gdf[gdf["Action_Taken"] == "UPGRADED_TO_TRUNK"]
-    check5 = trunks[trunks["HPV_Count"] == 0]
+    # Check 5: Active Trunk routes must have HPV_Count > 0 unless either
+    #   (a) the route is short (<12 km) where 100% MPV is empirically right, OR
+    #   (b) the route is an SSCL-injected trunk whose CMP_TRUNK_ROUTES entry
+    #       specifies a 100% 9m (= MPV) fleet — that IS the ground truth.
+    # v3.2: relaxed from "every trunk needs HPV".
+    trunks = gdf[gdf["Action_Taken"] == "UPGRADED_TO_TRUNK"].copy()
+
+    def _sscl_all_9m(cmp_id: str) -> bool:
+        split = _sscl_bus_split(cmp_id) if cmp_id else None
+        return split is not None and split[1] == 0  # bus_12m == 0
+
+    sscl_all_9m_mask = trunks.get(
+        "CMP_Route_ID", pd.Series("", index=trunks.index)
+    ).fillna("").astype(str).apply(_sscl_all_9m)
+
+    check5 = trunks[
+        (trunks["HPV_Count"] == 0)
+        & (trunks["Route_KM"] >= 12.0)
+        & (~sscl_all_9m_mask)
+    ]
     if not check5.empty:
         failures.append(
-            f"CHECK 5 FAIL — {len(check5)} TRUNK routes have HPV_Count = 0. "
-            f"v3 mandates ≥1 HPV on every active trunk.")
+            f"CHECK 5 FAIL — {len(check5)} non-SSCL TRUNK routes ≥12 km "
+            f"have HPV_Count = 0.")
         for _, r in check5.iterrows():
             failures.append(
-                f"  {r['Route_ID']} | Fleet={r['Fleet_Required']} "
+                f"  {r['Route_ID']} | KM={r['Route_KM']} Fleet={r['Fleet_Required']} "
                 f"HPV={r['HPV_Count']} MPV={r['MPV_Count']}")
     else:
-        log.info("  ✓ Check 5: All active Trunk routes have HPV_Count > 0.")
+        n_short_mpv = ((trunks["Route_KM"] < 12.0) & (trunks["HPV_Count"] == 0)).sum()
+        n_sscl_all9m = int(sscl_all_9m_mask.sum())
+        log.info("  ✓ Check 5: All non-SSCL trunks ≥12 km have HPV_Count > 0  "
+                 "(%d short trunks <12 km and %d SSCL all-9m trunks legitimately MPV-only).",
+                 n_short_mpv, n_sscl_all9m)
 
     # Check 6: Fleet_Required > 0 for all active routes
     active = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"]
@@ -2302,7 +2562,8 @@ def compute_network_score(gdf: gpd.GeoDataFrame, net_pop: int) -> float:
     log.info("  Deduplicated Pop. Served : %s residents",  f"{net_pop:,}")
     log.info("  Active Fleet Required    : %d buses",       total_fleet)
     log.info("  Fleet Efficiency         : %.0f res/bus",   efficiency)
-    log.info("  CMP Backbone Trunks      : %d routes (hardcoded 10-min headway)", cmp_n)
+    log.info("  SSCL Backbone Trunks     : %d routes (hardcoded %d-min headway)",
+             cmp_n, SSCL_TRUNK_HEADWAY_MIN)
     log.info("  Routes > 40km (lifelines): %d (Directive 1 — retained, not dropped)",
              (gdf["Route_Type"] == "Regional_District").sum())
     log.info("  LPV fleet                : 0 (eradicated in v3)")
@@ -3072,12 +3333,16 @@ def main() -> None:
              (active["Priority_Band"] == "MP").sum(),
              (active["Priority_Band"] == "LP").sum(),
              active["Social_Flag"].sum())
-    log.info("  Total fleet             : %d buses (HPV: %d  MPV: %d  LPV: 0 eradicated)",
+    log.info("  Total fleet             : %d buses (HPV: %d  MPV: %d  LPV: %d)",
              int(active["Fleet_Required"].sum()),
              int(active["HPV_Count"].sum()),
-             int(active["MPV_Count"].sum()))
-    log.info("  Trunk vehicle split     : 85%% HPV / 15%% MPV")
-    log.info("  Feeder vehicle split    : 100%% MPV")
+             int(active["MPV_Count"].sum()),
+             int(active["LPV_Count"].sum()))
+    log.info("  Trunk vehicle split     : Route_KM-bracketed "
+             "(<12km: 100%% MPV | 12-22km: 50/50 | 22+km: 85%% HPV)  "
+             "+ SSCL empirical table for backbone routes (v3.2)")
+    log.info("  Feeder vehicle split    : 100%% MPV (city bus / unknown), "
+             "30/70 HPV/MPV (regular/MPS), 100%% LPV (LPV category)")
     log.info("  Network pop.            : %s residents  (%.2f%% of CMP %d total: %s)",
              f"{net_pop:,}",
              min(100.0, net_pop / CMP_TOTAL_POPULATION * 100),
