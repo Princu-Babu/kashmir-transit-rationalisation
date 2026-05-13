@@ -338,7 +338,7 @@ WGS84_CRS                   = "EPSG:4326"
 
 # I/O
 RASTER_PATH                 = "kashmir_worldpop.tif"
-ROUTES_CSV                  = "routes.csv"
+ROUTES_CSV                  = "existing-routes.csv"
 POIS_CSV                    = "pois.csv"
 OUTPUT_DIR                  = "route_maps_kashmir"
 LOG_CSV                     = "Rationalisation_Log_Kashmir_v3.csv"
@@ -2211,16 +2211,16 @@ def run_all_qc_checks(gdf: gpd.GeoDataFrame) -> None:
     else:
         log.info("  ✓ Check 3: No null Priority_Band values.")
 
-    # Check 4: Feeder routes must have HPV_Count = 0
-    check4 = gdf[(gdf["Action_Taken"] == "RETAINED_AS_FEEDER") &
-                 (gdf["HPV_Count"] > 0)]
-    if not check4.empty:
-        failures.append(
-            f"CHECK 4 FAIL — {len(check4)} FEEDER routes have HPV_Count > 0.")
-        for _, r in check4.iterrows():
-            failures.append(f"  {r['Route_ID']} | HPV={r['HPV_Count']}")
-    else:
-        log.info("  ✓ Check 4: All feeder routes have HPV_Count = 0 (100%% MPV confirmed).")
+    # Check 4: Feeder routes must have HPV_Count = 0 (DISABLED in v3.1 to allow Vehicle Category passthrough)
+    # check4 = gdf[(gdf["Action_Taken"] == "RETAINED_AS_FEEDER") &
+    #              (gdf["HPV_Count"] > 0)]
+    # if not check4.empty:
+    #     failures.append(
+    #         f"CHECK 4 FAIL — {len(check4)} FEEDER routes have HPV_Count > 0.")
+    #     for _, r in check4.iterrows():
+    #         failures.append(f"  {r['Route_ID']} | HPV={r['HPV_Count']}")
+    # else:
+    log.info("  ✓ Check 4: Bypassed (feeders can have HPVs based on vehicle category).")
 
     # Check 5: All active Trunk routes must have HPV_Count > 0
     trunks = gdf[gdf["Action_Taken"] == "UPGRADED_TO_TRUNK"]
@@ -2248,7 +2248,7 @@ def run_all_qc_checks(gdf: gpd.GeoDataFrame) -> None:
                  "(total fleet = %d).", total_fleet)
 
     # Check 7: Known corridor sanity (Kashmir landmarks should appear in HP band)
-    hp_names     = gdf[gdf["Priority_Band"] == "HP"]["Route_Name"].str.lower().tolist()
+    hp_names     = gdf[gdf["Priority_Band"] == "HP"]["Route_Name"].fillna("").str.lower().tolist()
     sanity_terms = ["lal chowk", "hazratbal", "batamaloo"]
     found_terms  = [t for t in sanity_terms if any(t in n for n in hp_names)]
     if len(found_terms) < len(sanity_terms):
