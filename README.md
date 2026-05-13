@@ -211,6 +211,7 @@ WINTER_SCENARIO = True
 kashmir-transit-rationalisation/
 ├── transit_kashmir_v3.py         # 🔧 Main engine (v3.1, vehicle-category aware)
 ├── extract_pois_kashmir.py       # 🗺  POI extractor (Overpass API + OSRM snap)
+├── crop_raster.py                # ✂️ Population raster cropper (WorldPop → Study Area)
 ├── latlon.py                     # 📍 ArcGIS geocoder for route terminals
 ├── geocode_other_routes.py       # 📡 Specialized geocoder for Other-routes.csv
 ├── cross_evaluate.py             # ⚖️ Ground-truth calibration loop vs CHALO data
@@ -227,6 +228,7 @@ kashmir-transit-rationalisation/
 |---|---|---|
 | **`transit_kashmir_v3.py`** | Core rationalisation engine — runs the full 12-step pipeline | OSRM, WorldPop raster, pois.csv |
 | **`extract_pois_kashmir.py`** | Extracts POIs from OpenStreetMap Overpass API, classifies into Kashmir 3-tier vocabulary, snaps to road network | requests, pandas, OSRM (optional) |
+| **`crop_raster.py`** | Crops the large India-wide WorldPop raster (ind_ppp_2026_100m.tif) to the Srinagar study area | rasterio |
 | **`latlon.py`** | Geocodes route terminal names to lat/lon using ArcGIS | arcgis, pandas |
 | **`cross_evaluate.py`** | Cross-evaluates engine outputs against 3 CHALO ground-truth datasets (Fleet, KM, Trips, Demand Shape) | pandas, numpy |
 | **`etracter.py`** | Plots existing routes on interactive Folium map with vehicle category layers | folium, requests, shapely |
