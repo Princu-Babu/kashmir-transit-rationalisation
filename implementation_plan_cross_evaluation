@@ -1,0 +1,135 @@
+# Cross-Evaluation System: CHALO Ground Truth vs Engine Outputs
+
+## Problem Statement
+
+Before running `transit_kashmir_v3.py` in production, we need a calibration loop that compares the engine's predictions against **real-world CHALO data** to tune parameters until the model matches observed reality. The three Chalo datasets provide ground truth at three different granularities:
+
+| Dataset | Granularity | Key Metrics |
+|---|---|---|
+| **Ridership Data.csv** | Monthly, system-wide | Total ridership, EPKM, trip count, operated KM, scheduled KM |
+| **Route Wise deployed Buses.csv** | Per-route, static | Fleet deployed per SSCL route (9m vs 12m split) |
+| **Hourly Passenger Count.csv** | Hourly, system-wide | Hour-by-hour demand shape (April 2026) |
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    A[transit_kashmir_v3.py] -->|Run Engine| B[Engine Outputs<br/>CSV/XLSX/GeoJSON]
+    C[Chalo Ground Truth<br/>3 CSV files] --> D[cross_evaluate.py]
+    B --> D
+    D -->|Compare| E[Calibration Report<br/>+ Diagnostic Charts]
+    E -->|Manual Tuning| F[Adjust Engine Constants]
+    F --> A
+    style D fill:#1A237E,color:#fff
+    style E fill:#00695C,color:#fff
+```
+
+## What Can Actually Be Compared
+
+> [!IMPORTANT]
+> The CHALO data and the engine output operate at **different granularities**. Not everything maps 1:1. Here's what's feasible:
+
+### Level 1: System-Wide Aggregates (Ridership Data.csv ↔ Engine Totals)
+
+| CHALO Metric | Engine Equivalent | How to Compare |
+|---|---|---|
+| **Total ridership/month** (~9.5–12L pax) | `Population_Served × mode_share × trip_rate × days/month` | Derive implied daily pax from pop served + assumptions |
+| **Operated KM/month** (~5.0–5.9L km) | `Σ(Route_KM × 2 × trips_per_day × days)` where `trips_per_day = service_hours / Headway_Min` | Direct calculation from fleet plan |
+| **Scheduled KM/month** (~6.5–6.7L km) | Same but using 100% schedule (no cancellations) | Direct calculation |
+| **Trip Count/month** (~25K–28K) | `Σ(service_hours / Headway_Min) × days_per_month` for all active routes | Direct calculation |
+| **EPKM** (₹10–14 cash) | Requires fare assumption — sanity check only | Informational |
+| **Op Ratio** (Operated/Scheduled ~82–90%) | Engine already has `CHALO_OP_RATIO = 0.845` | Verify engine assumption matches latest data |
+
+### Level 2: Route-Level Fleet Match (Route Wise deployed Buses.csv ↔ Engine Fleet)
+
+| CHALO Metric | Engine Equivalent | How to Compare |
+|---|---|---|
+| **Buses deployed per route** (1–7) | `Fleet_Required` from Step 8 | Direct 1:1 comparison for 30 SSCL routes |
+| **9m vs 12m split** | `MPV_Count` vs `HPV_Count` | Compare vehicle type distribution |
+| **Total fleet** (98 buses) | `Σ Fleet_Required` (SSCL routes only) | Aggregate match |
+
+### Level 3: Temporal Demand Shape (Hourly Passenger Count.csv ↔ Headway Design)
+
+| CHALO Metric | Engine Equivalent | How to Compare |
+|---|---|---|
+| **Peak hour** (9 AM, ~4300–5000 pax) | `CHALO_PEAK_PAX_PER_HOUR = 4346` | Verify constant calibration |
+| **Peak-to-trough ratio** (~10:1) | Engine uses flat headway (no time-of-day variation) | Diagnose headway waste in off-peak |
+| **Weekday vs weekend shape** | Not in engine (no day-type differentiation) | Flag for v4 |
+| **Service window** (6 AM – 10 PM) | `CHALO_SERVICE_START_HR = 6`, `CHALO_SERVICE_END_HR = 22` | Verify |
+
+---
+
+## Proposed Changes
+
+### [NEW] [cross_evaluate.py](file:///e:/kash/cross_evaluate.py)
+
+A standalone Python script that:
+
+1. **Loads CHALO ground truth** (all 3 CSVs) and parses the Indian number formats (commas, `₹` signs)
+2. **Loads engine outputs** (reads `Rationalised_Routes_Kashmir_v3.csv` or runs the engine pipeline programmatically)
+3. **Computes comparison metrics** at all 3 levels
+4. **Generates a calibration report** with pass/fail thresholds and diagnostic charts
+5. **Identifies which engine parameters to tweak** if metrics are off
+
+#### Key Comparison Functions:
+
+```python
+# Level 1: System-wide
+def compare_system_totals(chalo_ridership, engine_gdf) -> dict:
+    """Compares total fleet, operated KM, trips, implied ridership"""
+
+# Level 2: Route-level fleet
+def compare_route_fleet(chalo_buses, engine_gdf) -> pd.DataFrame:
+    """1:1 fleet comparison for 30 SSCL routes"""
+
+# Level 3: Temporal shape
+def compare_hourly_demand(chalo_hourly, engine_config) -> dict:
+    """Validates peak hour, service window, demand curve"""
+```
+
+#### Calibration Parameters & Their Sensitivities:
+
+The script will output a **parameter sensitivity table** showing which engine constants to adjust:
+
+| If Engine Output Is... | Likely Cause | Parameter to Tune |
+|---|---|---|
+| Fleet too high vs CHALO | Headway too aggressive or cycle time too conservative | `HEADWAY_HP_MIN`, `CONGESTION_CITY_CORE`, `STOP_PENALTY_MIN` |
+| Fleet too low vs CHALO | Headway too relaxed or cycle time underestimated | Same parameters, opposite direction |
+| Operated KM too high | Too many routes active, or routes too long | `OVERLAP_THRESHOLD`, `TRUNK_CDI_GATE_PERCENTILE` |
+| Ridership overestimated | Population walkshed too generous | `WALK_CATCHMENT_M`, `VIRTUAL_STOP_SPACING_M` |
+| Wrong vehicle mix | HPV/MPV split formula off | Step 9 split ratios (0.85/0.15) |
+
+#### Output Files:
+- `calibration_report_v3.md` — Markdown report with comparison tables
+- `calibration_charts/` — PNG charts (fleet scatter, KM histogram, hourly demand overlay)
+- Console summary with pass/fail indicators
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Q1: Mode share assumption** — To convert `Population_Served` to implied ridership, we need a transit mode share. The Census 2011 modal split for Srinagar UA is ~5–8% public transport. Should we use 6% as baseline, or do you have a more recent estimate from SSCL/SMA?
+
+> [!IMPORTANT]
+> **Q2: Trip rate** — Average daily trips per person using transit. Typical Indian Tier-2 cities use 1.2–1.5. The CHALO data implies ~40,000 daily pax across 98 buses. Should we back-calculate from this?
+
+> [!NOTE]
+> **Q3: Scope of "good match"** — What tolerance do you consider acceptable? For fleet-level comparisons, ±20% per route is typical for planning models. For system KM totals, ±15% is standard. Want tighter thresholds?
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. Run `cross_evaluate.py` which will:
+   - Load all 3 CHALO CSVs and engine output
+   - Compute all metrics with pass/fail indicators
+   - Generate diagnostic charts
+   - Output a markdown calibration report
+2. Iterate: adjust engine constants → re-run engine → re-run evaluator → check convergence
+
+### Manual Verification
+- Review the fleet scatter plot (CHALO deployed vs Engine computed) for the 30 SSCL routes
+- Compare system-wide monthly KM totals against CHALO operated KM
+- Validate the hourly demand curve matches the engine's peak-hour constants

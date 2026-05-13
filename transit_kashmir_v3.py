@@ -125,8 +125,8 @@ def _intersection_worker(args):
 # Peri-urban = Hyderpora, Rangreth, Pampore, Pantha Chowk, Bemina,
 #              Budgam, Ganderbal — mixed urban/highway, lower congestion
 CITY_CORE_LAT_THRESHOLD     = 34.07   # SRINAGAR (was 32.72 for Jammu)
-CONGESTION_CITY_CORE        = 2.0    # 2× free-flow (peak hour gridlock — bridges, bazaars)
-CONGESTION_PERI_URBAN       = 1.5    # 1.5× free-flow (peri-urban mixed traffic)
+CONGESTION_CITY_CORE        = 1.4    # 1.4× free-flow (peak hour gridlock — bridges, bazaars)
+CONGESTION_PERI_URBAN       = 1.1    # 1.1× free-flow (peri-urban mixed traffic)
 
 # ─── Kashmir-specific: Seasonal scenario flag ───────────────────────────────
 # True  → Chillai Kalan / winter mode: Tier-3 (tourist) POIs zeroed,
@@ -139,7 +139,7 @@ WINTER_OP_RATIO_PENALTY     = 0.85   # Operated/scheduled KM ratio in winter (CH
 
 # ─── Directive 2: Stop penalty ───────────────────────────────────────────────
 STOP_SPACING_M              = 500    # One virtual stop every 500m along route
-STOP_PENALTY_MIN            = 1.5    # 1.5 min dwell per stop (boarding/alighting)
+STOP_PENALTY_MIN            = 0.5    # 30 sec dwell per stop (boarding/alighting)
 
 # ─── Directive 2: Layover buffer ─────────────────────────────────────────────
 TERMINAL_LAYOVER_FACTOR     = 1.10   # 10% terminal layover (was 15% blanket in v6)
@@ -410,7 +410,7 @@ TERMINAL_CATEGORIES = frozenset({"bus_terminal", "market"})
 # 12-metre buses (HPV) are deployed on long-haul / inter-district routes;
 # 9-metre buses (MPV) cover intra-city loops. The 85/15 HPV-MPV split in
 # Step 9 reflects this real deployment ratio.
-SSCL_TRUNK_HEADWAY_MIN = 15   # SSCL e-bus trunk headway (was 10 for Jammu BRT)
+SSCL_TRUNK_HEADWAY_MIN = 45   # SSCL e-bus trunk headway (was 10 for Jammu BRT)
 
 # Alias for backward compatibility with downstream functions that reference
 # CMP_TRUNK_HEADWAY_MIN (no need to rename across the entire codebase).

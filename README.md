@@ -213,6 +213,7 @@ kashmir-transit-rationalisation/
 ├── extract_pois_kashmir.py       # 🗺  POI extractor (Overpass API + OSRM snap)
 ├── latlon.py                     # 📍 ArcGIS geocoder for route terminals
 ├── geocode_other_routes.py       # 📡 Specialized geocoder for Other-routes.csv
+├── cross_evaluate.py             # ⚖️ Ground-truth calibration loop vs CHALO data
 ├── etracter.py                   # 🗺  Interactive route mapper (Folium + OSRM)
 ├── existing-routes.csv           # 📊 613 existing bus route permits (Master)
 ├── requirements.txt              # 📦 Python dependencies
@@ -227,6 +228,7 @@ kashmir-transit-rationalisation/
 | **`transit_kashmir_v3.py`** | Core rationalisation engine — runs the full 12-step pipeline | OSRM, WorldPop raster, pois.csv |
 | **`extract_pois_kashmir.py`** | Extracts POIs from OpenStreetMap Overpass API, classifies into Kashmir 3-tier vocabulary, snaps to road network | requests, pandas, OSRM (optional) |
 | **`latlon.py`** | Geocodes route terminal names to lat/lon using ArcGIS | arcgis, pandas |
+| **`cross_evaluate.py`** | Cross-evaluates engine outputs against 3 CHALO ground-truth datasets (Fleet, KM, Trips, Demand Shape) | pandas, numpy |
 | **`etracter.py`** | Plots existing routes on interactive Folium map with vehicle category layers | folium, requests, shapely |
 | **`poiK.py`** | Extracts high-traffic POIs from offline India OSM PBF file | osmium, pandas |
 
@@ -239,8 +241,9 @@ All tunable parameters live at the top of `transit_kashmir_v3.py` (lines 120–5
 | Parameter | Default | Description |
 |---|---|---|
 | `WINTER_SCENARIO` | `False` | Toggle winter mode (zeroes Tier 3 POIs, shrinks walksheds) |
-| `CITY_CORE_LAT_THRESHOLD` | `34.07` | Latitude above which Downtown Srinagar congestion (2.0×) applies |
-| `SSCL_TRUNK_HEADWAY_MIN` | `15` | Hardcoded headway for all 30 SSCL backbone routes |
+| `CITY_CORE_LAT_THRESHOLD` | `34.07` | Latitude above which Downtown Srinagar congestion (1.4×) applies |
+| `SSCL_TRUNK_HEADWAY_MIN` | `45` | Hardcoded headway for all 30 SSCL backbone routes (calibrated) |
+| `STOP_PENALTY_MIN` | `0.5` | Stop dwell time penalty (calibrated to 30s) |
 | `HEADWAY_HP_MIN` | `15` | HP band headway for urban/peri-urban routes |
 | `HEADWAY_MP_MIN` | `30` | MP band headway |
 | `HEADWAY_LP_MIN` | `60` | LP band headway |
@@ -283,7 +286,7 @@ All **30 SSCL (Srinagar Smart City Limited) e-bus routes** from CHALO ridership 
 
 4. **Military polygons** — Security/convoy windows on NH-44 and military cantonment areas are not yet subtracted from the operable network.
 
-5. **No per-route AFC validation** — CHALO real ridership data calibrates citywide headways and gender weighting, but per-route ridership validation is still manual.
+5. **No per-route AFC validation** — The new `cross_evaluate.py` module calibrates system-level fleet size and total KM against CHALO data, but strict route-by-route AFC ridership comparison is still manual.
 
 ---
 
