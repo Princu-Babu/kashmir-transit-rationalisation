@@ -2696,10 +2696,12 @@ def _popup_html(row: pd.Series) -> str:
     }.get(row.get("Action_Taken", ""), "#333")
     band_colour = {"HP": "#1B5E20", "MP": "#E65100", "LP": "#B71C1C"}.get(
         row.get("Priority_Band", ""), "#333")
-    social_tag  = ("🚩 <b>Social Obligation Route</b><br>"
+    social_tag  = ("<div style='color:#B71C1C;font-size:10px;font-weight:700;margin-bottom:2px'>"
+                   "&#9873; Social Obligation Route</div>"
                    if row.get("Social_Flag") else "")
-    cmp_tag     = (f"🏛 <b>CMP Backbone Trunk [{row.get('CMP_Route_ID','')}]"
-                   f" — 10 min fixed headway</b><br>"
+    cmp_tag     = (f"<div style='color:#6A1B9A;font-size:10px;font-weight:700;margin-bottom:4px'>"
+                   f"&#127963; SSCL Backbone [{row.get('CMP_Route_ID','')}] — "
+                   f"{SSCL_TRUNK_HEADWAY_MIN}-min headway</div>"
                    if row.get("CMP_Trunk") else "")
     hpv_pct     = (f"{int(row.get('HPV_Count',0)/max(1,row.get('Fleet_Required',1))*100)}%"
                    if row.get("Fleet_Required", 0) > 0 else "0%")
@@ -2729,35 +2731,269 @@ def _popup_html(row: pd.Series) -> str:
     <tr><td style="color:#E65100">POI_Score</td><td><b>{row.get('POI_Score',0):.3f}</b></td></tr>
     <tr><td style="color:#4A148C">Road ×</td><td><b>{row.get('Road_Multiplier',1.0):.2f}</b></td></tr>
     <tr><td style="color:#333"><b>Final CDI</b></td><td><b>{row.get('Final_CDI',0):.4f}</b></td></tr>
-    <tr><td style="color:#666">Pop. Served</td><td><b>{row.get('Population_Served_Pct', row.get('Population_Served_Pct', 0.0)):.2f}% of CMP 2024</b></td></tr>
+    <tr><td style="color:#666">Pop. Served</td><td><b>{row.get('Population_Served_Pct', 0.0):.2f}% of CMP 2024</b></td></tr>
   </table>
 </div>"""
+
+
+def _get_nearby_pois(row: pd.Series, gdf_pois: gpd.GeoDataFrame,
+                     buffer_m: float = 400.0) -> List[dict]:
+    """Return POIs within buffer_m metres of the route geometry."""
+    geom = row.get("geometry")
+    if geom is None or gdf_pois is None or len(gdf_pois) == 0:
+        return []
+    try:
+        route_utm = gpd.GeoSeries([geom], crs="EPSG:4326").to_crs(UTM_CRS).iloc[0]
+        pois_utm  = gdf_pois.to_crs(UTM_CRS)
+        buf       = route_utm.buffer(buffer_m)
+        within    = pois_utm[pois_utm.geometry.within(buf)]
+        results   = []
+        for _, p in within.iterrows():
+            results.append({
+                "name":     p.get("name", "POI"),
+                "category": p.get("category", ""),
+                "tier":     "Tier 1" if p.get("Is_HV_POI") else "Tier 2",
+            })
+        results.sort(key=lambda x: (x["tier"], x["name"]))
+        return results[:30]
+    except Exception:
+        return []
+
+
+def _individual_route_html(row: pd.Series, coords: List[Tuple[float, float]],
+                            nearby_pois: List[dict]) -> str:
+    """Generate a full standalone HTML page for an individual route."""
+    rid         = row.get("New_Route_ID", "N/A")
+    rname       = row.get("Route_Name", rid)
+    action      = row.get("Action_Taken", "")
+    route_type  = row.get("Route_Type", "?")
+    zone        = row.get("Congestion_Zone", "?")
+    band        = row.get("Priority_Band", "?")
+    headway     = row.get("Headway_Min", "?")
+    km          = row.get("Route_KM", 0)
+    fleet       = row.get("Fleet_Required", "?")
+    hpv         = row.get("HPV_Count", 0)
+    mpv         = row.get("MPV_Count", 0)
+    cycle       = row.get("Cycle_Time_Min", 0)
+    stops       = row.get("N_Stops_Estimated", 0)
+    pop_score   = row.get("Pop_Score", 0)
+    poi_score   = row.get("POI_Score", 0)
+    cdi         = row.get("Final_CDI", 0)
+    pop_pct     = row.get("Population_Served_Pct", 0.0)
+    pop_abs     = row.get("Population_Served", 0)
+    social      = bool(row.get("Social_Flag", False))
+    cmp_trunk   = bool(row.get("CMP_Trunk", False))
+    cmp_id      = row.get("CMP_Route_ID", "")
+
+    start_lat, start_lon = coords[0]
+    end_lat,   end_lon   = coords[-1]
+    origin_name = str(row.get("Route_From", "")).strip()
+    dest_name   = str(row.get("Route_To",   "")).strip()
+    if not origin_name or origin_name in ("nan", "None"):
+        origin_name = f"{start_lat:.4f}, {start_lon:.4f}"
+    if not dest_name or dest_name in ("nan", "None"):
+        dest_name = f"{end_lat:.4f}, {end_lon:.4f}"
+
+    via_raw  = row.get("Via_Coordinates")
+    via_pts  = parse_via(via_raw)  # list of (lon, lat)
+    via_coords_js = json.dumps([[lat, lon] for lon, lat in via_pts])
+
+    # Build POI list HTML
+    poi_rows = ""
+    for p in nearby_pois:
+        tier_badge = ("#D32F2F" if p["tier"] == "Tier 1" else "#F57F17")
+        poi_rows += (f'<tr><td style="padding:2px 6px;font-size:11px">'
+                     f'<span style="background:{tier_badge};color:#fff;border-radius:3px;'
+                     f'padding:0 4px;font-size:9px">{p["tier"]}</span> '
+                     f'{p["name"]}</td>'
+                     f'<td style="padding:2px 6px;font-size:10px;color:#666">'
+                     f'{p["category"]}</td></tr>')
+
+    action_col = {
+        "UPGRADED_TO_TRUNK":  "#1A237E",
+        "RETAINED_AS_FEEDER": "#00695C",
+    }.get(action, "#333")
+    band_col = {"HP": "#1B5E20", "MP": "#E65100", "LP": "#B71C1C"}.get(band, "#333")
+    route_colour = action_col
+    centre_lat = sum(c[0] for c in coords) / len(coords)
+    centre_lon = sum(c[1] for c in coords) / len(coords)
+    coords_js  = json.dumps(coords)
+
+    social_badge = ('<span style="background:#B71C1C;color:#fff;border-radius:4px;'
+                    'padding:1px 7px;font-size:10px;margin-left:6px">Social Obligation</span>'
+                    if social else "")
+    sscl_badge   = (f'<span style="background:#6A1B9A;color:#fff;border-radius:4px;'
+                    f'padding:1px 7px;font-size:10px;margin-left:6px">SSCL {cmp_id}</span>'
+                    if cmp_trunk else "")
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Route {rid} — Kashmir Transit</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:'Segoe UI',Arial,sans-serif;display:flex;height:100vh;overflow:hidden;background:#f5f7fa}}
+  #sidebar{{width:360px;min-width:280px;height:100vh;overflow-y:auto;background:#fff;
+            border-right:1px solid #e0e4ea;display:flex;flex-direction:column}}
+  #map{{flex:1;height:100vh}}
+  .header{{background:{action_col};color:#fff;padding:14px 16px}}
+  .header h2{{font-size:17px;font-weight:700;margin-bottom:2px}}
+  .header .sub{{font-size:11px;opacity:0.85}}
+  .badges{{padding:8px 16px;background:#f8f9fb;border-bottom:1px solid #e8eaed;display:flex;flex-wrap:wrap;gap:4px}}
+  .badge{{display:inline-block;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;color:#fff}}
+  .section{{padding:12px 16px;border-bottom:1px solid #f0f2f5}}
+  .section h3{{font-size:11px;font-weight:700;text-transform:uppercase;color:#9aa;letter-spacing:.05em;margin-bottom:8px}}
+  .kv{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}}
+  .kv .k{{color:#666;font-size:12px}}
+  .kv .v{{font-size:12px;font-weight:600;color:#222;text-align:right;max-width:60%}}
+  .terminal-box{{background:#f8f9fb;border-radius:6px;padding:8px 10px;margin-bottom:6px}}
+  .terminal-box .label{{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}}
+  .terminal-box .value{{font-size:13px;font-weight:700}}
+  .via-list{{list-style:none;padding:0}}
+  .via-list li{{font-size:11px;color:#444;padding:2px 0;border-bottom:1px dotted #e8eaed}}
+  .via-list li::before{{content:"• ";color:#5C6BC0}}
+  .poi-table{{width:100%;border-collapse:collapse}}
+  .pop-bar-bg{{background:#e8eaed;border-radius:4px;height:8px;margin-top:4px}}
+  .pop-bar{{background:{action_col};border-radius:4px;height:8px}}
+  .score-row{{display:flex;gap:8px;margin-bottom:4px}}
+  .score-box{{flex:1;background:#f8f9fb;border-radius:6px;padding:6px 8px;text-align:center}}
+  .score-box .sv{{font-size:15px;font-weight:700}}
+  .score-box .sk{{font-size:9px;color:#888;text-transform:uppercase}}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="header">
+    <div class="sub">Kashmir Valley Transit — Route Detail</div>
+    <h2>{rid}</h2>
+    <div style="font-size:12px;opacity:0.9;margin-top:2px">{rname}</div>
+  </div>
+  <div class="badges">
+    <span class="badge" style="background:{action_col}">{action.replace('_',' ')}</span>
+    <span class="badge" style="background:{band_col}">{band} Priority</span>
+    <span class="badge" style="background:#37474F">{route_type.replace('_',' ')}</span>
+    {"<span class='badge' style='background:#6A1B9A'>SSCL " + str(cmp_id) + "</span>" if cmp_trunk else ""}
+    {"<span class='badge' style='background:#B71C1C'>Social Route</span>" if social else ""}
+  </div>
+
+  <div class="section">
+    <h3>Terminals</h3>
+    <div class="terminal-box" style="border-left:4px solid {COLOUR["start_pin"]}">
+      <div class="label" style="color:{COLOUR["start_pin"]}">&#9650; Origin / Start</div>
+      <div class="value">{origin_name}</div>
+      <div style="font-size:10px;color:#999;margin-top:2px">{start_lat:.5f}, {start_lon:.5f}</div>
+    </div>
+    <div class="terminal-box" style="border-left:4px solid {COLOUR["end_pin"]}">
+      <div class="label" style="color:{COLOUR["end_pin"]}">&#9660; Destination / End</div>
+      <div class="value">{dest_name}</div>
+      <div style="font-size:10px;color:#999;margin-top:2px">{end_lat:.5f}, {end_lon:.5f}</div>
+    </div>
+    {"<h3 style='margin-top:10px;margin-bottom:6px'>Via Points</h3><ul class='via-list'>" + "".join(f"<li>{lon:.4f}, {lat:.4f}</li>" for lon, lat in via_pts) + "</ul>" if via_pts else ""}
+  </div>
+
+  <div class="section">
+    <h3>Area &amp; Zone</h3>
+    <div class="kv"><span class="k">Congestion Zone</span><span class="v">{zone.replace('_',' ')}</span></div>
+    <div class="kv"><span class="k">Route Type</span><span class="v">{route_type.replace('_',' ')}</span></div>
+    <div class="kv"><span class="k">Route Length</span><span class="v">{km:.1f} km</span></div>
+    <div class="kv"><span class="k">Est. Stops</span><span class="v">{stops}</span></div>
+  </div>
+
+  <div class="section">
+    <h3>Population Served</h3>
+    <div class="kv"><span class="k">Residents within walkshed</span><span class="v" style="color:{action_col}">{int(pop_abs):,}</span></div>
+    <div class="kv"><span class="k">% of Srinagar UA (2024)</span><span class="v" style="color:{action_col}">{pop_pct:.2f}%</span></div>
+    <div class="pop-bar-bg"><div class="pop-bar" style="width:{min(100,pop_pct*4):.1f}%"></div></div>
+  </div>
+
+  <div class="section">
+    <h3>Service Plan</h3>
+    <div class="kv"><span class="k">Headway</span><span class="v">{headway} min</span></div>
+    <div class="kv"><span class="k">Cycle Time</span><span class="v">{float(cycle):.1f} min</span></div>
+    <div class="kv"><span class="k">Fleet Required</span><span class="v">{fleet} buses</span></div>
+    <div class="kv"><span class="k">HPV (12m)</span><span class="v">{hpv}</span></div>
+    <div class="kv"><span class="k">MPV (9m)</span><span class="v">{mpv}</span></div>
+  </div>
+
+  <div class="section">
+    <h3>Demand Scores</h3>
+    <div class="score-row">
+      <div class="score-box"><div class="sv" style="color:#1565C0">{pop_score:.3f}</div><div class="sk">Pop Score</div></div>
+      <div class="score-box"><div class="sv" style="color:#E65100">{poi_score:.3f}</div><div class="sk">POI Score</div></div>
+      <div class="score-box"><div class="sv" style="color:#1B5E20">{float(cdi):.4f}</div><div class="sk">Final CDI</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>POIs Covered ({len(nearby_pois)})</h3>
+    {"<div style='color:#999;font-size:11px'>No POIs within 400m walkshed.</div>" if not nearby_pois else
+     "<table class='poi-table'>" + poi_rows + "</table>"}
+  </div>
+</div>
+
+<div id="map"></div>
+<script>
+var map = L.map('map').setView([{centre_lat}, {centre_lon}], 13);
+L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  maxZoom: 19
+}}).addTo(map);
+
+var coords = {coords_js};
+var line = L.polyline(coords, {{color: '{route_colour}', weight: 5, opacity: 0.9}}).addTo(map);
+map.fitBounds(line.getBounds(), {{padding: [30, 30]}});
+
+// Start marker
+var startIcon = L.divIcon({{
+  html: '<div style="background:{COLOUR["start_pin"]};color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">S</div>',
+  iconSize: [16, 16], iconAnchor: [8, 8], className: ''
+}});
+L.marker(coords[0], {{icon: startIcon}}).addTo(map)
+  .bindPopup('<b>START</b><br>{origin_name}');
+
+// End marker
+var endIcon = L.divIcon({{
+  html: '<div style="background:{COLOUR["end_pin"]};color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">E</div>',
+  iconSize: [16, 16], iconAnchor: [8, 8], className: ''
+}});
+L.marker(coords[coords.length - 1], {{icon: endIcon}}).addTo(map)
+  .bindPopup('<b>END</b><br>{dest_name}');
+
+// Via points
+var viaCoords = {via_coords_js};
+viaCoords.forEach(function(pt, i) {{
+  var viaIcon = L.divIcon({{
+    html: '<div style="background:{COLOUR["via_dot"]};color:#fff;border-radius:50%;width:10px;height:10px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>',
+    iconSize: [10, 10], iconAnchor: [5, 5], className: ''
+  }});
+  L.marker(pt, {{icon: viaIcon}}).addTo(map).bindPopup('Via point ' + (i+1));
+}});
+</script>
+</body>
+</html>"""
 
 
 def build_individual_maps(gdf: gpd.GeoDataFrame,
                            gdf_pois: gpd.GeoDataFrame,
                            out_dir: str) -> dict:
-    """Build individual route HTML maps. Returns {New_Route_ID: filepath}."""
+    """Build detailed individual route HTML pages. Returns {New_Route_ID: filepath}."""
     log.info("Building individual route maps → %s/", out_dir)
     Path(out_dir).mkdir(exist_ok=True)
-    active = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"].copy()
+    active   = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"].copy()
     file_map = {}
     for _, row in active.iterrows():
         coords = _safe_coords(row.get("geometry"))
         if not coords:
             continue
-        rid    = row["New_Route_ID"]
-        centre = (sum(c[0] for c in coords) / len(coords),
-                  sum(c[1] for c in coords) / len(coords))
-        m = folium.Map(location=centre, zoom_start=13,
-                       tiles=TILE_URL, attr=TILE_ATTR)
-        colour = (COLOUR["trunk"] if row["Action_Taken"] == "UPGRADED_TO_TRUNK"
-                  else COLOUR["feeder"])
-        folium.PolyLine(coords, color=colour, weight=4,
-                        popup=folium.Popup(_popup_html(row),
-                                           max_width=320)).add_to(m)
-        fname = f"{out_dir}/{rid.replace('/', '_')}.html"
-        m.save(fname)
+        rid          = row["New_Route_ID"]
+        nearby_pois  = _get_nearby_pois(row, gdf_pois)
+        html_content = _individual_route_html(row, coords, nearby_pois)
+        fname        = f"{out_dir}/{rid.replace('/', '_')}.html"
+        Path(fname).write_text(html_content, encoding="utf-8")
         file_map[rid] = fname
     log.info("  %d individual maps saved.", len(file_map))
     return file_map
@@ -2769,68 +3005,365 @@ def build_master_map(gdf: gpd.GeoDataFrame,
                      out_html: str,
                      net_pop: int,
                      network_score: float) -> None:
-    """Build master Folium map with all route layers."""
+    """Build master interactive HTML map with filter panel and KPI sidebar."""
     log.info("Building master transit map → %s", out_html)
-    # Centre on Srinagar Lal Chowk (was Jammu 32.73, 74.87)
-    centre = [34.08, 74.81]
-    m = folium.Map(location=centre, zoom_start=12,
-                   tiles=TILE_URL, attr=TILE_ATTR)
 
-    fg_trunk   = folium.FeatureGroup(name=FG["trunk"],   show=True)
-    fg_feeder  = folium.FeatureGroup(name=FG["feeder"],  show=True)
-    fg_regional = folium.FeatureGroup(name=FG.get("regional","Regional Routes"),
-                                      show=True)
-    fg_hv_poi  = folium.FeatureGroup(name=FG["hv_poi"],  show=True)
-    fg_sec_poi = folium.FeatureGroup(name=FG["sec_poi"], show=False)
+    active = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"].copy()
 
-    # Plot routes
+    # ── Collect route data for JS ─────────────────────────────────────────────
+    routes_data = []
     for _, row in gdf.iterrows():
-        if row["Action_Taken"] == "MERGED_INTO_TRUNK":
-            continue
         coords = _safe_coords(row.get("geometry"))
         if not coords:
             continue
+        action    = row.get("Action_Taken", "")
+        rt        = row.get("Route_Type", "Urban")
+        band      = row.get("Priority_Band", "?")
+        colour    = (COLOUR["trunk"] if action == "UPGRADED_TO_TRUNK"
+                     else COLOUR["regional"] if rt == "Regional_District"
+                     else COLOUR["feeder"])
+        weight    = 5 if action == "UPGRADED_TO_TRUNK" else (3 if rt == "Regional_District" else 2)
+        routes_data.append({
+            "id":        row.get("New_Route_ID", ""),
+            "name":      row.get("Route_Name", ""),
+            "action":    action,
+            "type":      rt,
+            "band":      band,
+            "headway":   int(row.get("Headway_Min", 0) or 0),
+            "km":        float(row.get("Route_KM", 0) or 0),
+            "fleet":     int(row.get("Fleet_Required", 0) or 0),
+            "pop_pct":   float(row.get("Population_Served_Pct", 0.0) or 0.0),
+            "cdi":       float(row.get("Final_CDI", 0) or 0),
+            "social":    bool(row.get("Social_Flag", False)),
+            "cmp":       bool(row.get("CMP_Trunk", False)),
+            "zone":      row.get("Congestion_Zone", ""),
+            "colour":    colour,
+            "weight":    weight,
+            "coords":    coords,
+        })
 
-        rt     = row.get("Route_Type", "Urban")
-        action = row["Action_Taken"]
-
-        if action == "UPGRADED_TO_TRUNK":
-            colour = COLOUR["trunk"]
-            weight = 5
-            fg     = fg_trunk
-        elif rt == "Regional_District":
-            colour = COLOUR["regional"]
-            weight = 3
-            fg     = fg_regional
-        else:
-            colour = COLOUR["feeder"]
-            weight = 2
-            fg     = fg_feeder
-
-        folium.PolyLine(
-            coords, color=colour, weight=weight, opacity=0.8,
-            popup=folium.Popup(_popup_html(row), max_width=320),
-        ).add_to(fg)
-
-    # Plot POIs
+    # ── POI data for JS ───────────────────────────────────────────────────────
+    pois_data = []
     for _, poi in gdf_pois.iterrows():
-        if poi.get("Is_HV_POI"):
-            folium.CircleMarker(
-                location=[poi.geometry.y, poi.geometry.x],
-                radius=6, color=COLOUR["poi_high"], fill=True, fill_opacity=0.9,
-                tooltip=f"{poi.get('name','POI')} (Tier 1)",
-            ).add_to(fg_hv_poi)
-        else:
-            folium.CircleMarker(
-                location=[poi.geometry.y, poi.geometry.x],
-                radius=4, color=COLOUR["poi_secondary"], fill=True, fill_opacity=0.6,
-                tooltip=f"{poi.get('name','POI')} (Tier 2)",
-            ).add_to(fg_sec_poi)
+        pois_data.append({
+            "lat":      poi.geometry.y,
+            "lon":      poi.geometry.x,
+            "name":     poi.get("name", "POI"),
+            "category": poi.get("category", ""),
+            "tier":     1 if poi.get("Is_HV_POI") else 2,
+        })
 
-    for fg in [fg_trunk, fg_feeder, fg_regional, fg_hv_poi, fg_sec_poi]:
-        fg.add_to(m)
-    folium.LayerControl(collapsed=False).add_to(m)
-    m.save(out_html)
+    # ── Network KPIs ──────────────────────────────────────────────────────────
+    n_trunk    = int((gdf["Action_Taken"] == "UPGRADED_TO_TRUNK").sum())
+    n_feeder   = int((gdf["Action_Taken"] == "RETAINED_AS_FEEDER").sum())
+    n_merged   = int((gdf["Action_Taken"] == "MERGED_INTO_TRUNK").sum())
+    n_regional = int((gdf["Route_Type"]   == "Regional_District").sum())
+    n_hp       = int((active["Priority_Band"] == "HP").sum())
+    n_mp       = int((active["Priority_Band"] == "MP").sum())
+    n_lp       = int((active["Priority_Band"] == "LP").sum())
+    n_social   = int(active["Social_Flag"].sum())
+    n_sscl     = int(gdf.get("CMP_Trunk", pd.Series(False, index=gdf.index)).sum())
+    tot_fleet  = int(active["Fleet_Required"].sum())
+    tot_hpv    = int(active["HPV_Count"].sum())
+    tot_mpv    = int(active["MPV_Count"].sum())
+    pop_pct    = min(100.0, net_pop / CMP_TOTAL_POPULATION * 100)
+
+    routes_js = json.dumps(routes_data)
+    pois_js   = json.dumps(pois_data)
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Kashmir Valley Transit Master Map v3</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:'Segoe UI',Arial,sans-serif;display:flex;height:100vh;overflow:hidden;background:#f0f2f5}}
+  #panel{{width:320px;min-width:260px;height:100vh;overflow-y:auto;background:#fff;
+          border-right:1px solid #dde1e7;display:flex;flex-direction:column;z-index:1000}}
+  #map{{flex:1;height:100vh}}
+  .panel-header{{background:linear-gradient(135deg,#1A237E,#283593);color:#fff;padding:14px 16px}}
+  .panel-header h1{{font-size:15px;font-weight:700;margin-bottom:2px}}
+  .panel-header .sub{{font-size:10px;opacity:0.8}}
+  .kpi-grid{{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 12px;background:#f8f9fb;border-bottom:1px solid #eaecef}}
+  .kpi-box{{background:#fff;border-radius:6px;padding:7px 10px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06)}}
+  .kpi-box .kn{{font-size:18px;font-weight:700;color:#1A237E}}
+  .kpi-box .kl{{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.04em}}
+  .section{{padding:10px 12px;border-bottom:1px solid #f0f2f5}}
+  .section h3{{font-size:10px;font-weight:700;text-transform:uppercase;color:#9aabba;letter-spacing:.06em;margin-bottom:8px}}
+  .filter-row{{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}}
+  .ftog{{display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:1px solid #dde1e7;
+         border-radius:20px;padding:3px 9px;font-size:10px;font-weight:600;transition:all .15s;user-select:none}}
+  .ftog.active{{color:#fff!important;border-color:transparent!important}}
+  .ftog:hover{{opacity:.85}}
+  .swatch{{width:8px;height:8px;border-radius:50%;flex-shrink:0}}
+  .pop-bar-bg{{background:#e8eaed;border-radius:4px;height:6px;margin-top:3px}}
+  .pop-bar{{background:#1A237E;border-radius:4px;height:6px}}
+  .stat-row{{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}}
+  .stat-row .sk{{color:#666}}
+  .stat-row .sv{{font-weight:600}}
+  .route-list{{max-height:220px;overflow-y:auto;font-size:10px}}
+  .route-item{{display:flex;align-items:center;gap:6px;padding:4px 6px;border-bottom:1px solid #f5f5f5;cursor:pointer;transition:background .1s}}
+  .route-item:hover{{background:#f0f4ff}}
+  .route-dot{{width:8px;height:8px;border-radius:50%;flex-shrink:0}}
+  .route-id{{font-weight:600;font-size:10px;color:#1A237E;min-width:60px}}
+  .route-name{{color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}}
+  .route-band{{font-size:9px;font-weight:700;border-radius:3px;padding:1px 4px;color:#fff;flex-shrink:0}}
+  #legend{{padding:8px 12px;font-size:10px;border-top:1px solid #eaecef;background:#fafbfc}}
+  .leg-item{{display:flex;align-items:center;gap:6px;margin-bottom:3px}}
+  .leg-line{{height:3px;width:22px;border-radius:2px;flex-shrink:0}}
+</style>
+</head>
+<body>
+<div id="panel">
+  <div class="panel-header">
+    <div class="sub">Kashmir Valley — Route Rationalisation Engine v3</div>
+    <h1>Master Transit Map</h1>
+    <div style="font-size:10px;opacity:0.75;margin-top:2px">May 2026 | SSCL/CHALO Data</div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-box"><div class="kn">{n_trunk + n_feeder}</div><div class="kl">Active Routes</div></div>
+    <div class="kpi-box"><div class="kn">{tot_fleet}</div><div class="kl">Total Fleet</div></div>
+    <div class="kpi-box"><div class="kn" style="color:#1B5E20">{n_hp}</div><div class="kl">HP Routes</div></div>
+    <div class="kpi-box"><div class="kn" style="color:#6A1B9A">{n_sscl}</div><div class="kl">SSCL Trunks</div></div>
+    <div class="kpi-box"><div class="kn" style="color:#00695C">{n_feeder}</div><div class="kl">Feeder Routes</div></div>
+    <div class="kpi-box"><div class="kn" style="color:#B71C1C">{n_social}</div><div class="kl">Social Routes</div></div>
+  </div>
+
+  <div class="section">
+    <h3>Population Coverage</h3>
+    <div class="stat-row"><span class="sk">Residents served</span><span class="sv">{net_pop:,}</span></div>
+    <div class="stat-row"><span class="sk">% of Srinagar UA 2024</span><span class="sv" style="color:#1A237E">{pop_pct:.1f}%</span></div>
+    <div class="pop-bar-bg"><div class="pop-bar" style="width:{min(100,pop_pct):.1f}%"></div></div>
+    <div style="margin-top:6px">
+      <div class="stat-row"><span class="sk">HPV (12m buses)</span><span class="sv">{tot_hpv}</span></div>
+      <div class="stat-row"><span class="sk">MPV (9m buses)</span><span class="sv">{tot_mpv}</span></div>
+      <div class="stat-row"><span class="sk">Merged routes</span><span class="sv">{n_merged}</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Filter by Route Category</h3>
+    <div class="filter-row" id="filter-action">
+      <span class="ftog active" data-group="action" data-val="UPGRADED_TO_TRUNK"
+            style="color:{COLOUR['trunk']};border-color:{COLOUR['trunk']}"
+            onclick="toggleFilter(this)">
+        <span class="swatch" style="background:{COLOUR['trunk']}"></span>Trunk ({n_trunk})
+      </span>
+      <span class="ftog active" data-group="action" data-val="RETAINED_AS_FEEDER"
+            style="color:{COLOUR['feeder']};border-color:{COLOUR['feeder']}"
+            onclick="toggleFilter(this)">
+        <span class="swatch" style="background:{COLOUR['feeder']}"></span>Feeder ({n_feeder})
+      </span>
+      <span class="ftog active" data-group="action" data-val="REGIONAL"
+            style="color:{COLOUR['regional']};border-color:{COLOUR['regional']}"
+            onclick="toggleFilter(this)">
+        <span class="swatch" style="background:{COLOUR['regional']}"></span>Regional ({n_regional})
+      </span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Filter by Priority Band</h3>
+    <div class="filter-row" id="filter-band">
+      <span class="ftog active" data-group="band" data-val="HP"
+            style="color:#1B5E20;border-color:#1B5E20" onclick="toggleFilter(this)">
+        <span class="swatch" style="background:#1B5E20"></span>HP ({n_hp})
+      </span>
+      <span class="ftog active" data-group="band" data-val="MP"
+            style="color:#E65100;border-color:#E65100" onclick="toggleFilter(this)">
+        <span class="swatch" style="background:#E65100"></span>MP ({n_mp})
+      </span>
+      <span class="ftog active" data-group="band" data-val="LP"
+            style="color:#B71C1C;border-color:#B71C1C" onclick="toggleFilter(this)">
+        <span class="swatch" style="background:#B71C1C"></span>LP ({n_lp})
+      </span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Filter by Special Type</h3>
+    <div class="filter-row">
+      <span class="ftog active" data-group="special" data-val="sscl"
+            style="color:#6A1B9A;border-color:#6A1B9A" onclick="toggleFilter(this)">
+        <span class="swatch" style="background:#6A1B9A"></span>SSCL Backbone ({n_sscl})
+      </span>
+      <span class="ftog active" data-group="special" data-val="social"
+            style="color:#B71C1C;border-color:#B71C1C" onclick="toggleFilter(this)">
+        <span class="swatch" style="background:#B71C1C"></span>Social Routes ({n_social})
+      </span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>POI Layers</h3>
+    <div class="filter-row">
+      <span class="ftog active" data-group="poi" data-val="tier1"
+            style="color:{COLOUR['poi_high']};border-color:{COLOUR['poi_high']}"
+            onclick="toggleFilter(this)">
+        <span class="swatch" style="background:{COLOUR['poi_high']}"></span>Tier 1 POIs
+      </span>
+      <span class="ftog" data-group="poi" data-val="tier2"
+            style="color:{COLOUR['poi_secondary']};border-color:{COLOUR['poi_secondary']}"
+            onclick="toggleFilter(this)">
+        <span class="swatch" style="background:{COLOUR['poi_secondary']}"></span>Tier 2 POIs
+      </span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Routes (<span id="route-count">0</span> visible)</h3>
+    <div class="route-list" id="route-list"></div>
+  </div>
+
+  <div id="legend">
+    <div style="font-size:10px;font-weight:700;margin-bottom:5px;color:#444">Legend</div>
+    <div class="leg-item"><div class="leg-line" style="background:{COLOUR['trunk']};height:4px"></div><span>Trunk (SSCL / Upgraded)</span></div>
+    <div class="leg-item"><div class="leg-line" style="background:{COLOUR['feeder']}"></div><span>Feeder Route</span></div>
+    <div class="leg-item"><div class="leg-line" style="background:{COLOUR['regional']}"></div><span>Regional / District</span></div>
+    <div class="leg-item"><div style="width:10px;height:10px;border-radius:50%;background:{COLOUR['poi_high']};flex-shrink:0"></div><span>High-priority POI</span></div>
+    <div class="leg-item"><div style="width:8px;height:8px;border-radius:50%;background:{COLOUR['poi_secondary']};flex-shrink:0"></div><span>Secondary POI</span></div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<script>
+var map = L.map('map').setView([34.08, 74.81], 12);
+L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO', maxZoom: 19
+}}).addTo(map);
+
+var routesData = {routes_js};
+var poisData   = {pois_js};
+
+// ── State ──
+var activeFilters = {{
+  action:  new Set(['UPGRADED_TO_TRUNK','RETAINED_AS_FEEDER','REGIONAL']),
+  band:    new Set(['HP','MP','LP']),
+  special: new Set(['sscl','social']),
+  poi:     new Set(['tier1'])
+}};
+
+// ── Build route layers ──
+var routeLayers = [];
+routesData.forEach(function(r) {{
+  var bandCol = {{HP:'#1B5E20',MP:'#E65100',LP:'#B71C1C'}}[r.band] || '#555';
+  var popupHtml = '<div style="font-family:Segoe UI,sans-serif;min-width:220px;font-size:12px">'
+    + '<b style="font-size:14px;color:' + r.colour + '">' + r.id + '</b><br>'
+    + '<span style="background:' + r.colour + ';color:#fff;border-radius:3px;padding:1px 6px;font-size:10px">'
+    + r.action.replace(/_/g,' ') + '</span> '
+    + '<span style="background:' + bandCol + ';color:#fff;border-radius:3px;padding:1px 6px;font-size:10px">'
+    + r.band + '</span><br><br>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:11px;line-height:1.8">'
+    + '<tr><td style="color:#666">Name</td><td>' + r.name + '</td></tr>'
+    + '<tr><td style="color:#666">Type</td><td>' + r.type.replace(/_/g,' ') + ' | ' + r.zone.replace(/_/g,' ') + '</td></tr>'
+    + '<tr><td style="color:#666">Length</td><td><b>' + r.km.toFixed(1) + ' km</b></td></tr>'
+    + '<tr><td style="color:#666">Headway</td><td><b>' + r.headway + ' min</b></td></tr>'
+    + '<tr><td style="color:#666">Fleet</td><td><b>' + r.fleet + ' buses</b></td></tr>'
+    + '<tr><td style="color:#666">Pop. Served</td><td><b>' + r.pop_pct.toFixed(2) + '% of UA</b></td></tr>'
+    + '<tr><td style="color:#1B5E20">CDI</td><td><b>' + r.cdi.toFixed(4) + '</b></td></tr>'
+    + (r.social ? '<tr><td colspan="2" style="color:#B71C1C;font-weight:700">&#9873; Social Obligation Route</td></tr>' : '')
+    + (r.cmp    ? '<tr><td colspan="2" style="color:#6A1B9A;font-weight:700">&#127963; SSCL Backbone</td></tr>' : '')
+    + '</table></div>';
+  var line = L.polyline(r.coords, {{
+    color: r.colour, weight: r.weight, opacity: 0.85
+  }}).bindPopup(popupHtml, {{maxWidth: 280}});
+  routeLayers.push({{ layer: line, data: r }});
+  line.addTo(map);
+}});
+
+// ── Build POI layers ──
+var poiLayers = {{ tier1: [], tier2: [] }};
+poisData.forEach(function(p) {{
+  var col = p.tier === 1 ? '{COLOUR["poi_high"]}' : '{COLOUR["poi_secondary"]}';
+  var r   = p.tier === 1 ? 6 : 4;
+  var mk  = L.circleMarker([p.lat, p.lon], {{
+    radius: r, color: col, fillColor: col, fillOpacity: 0.85, weight: 1
+  }}).bindTooltip(p.name + ' (' + p.category + ')');
+  if (p.tier === 1) poiLayers.tier1.push(mk);
+  else              poiLayers.tier2.push(mk);
+}});
+poiLayers.tier1.forEach(function(mk) {{ mk.addTo(map); }});
+
+// ── Filter logic ──
+function routeVisible(r) {{
+  var actionMatch = activeFilters.action.has(r.action) ||
+    (activeFilters.action.has('REGIONAL') && r.type === 'Regional_District');
+  var bandMatch   = activeFilters.band.has(r.band);
+  return actionMatch && bandMatch;
+}}
+
+function applyFilters() {{
+  var visible = 0;
+  routeLayers.forEach(function(rl) {{
+    if (routeVisible(rl.data)) {{ rl.layer.addTo(map); visible++; }}
+    else                        {{ map.removeLayer(rl.layer); }}
+  }});
+  // POI layers
+  ['tier1','tier2'].forEach(function(t) {{
+    poiLayers[t].forEach(function(mk) {{
+      if (activeFilters.poi.has(t)) mk.addTo(map);
+      else                          map.removeLayer(mk);
+    }});
+  }});
+  // Update route list
+  document.getElementById('route-count').textContent = visible;
+  var listEl = document.getElementById('route-list');
+  listEl.innerHTML = '';
+  routeLayers.forEach(function(rl) {{
+    if (!routeVisible(rl.data)) return;
+    var r = rl.data;
+    var bandCol = {{HP:'#1B5E20',MP:'#E65100',LP:'#B71C1C'}}[r.band] || '#555';
+    var item = document.createElement('div');
+    item.className = 'route-item';
+    item.innerHTML = '<span class="route-dot" style="background:' + r.colour + '"></span>'
+      + '<span class="route-id">' + r.id + '</span>'
+      + '<span class="route-name">' + r.name + '</span>'
+      + '<span class="route-band" style="background:' + bandCol + '">' + r.band + '</span>';
+    item.addEventListener('click', function() {{
+      rl.layer.openPopup();
+      if (rl.data.coords && rl.data.coords.length)
+        map.fitBounds(L.polyline(rl.data.coords).getBounds(), {{padding:[40,40]}});
+    }});
+    listEl.appendChild(item);
+  }});
+}}
+
+function toggleFilter(el) {{
+  var group = el.dataset.group;
+  var val   = el.dataset.val;
+  var col   = el.style.color || '#1A237E';
+  if (activeFilters[group].has(val)) {{
+    activeFilters[group].delete(val);
+    el.classList.remove('active');
+    el.style.background = '';
+    el.style.color = col;
+  }} else {{
+    activeFilters[group].add(val);
+    el.classList.add('active');
+    el.style.background = col;
+    el.style.color = '#fff';
+  }}
+  applyFilters();
+}}
+
+// Initialise active toggle styling
+document.querySelectorAll('.ftog.active').forEach(function(el) {{
+  el.style.background = el.style.color;
+  el.style.color = '#fff';
+}});
+
+applyFilters();
+</script>
+</body>
+</html>"""
+
+    Path(out_html).write_text(html, encoding="utf-8")
     log.info("  Master map saved.")
 
 
