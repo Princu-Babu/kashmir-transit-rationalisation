@@ -3150,8 +3150,8 @@ def build_master_map(gdf: gpd.GeoDataFrame,
     n_hp       = int((active["Priority_Band"] == "HP").sum())
     n_mp       = int((active["Priority_Band"] == "MP").sum())
     n_lp       = int((active["Priority_Band"] == "LP").sum())
-    n_social   = int(active["Social_Flag"].sum())
-    n_sscl     = int(gdf.get("CMP_Trunk", pd.Series(False, index=gdf.index)).sum())
+    n_social   = int(active["Social_Flag"].fillna(False).sum())
+    n_sscl     = int(active["CMP_Trunk"].fillna(False).sum()) if "CMP_Trunk" in active.columns else 0
     tot_fleet  = int(active["Fleet_Required"].sum())
     tot_hpv    = int(active["HPV_Count"].sum())
     tot_mpv    = int(active["MPV_Count"].sum())
@@ -3387,10 +3387,18 @@ poiLayers.tier1.forEach(function(mk) {{ mk.addTo(map); }});
 
 // ── Filter logic ──
 function routeVisible(r) {{
-  var actionMatch = activeFilters.action.has(r.action) ||
-    (activeFilters.action.has('REGIONAL') && r.type === 'Regional_District');
+  // Regional routes are exclusively controlled by the REGIONAL toggle,
+  // not by the Trunk/Feeder action toggle (their Action_Taken would be
+  // RETAINED_AS_FEEDER, causing them to wrongly disappear with Feeder toggle).
+  var isRegional  = r.type === 'Regional_District';
+  var actionMatch = isRegional ? activeFilters.action.has('REGIONAL')
+                               : activeFilters.action.has(r.action);
   var bandMatch   = activeFilters.band.has(r.band);
-  return actionMatch && bandMatch;
+  // Special filter: when toggled OFF, hide routes of that special type.
+  // Routes that are neither SSCL nor social are unaffected by special toggles.
+  var specialMatch = (!r.cmp    || activeFilters.special.has('sscl')) &&
+                     (!r.social || activeFilters.special.has('social'));
+  return actionMatch && bandMatch && specialMatch;
 }}
 
 function applyFilters() {{
