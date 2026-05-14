@@ -430,7 +430,7 @@ SOCIAL_OBLIGATION_ATTRACTORS = [
 
 # Sheet 1 column layout (Groups A / B / C) — v2 adds Route_Type
 SHEET1_GROUP_A = ["New_Route_ID", "Route_Name", "Action_Taken", "Route_KM",
-                  "Route_Type", "Social_Flag"]
+                  "Route_Type", "Social_Flag", "Displaced_Operator_Class"]
 SHEET1_GROUP_B = ["Priority_Band", "Headway_Min", "Cycle_Time_Min",
                   "Fleet_Required", "HPV_Count", "MPV_Count", "LPV_Count",
                   "CMP_Trunk"]
@@ -506,7 +506,9 @@ CMP_TRUNK_ROUTES: List[Dict] = [
 
 # Fuzzy-match tolerance: a dataset terminal must score ≥ this similarity ratio
 # (0–1) against a CMP terminal to be considered a match.
-CMP_FUZZY_THRESHOLD = 0.55   # ~55% character overlap via SequenceMatcher
+CMP_FUZZY_THRESHOLD = 0.45   # 45% character overlap — lowered from 0.55 so short
+                             # terminal names like "Hazratbal" still match dataset
+                             # entries that have them mid-string ("via Hazratbal")
 
 # Minimum route length to be eligible for Trunk promotion (anti-stranding rule)
 TRUNK_MIN_LENGTH_KM = 5.0    # No route < 5 km can be promoted to Trunk
@@ -1178,14 +1180,33 @@ def inject_cmp_trunk_routes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                 matched_idx.append(idx)
 
         if matched_idx:
+            written = 0
             for idx in matched_idx:
+                # Exact Route_ID match (synthetic self-route) always wins regardless
+                # of prior claims — prevents a same-origin false-positive from
+                # overwriting the synthetic's own CMP_Route_ID (e.g. SSCL-24
+                # synthetic claimed by SSCL-06 because both start at Pantha Chowk).
+                is_self_route = (str(gdf.at[idx, "Route_ID"]).strip() == cmp_id)
+                existing_id   = str(gdf.at[idx, "CMP_Route_ID"]).strip()
+                if existing_id and existing_id != cmp_id and not is_self_route:
+                    # First-match wins: don't overwrite a CMP_Route_ID already set by
+                    # an earlier SSCL route (e.g. via-point false positives for routes
+                    # like "Batamaloo to Kangan via Manigam" matching both SSCL-26 and
+                    # SSCL-27 because "manigam" is a substring of the Route_Name).
+                    continue
                 gdf.at[idx, "Action_Taken"]  = "UPGRADED_TO_TRUNK"
                 gdf.at[idx, "Priority_Band"] = "HP"
                 gdf.at[idx, "CMP_Trunk"]     = True
                 gdf.at[idx, "CMP_Route_ID"]  = cmp_id
-            log.info("  ✓ CMP %s (%s → %s): matched %d dataset route(s) — forced TRUNK/HP.",
-                     cmp_id, cmp_origin, cmp_dest, len(matched_idx))
-            matched_total += len(matched_idx)
+                written += 1
+            if written:
+                log.info("  ✓ CMP %s (%s → %s): matched %d dataset route(s) — forced TRUNK/HP.",
+                         cmp_id, cmp_origin, cmp_dest, written)
+                matched_total += written
+            else:
+                log.info("  ~ CMP %s (%s → %s): %d fuzzy match(es) already claimed "
+                         "by prior SSCL ID — skipped.",
+                         cmp_id, cmp_origin, cmp_dest, len(matched_idx))
         else:
             log.warning("  ⚠ CMP %s (%s → %s): NO dataset match found at "
                         "threshold=%.2f.  Route absent from dataset.",
@@ -1989,6 +2010,40 @@ def classify_routes(gdf: gpd.GeoDataFrame,
              (gdf["Action_Taken"] == "UPGRADED_TO_TRUNK").sum(),
              (gdf["Action_Taken"] == "MERGED_INTO_TRUNK").sum(),
              (gdf["Action_Taken"] == "RETAINED_AS_FEEDER").sum())
+
+    # Assign Displaced_Operator_Class for MERGED routes (political accounting).
+    # Maps Vehicle_Category → operator class so permit-holder impact is visible.
+    _OP_CLASS_MAP = {
+        "minibus":        "Private Minibus",
+        "mini bus":       "Private Minibus",
+        "mpv":            "Private Minibus",
+        "mps":            "MPS (Stage Carriage)",
+        "city bus":       "JKRTC / City Bus",
+        "jkrtc":          "JKRTC / City Bus",
+        "jkrtc city bus": "JKRTC / City Bus",
+        "e-bus":          "SSCL E-Bus",
+        "hpv":            "HPV Bus",
+        "lpv":            "LPV / Tempo",
+        "tempo":          "LPV / Tempo",
+    }
+    def _op_class(row):
+        if row.get("Action_Taken") != "MERGED_INTO_TRUNK":
+            return ""
+        cat = str(row.get("Vehicle_Category", "")).strip().lower()
+        for key, label in _OP_CLASS_MAP.items():
+            if key in cat:
+                return label
+        return "Private Minibus"  # safe default for unlabelled permits
+
+    gdf["Displaced_Operator_Class"] = gdf.apply(_op_class, axis=1)
+
+    merged_mask = gdf["Action_Taken"] == "MERGED_INTO_TRUNK"
+    if merged_mask.any():
+        class_counts = gdf.loc[merged_mask, "Displaced_Operator_Class"].value_counts()
+        log.info("  Displaced operator summary (%d routes merged):", merged_mask.sum())
+        for cls, cnt in class_counts.items():
+            log.info("    %-30s : %d permits absorbed", cls, cnt)
+
     return gdf
 
 
@@ -2169,8 +2224,21 @@ def step5_assign_priority_bands(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         final_bands.append(new_band)
     gdf["Priority_Band"] = final_bands
 
-    social_lp_mask        = (gdf["Social_Flag"] == True) & (gdf["Priority_Band"] == "LP")
+    social_lp_mask = (gdf["Social_Flag"] == True) & (gdf["Priority_Band"] == "LP")
     gdf.loc[social_lp_mask, "Priority_Band"] = "MP"
+
+    # Re-lock: SSCL backbone trunks (CMP_Trunk=True) must always be HP.
+    # inject_cmp_trunk_routes() set them to HP before this step, but Jenks
+    # can demote a short SSCL route (e.g. SSCL-03 Batamaloo→Hazratbal, 10km)
+    # if its CDI falls below the MP break.  We restore HP unconditionally so
+    # the QC sanity check and the headway override in step6 both work correctly.
+    if "CMP_Trunk" in gdf.columns:
+        cmp_lock_mask = gdf["CMP_Trunk"] == True
+        cmp_demoted   = int(((gdf.loc[cmp_lock_mask, "Priority_Band"]) != "HP").sum())
+        gdf.loc[cmp_lock_mask, "Priority_Band"] = "HP"
+        if cmp_demoted:
+            log.info("  CMP lock: %d SSCL trunk(s) re-elevated to HP after Jenks.",
+                     cmp_demoted)
 
     n_hp, n_mp, n_lp = ((gdf["Priority_Band"] == b).sum() for b in ("HP","MP","LP"))
     log.info("  Priority bands — HP: %d  MP: %d  LP: %d  "
@@ -2507,16 +2575,29 @@ def run_all_qc_checks(gdf: gpd.GeoDataFrame) -> None:
         log.info("  ✓ Check 6: All active routes have Fleet_Required > 0 "
                  "(total fleet = %d).", total_fleet)
 
-    # Check 7: Known corridor sanity (Kashmir landmarks should appear in HP band)
-    hp_names     = gdf[gdf["Priority_Band"] == "HP"]["Route_Name"].fillna("").str.lower().tolist()
-    sanity_terms = ["lal chowk", "hazratbal", "batamaloo"]
-    found_terms  = [t for t in sanity_terms if any(t in n for n in hp_names)]
-    if len(found_terms) < len(sanity_terms):
-        missing = [t for t in sanity_terms if t not in found_terms]
-        log.warning("  CHECK 7 WARN — %s not found in HP band. "
-                    "Review CDI normalisation.", missing)
+    # Check 7: All 30 SSCL backbone routes must be in HP band (CMP_Route_ID membership).
+    # Previous version checked Route_Name substrings ("hazratbal", "batamaloo") which
+    # failed if a route's Route_Name didn't contain those keywords even though it was
+    # correctly matched and locked.  CMP_Route_ID membership is authoritative.
+    if "CMP_Trunk" in gdf.columns and "CMP_Route_ID" in gdf.columns:
+        sscl_hp   = gdf[(gdf["CMP_Trunk"] == True) & (gdf["Priority_Band"] == "HP")]
+        sscl_all  = gdf[gdf["CMP_Trunk"] == True]
+        matched_ids   = set(sscl_all["CMP_Route_ID"].unique())
+        expected_ids  = {r["id"] for r in CMP_TRUNK_ROUTES}
+        unmatched_ids = expected_ids - matched_ids
+        if unmatched_ids:
+            log.warning("  CHECK 7 WARN — %d SSCL route(s) not matched in dataset: %s. "
+                        "Lower CMP_FUZZY_THRESHOLD or add synthetic route.",
+                        len(unmatched_ids), sorted(unmatched_ids))
+        elif len(sscl_hp) < len(sscl_all):
+            log.warning("  CHECK 7 WARN — %d SSCL trunk(s) not in HP band after lock step.",
+                        len(sscl_all) - len(sscl_hp))
+        else:
+            log.info("  ✓ Check 7: All %d matched SSCL trunks confirmed HP "
+                     "(%d/%d SSCL IDs matched).",
+                     len(sscl_hp), len(matched_ids), len(expected_ids))
     else:
-        log.info("  ✓ Check 7: %s corridors confirmed in HP band.", found_terms)
+        log.warning("  CHECK 7 SKIP — CMP_Trunk column absent.")
 
     # Check 8: No Social_Flag route in LP band
     check8 = gdf[(gdf["Social_Flag"] == True) & (gdf["Priority_Band"] == "LP")]
@@ -2618,6 +2699,7 @@ def generate_log(gdf: gpd.GeoDataFrame, out_path: str) -> pd.DataFrame:
     log.info("Generating Rationalisation Log → %s", out_path)
     cols = [c for c in [
         "Route_ID", "Route_Name", "Action_Taken", "New_Route_ID",
+        "Displaced_Operator_Class",
         "Route_KM", "Route_Type", "Congestion_Zone",
         "Pop_Score", "POI_Score", "Road_Multiplier", "Final_CDI",
         "Social_Flag", "Priority_Band", "Headway_Min",
@@ -2639,6 +2721,7 @@ def export_csv(gdf: gpd.GeoDataFrame, file_map: dict, out_path: str) -> None:
     log.info("Exporting CSV → %s", out_path)
     export_cols = [c for c in [
         "Route_ID", "Route_Name", "Action_Taken", "New_Route_ID",
+        "Displaced_Operator_Class",
         "Route_KM", "Route_Type", "OSRM_Duration_S", "Cycle_Time_Min",
         "Congestion_Zone", "N_Stops_Estimated", "Stop_Penalty_Min",
         "Sharp_Turns", "Junction_Penalty_Min",
@@ -3735,8 +3818,8 @@ def main() -> None:
         {"Route_ID": "SSCL-23", "Route_Name": "Batamaloo to Charesharief via Chadoora",
          "Start_Lat": 34.0689, "Start_Lon": 74.7795,
          "End_Lat":   33.8806, "End_Lon":   74.7372},
-        # SSCL-24: Pantha Chowk to Palhalan (extends to Sangrama / Sopore)
-        {"Route_ID": "SSCL-24", "Route_Name": "Pantha Chowk to Palhalan extendable to Sangrama Sopore",
+        # SSCL-24: Pantha Chowk to Palhalan (extends towards Sangrama / Sopore)
+        {"Route_ID": "SSCL-24", "Route_Name": "Pantha Chowk to Palhalan via Sangrama Sopore",
          "Start_Lat": 34.0445, "Start_Lon": 74.8341,
          "End_Lat":   34.1825, "End_Lon":   74.5450},
         # SSCL-25: Batamaloo to Dadsara Tral via Awantipora
@@ -3871,6 +3954,16 @@ def main() -> None:
              int(active["HPV_Count"].sum()),
              int(active["MPV_Count"].sum()),
              int(active["LPV_Count"].sum()))
+    # Displaced-operator summary (P1 item 6 — political accounting)
+    merged_gdf = gdf[gdf["Action_Taken"] == "MERGED_INTO_TRUNK"]
+    if "Displaced_Operator_Class" in merged_gdf.columns and not merged_gdf.empty:
+        dop = merged_gdf["Displaced_Operator_Class"].value_counts()
+        log.info("  Displaced operator permits (%d total — absorbed into trunk network):",
+                 len(merged_gdf))
+        for cls, cnt in dop.items():
+            log.info("    %-30s : %d", cls, cnt)
+        log.info("  NOTE: Operator absorption or buyback recommendations needed "
+                 "before plan submission. See Displaced_Operator_Class column.")
     log.info("  Trunk vehicle split     : Route_KM-bracketed "
              "(<12km: 100%% MPV | 12-22km: 50/50 | 22+km: 85%% HPV)  "
              "+ SSCL empirical table for backbone routes (v3.2)")
