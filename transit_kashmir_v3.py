@@ -3180,7 +3180,7 @@ def build_master_map(gdf: gpd.GeoDataFrame,
   .filter-row{{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}}
   .ftog{{display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:1px solid #dde1e7;
          border-radius:20px;padding:3px 9px;font-size:10px;font-weight:600;transition:all .15s;user-select:none}}
-  .ftog.active{{color:#fff!important;border-color:transparent!important}}
+  .ftog.active{{color:#fff;border-color:transparent}}
   .ftog:hover{{opacity:.85}}
   .swatch{{width:8px;height:8px;border-radius:50%;flex-shrink:0}}
   .pop-bar-bg{{background:#e8eaed;border-radius:4px;height:6px;margin-top:3px}}
@@ -3233,17 +3233,20 @@ def build_master_map(gdf: gpd.GeoDataFrame,
     <h3>Filter by Route Category</h3>
     <div class="filter-row" id="filter-action">
       <span class="ftog active" data-group="action" data-val="UPGRADED_TO_TRUNK"
-            style="color:{COLOUR['trunk']};border-color:{COLOUR['trunk']}"
+            data-color="{COLOUR['trunk']}"
+            style="border-color:{COLOUR['trunk']}"
             onclick="toggleFilter(this)">
         <span class="swatch" style="background:{COLOUR['trunk']}"></span>Trunk ({n_trunk})
       </span>
       <span class="ftog active" data-group="action" data-val="RETAINED_AS_FEEDER"
-            style="color:{COLOUR['feeder']};border-color:{COLOUR['feeder']}"
+            data-color="{COLOUR['feeder']}"
+            style="border-color:{COLOUR['feeder']}"
             onclick="toggleFilter(this)">
         <span class="swatch" style="background:{COLOUR['feeder']}"></span>Feeder ({n_feeder})
       </span>
       <span class="ftog active" data-group="action" data-val="REGIONAL"
-            style="color:{COLOUR['regional']};border-color:{COLOUR['regional']}"
+            data-color="{COLOUR['regional']}"
+            style="border-color:{COLOUR['regional']}"
             onclick="toggleFilter(this)">
         <span class="swatch" style="background:{COLOUR['regional']}"></span>Regional ({n_regional})
       </span>
@@ -3254,15 +3257,18 @@ def build_master_map(gdf: gpd.GeoDataFrame,
     <h3>Filter by Priority Band</h3>
     <div class="filter-row" id="filter-band">
       <span class="ftog active" data-group="band" data-val="HP"
-            style="color:#1B5E20;border-color:#1B5E20" onclick="toggleFilter(this)">
+            data-color="#1B5E20" style="border-color:#1B5E20"
+            onclick="toggleFilter(this)">
         <span class="swatch" style="background:#1B5E20"></span>HP ({n_hp})
       </span>
       <span class="ftog active" data-group="band" data-val="MP"
-            style="color:#E65100;border-color:#E65100" onclick="toggleFilter(this)">
+            data-color="#E65100" style="border-color:#E65100"
+            onclick="toggleFilter(this)">
         <span class="swatch" style="background:#E65100"></span>MP ({n_mp})
       </span>
       <span class="ftog active" data-group="band" data-val="LP"
-            style="color:#B71C1C;border-color:#B71C1C" onclick="toggleFilter(this)">
+            data-color="#B71C1C" style="border-color:#B71C1C"
+            onclick="toggleFilter(this)">
         <span class="swatch" style="background:#B71C1C"></span>LP ({n_lp})
       </span>
     </div>
@@ -3272,11 +3278,13 @@ def build_master_map(gdf: gpd.GeoDataFrame,
     <h3>Filter by Special Type</h3>
     <div class="filter-row">
       <span class="ftog active" data-group="special" data-val="sscl"
-            style="color:#6A1B9A;border-color:#6A1B9A" onclick="toggleFilter(this)">
+            data-color="#6A1B9A" style="border-color:#6A1B9A"
+            onclick="toggleFilter(this)">
         <span class="swatch" style="background:#6A1B9A"></span>SSCL Backbone ({n_sscl})
       </span>
       <span class="ftog active" data-group="special" data-val="social"
-            style="color:#B71C1C;border-color:#B71C1C" onclick="toggleFilter(this)">
+            data-color="#B71C1C" style="border-color:#B71C1C"
+            onclick="toggleFilter(this)">
         <span class="swatch" style="background:#B71C1C"></span>Social Routes ({n_social})
       </span>
     </div>
@@ -3286,12 +3294,12 @@ def build_master_map(gdf: gpd.GeoDataFrame,
     <h3>POI Layers</h3>
     <div class="filter-row">
       <span class="ftog active" data-group="poi" data-val="tier1"
-            style="color:{COLOUR['poi_high']};border-color:{COLOUR['poi_high']}"
+            data-color="{COLOUR['poi_high']}" style="border-color:{COLOUR['poi_high']}"
             onclick="toggleFilter(this)">
         <span class="swatch" style="background:{COLOUR['poi_high']}"></span>Tier 1 POIs
       </span>
       <span class="ftog" data-group="poi" data-val="tier2"
-            style="color:{COLOUR['poi_secondary']};border-color:{COLOUR['poi_secondary']}"
+            data-color="{COLOUR['poi_secondary']}" style="border-color:{COLOUR['poi_secondary']}"
             onclick="toggleFilter(this)">
         <span class="swatch" style="background:{COLOUR['poi_secondary']}"></span>Tier 2 POIs
       </span>
@@ -3420,25 +3428,37 @@ function applyFilters() {{
 function toggleFilter(el) {{
   var group = el.dataset.group;
   var val   = el.dataset.val;
-  var col   = el.style.color || '#1A237E';
+  var col   = el.dataset.color || '#1A237E';
   if (activeFilters[group].has(val)) {{
     activeFilters[group].delete(val);
     el.classList.remove('active');
     el.style.background = '';
     el.style.color = col;
+    el.style.borderColor = col;
   }} else {{
     activeFilters[group].add(val);
     el.classList.add('active');
     el.style.background = col;
     el.style.color = '#fff';
+    el.style.borderColor = 'transparent';
   }}
   applyFilters();
 }}
 
-// Initialise active toggle styling
-document.querySelectorAll('.ftog.active').forEach(function(el) {{
-  el.style.background = el.style.color;
-  el.style.color = '#fff';
+// Initialise: apply active styling from data-color (not from style.color which
+// was the original bug — style.color gets overwritten to #fff on first activate
+// and then read back as white, making labels invisible on next deactivate).
+document.querySelectorAll('.ftog').forEach(function(el) {{
+  var col = el.dataset.color || '#1A237E';
+  if (el.classList.contains('active')) {{
+    el.style.background  = col;
+    el.style.color       = '#fff';
+    el.style.borderColor = 'transparent';
+  }} else {{
+    el.style.background  = '';
+    el.style.color       = col;
+    el.style.borderColor = col;
+  }}
 }});
 
 applyFilters();
