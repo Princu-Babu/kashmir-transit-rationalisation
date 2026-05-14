@@ -532,46 +532,13 @@ COLOUR = {
     "end_pin":        "#B71C1C",
     "via_dot":        "#5C6BC0",
 }
-# ─── Map tile provider ────────────────────────────────────────────────────────
-# IMPORTANT — India political boundary compliance:
-#   CartoDB / OpenStreetMap tiles use international border conventions that
-#   do NOT reflect India's official position on Jammu & Kashmir (they show
-#   PoK / Aksai Chin boundaries as disputed, not as Indian territory).
-#
-#   Preferred: MapmyIndia (Mappls) — the GoI-approved map provider.
-#     1. Register for a free developer API key at https://about.mappls.com/api/
-#     2. Set the environment variable:  set MAPPLS_API_KEY=<your_key>
-#        (or export MAPPLS_API_KEY=<key> on Linux/macOS)
-#     3. Re-run the engine — all HTML maps will use India-correct boundaries.
-#
-#   Fallback (no key): ESRI World Light Gray Canvas — ESRI uses India-correct
-#   political boundaries (unlike OSM/CARTO) so this is safe for GoI use even
-#   without a Mappls account.
-MAPPLS_API_KEY = os.environ.get("MAPPLS_API_KEY", "").strip()
-
-if MAPPLS_API_KEY:
-    TILE_URL      = f"https://apis.mappls.com/advancedmaps/v1/{MAPPLS_API_KEY}/still_grey/{{z}}/{{x}}/{{y}}.png"
-    TILE_ATTR     = 'Map data &copy; <a href="https://mappls.com" target="_blank">MapmyIndia</a>'
-    TILE_MAXZOOM  = 18
-    TILE_PROVIDER = "MapmyIndia / Mappls (India-correct boundaries)"
-else:
-    # ESRI Light Gray Canvas — India-correct boundaries, no API key required.
-    # Note: ESRI tiles use {z}/{y}/{x} order (row/col reversed vs OSM convention).
-    # Max native zoom is 16 for the Canvas series; 18 for World Street Map.
-    TILE_URL      = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-    TILE_ATTR     = "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
-    TILE_MAXZOOM  = 16
-    TILE_PROVIDER = "ESRI World Light Gray — India-correct boundaries (fallback; set MAPPLS_API_KEY for MapmyIndia)"
-
-# Pre-built Leaflet tile layer initialisation string.
-# We use % formatting (NOT f-string) so that {z}/{y}/{x} Leaflet template variables
-# inside TILE_URL survive into the HTML verbatim — Python f-strings would try to
-# evaluate them as Python expressions and raise NameError.
-# The resulting string is inserted into HTML f-strings via {TILE_LAYER_JS}; at that
-# point it's treated as a plain string value so its braces are left untouched.
+# ─── Map tiles ────────────────────────────────────────────────────────────────
+TILE_URL  = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+TILE_ATTR = "© OpenStreetMap contributors © CARTO"
+# Pre-built outside f-string so Leaflet's {z}/{x}/{y} template vars survive verbatim
 TILE_LAYER_JS = (
-    "L.tileLayer('%s', {attribution: '%s', maxZoom: %d}).addTo(map);"
-    % (TILE_URL, TILE_ATTR.replace("'", "\\'"), TILE_MAXZOOM)
+    "L.tileLayer('%s', {attribution: '%s', maxZoom: 18}).addTo(map);"
+    % (TILE_URL, TILE_ATTR.replace("'", "\\'"))
 )
 
 FG = {
@@ -3092,6 +3059,9 @@ viaCoords.forEach(function(pt, i) {{
   L.marker(pt, {{icon: viaIcon}}).addTo(map).bindPopup('Via point ' + (i+1));
 }});
 </script>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.85);border:1px solid #ccc;border-radius:4px;padding:3px 10px;font-size:10px;color:#666;z-index:9999;pointer-events:none;white-space:nowrap">
+  &#9888; Open-source global tiles (OpenStreetMap/CartoDB) — may not reflect India's official political boundaries
+</div>
 </body>
 </html>"""
 
@@ -3497,6 +3467,9 @@ document.querySelectorAll('.ftog').forEach(function(el) {{
 
 applyFilters();
 </script>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.85);border:1px solid #ccc;border-radius:4px;padding:3px 10px;font-size:10px;color:#666;z-index:9999;pointer-events:none;white-space:nowrap">
+  &#9888; Open-source global tiles (OpenStreetMap/CartoDB) — may not reflect India's official political boundaries
+</div>
 </body>
 </html>"""
 
@@ -3739,7 +3712,7 @@ def main() -> None:
     log.info("  Srinagar / Kashmir Valley Transit Rationalisation — ENGINE v3.0 (Kashmir Fork)")
     log.info("  SSCL/CHALO Backbone Injection + Kashmir Geographic Recentre | May 2026")
     log.info("=" * 70)
-    log.info("  Map tile provider     : %s", TILE_PROVIDER)
+    log.info("  Map tile provider     : OpenStreetMap / CartoDB")
     log.info("  Scenario              : %s",
              "WINTER (Chillai Kalan)" if WINTER_SCENARIO else "SUMMER / SHOULDER")
     log.info("  Walkshed (effective)  : %d m  (POI buffer: %d m)",
