@@ -191,13 +191,22 @@ cd kashmir-transit-rationalisation
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Generate POIs (requires internet — queries Overpass API)
+# 3. (Recommended) Set MapmyIndia API key for India-correct political boundaries
+#    Get a free developer key at https://about.mappls.com/api/
+set MAPPLS_API_KEY=your_key_here        # Windows
+# export MAPPLS_API_KEY=your_key_here  # Linux / macOS
+#
+# Without a key, maps fall back to ESRI World Light Gray which is also
+# India-correct. CartoDB / OpenStreetMap tiles are NOT used (they show
+# international boundary conventions that conflict with India's official position).
+
+# 4. Generate POIs (requires internet — queries Overpass API)
 python extract_pois_kashmir.py --no-osrm --output pois.csv
 
-# 4. Ensure OSRM Docker is running on port 5000, then:
+# 5. Ensure OSRM Docker is running on port 5000, then:
 python transit_kashmir_v3.py
 
-# 5. Open the master map
+# 6. Open the master map
 # → Master_Transit_Map_Kashmir_v3.html
 ```
 

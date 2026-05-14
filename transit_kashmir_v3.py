@@ -532,8 +532,47 @@ COLOUR = {
     "end_pin":        "#B71C1C",
     "via_dot":        "#5C6BC0",
 }
-TILE_URL  = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-TILE_ATTR = "© OpenStreetMap contributors © CARTO"
+# ─── Map tile provider ────────────────────────────────────────────────────────
+# IMPORTANT — India political boundary compliance:
+#   CartoDB / OpenStreetMap tiles use international border conventions that
+#   do NOT reflect India's official position on Jammu & Kashmir (they show
+#   PoK / Aksai Chin boundaries as disputed, not as Indian territory).
+#
+#   Preferred: MapmyIndia (Mappls) — the GoI-approved map provider.
+#     1. Register for a free developer API key at https://about.mappls.com/api/
+#     2. Set the environment variable:  set MAPPLS_API_KEY=<your_key>
+#        (or export MAPPLS_API_KEY=<key> on Linux/macOS)
+#     3. Re-run the engine — all HTML maps will use India-correct boundaries.
+#
+#   Fallback (no key): ESRI World Light Gray Canvas — ESRI uses India-correct
+#   political boundaries (unlike OSM/CARTO) so this is safe for GoI use even
+#   without a Mappls account.
+MAPPLS_API_KEY = os.environ.get("MAPPLS_API_KEY", "").strip()
+
+if MAPPLS_API_KEY:
+    TILE_URL      = f"https://apis.mappls.com/advancedmaps/v1/{MAPPLS_API_KEY}/still_grey/{{z}}/{{x}}/{{y}}.png"
+    TILE_ATTR     = 'Map data &copy; <a href="https://mappls.com" target="_blank">MapmyIndia</a>'
+    TILE_MAXZOOM  = 18
+    TILE_PROVIDER = "MapmyIndia / Mappls (India-correct boundaries)"
+else:
+    # ESRI Light Gray Canvas — India-correct boundaries, no API key required.
+    # Note: ESRI tiles use {z}/{y}/{x} order (row/col reversed vs OSM convention).
+    # Max native zoom is 16 for the Canvas series; 18 for World Street Map.
+    TILE_URL      = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+    TILE_ATTR     = "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
+    TILE_MAXZOOM  = 16
+    TILE_PROVIDER = "ESRI World Light Gray — India-correct boundaries (fallback; set MAPPLS_API_KEY for MapmyIndia)"
+
+# Pre-built Leaflet tile layer initialisation string.
+# We use % formatting (NOT f-string) so that {z}/{y}/{x} Leaflet template variables
+# inside TILE_URL survive into the HTML verbatim — Python f-strings would try to
+# evaluate them as Python expressions and raise NameError.
+# The resulting string is inserted into HTML f-strings via {TILE_LAYER_JS}; at that
+# point it's treated as a plain string value so its braces are left untouched.
+TILE_LAYER_JS = (
+    "L.tileLayer('%s', {attribution: '%s', maxZoom: %d}).addTo(map);"
+    % (TILE_URL, TILE_ATTR.replace("'", "\\'"), TILE_MAXZOOM)
+)
 
 FG = {
     "heatmap":   "Population Heatmap",
@@ -3021,10 +3060,7 @@ def _individual_route_html(row: pd.Series, coords: List[Tuple[float, float]],
 <div id="map"></div>
 <script>
 var map = L.map('map').setView([{centre_lat}, {centre_lon}], 13);
-L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
-  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-  maxZoom: 19
-}}).addTo(map);
+{TILE_LAYER_JS}
 
 var coords = {coords_js};
 var line = L.polyline(coords, {{color: '{route_colour}', weight: 5, opacity: 0.9}}).addTo(map);
@@ -3325,9 +3361,7 @@ def build_master_map(gdf: gpd.GeoDataFrame,
 
 <script>
 var map = L.map('map').setView([34.08, 74.81], 12);
-L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
-  attribution: '&copy; OpenStreetMap contributors &copy; CARTO', maxZoom: 19
-}}).addTo(map);
+{TILE_LAYER_JS}
 
 var routesData = {routes_js};
 var poisData   = {pois_js};
@@ -3705,6 +3739,7 @@ def main() -> None:
     log.info("  Srinagar / Kashmir Valley Transit Rationalisation — ENGINE v3.0 (Kashmir Fork)")
     log.info("  SSCL/CHALO Backbone Injection + Kashmir Geographic Recentre | May 2026")
     log.info("=" * 70)
+    log.info("  Map tile provider     : %s", TILE_PROVIDER)
     log.info("  Scenario              : %s",
              "WINTER (Chillai Kalan)" if WINTER_SCENARIO else "SUMMER / SHOULDER")
     log.info("  Walkshed (effective)  : %d m  (POI buffer: %d m)",
