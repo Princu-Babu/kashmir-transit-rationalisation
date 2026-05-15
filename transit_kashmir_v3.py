@@ -146,7 +146,7 @@ CONGESTION_PERI_URBAN       = 1.4    # 1.4× free-flow (Hyderpora–Rangreth bel
 #         walkshed shrunk, snow-prone routes flagged Lifeline,
 #         operated/scheduled KM penalty 15% reflects CHALO Jan data.
 # False → Default summer / shoulder season run.
-WINTER_SCENARIO             = False
+WINTER_SCENARIO             = True
 WINTER_WALKSHED_SHRINK      = 0.65   # Effective walkshed = 65% of summer (snow + cold)
 WINTER_OP_RATIO_PENALTY     = 0.85   # Operated/scheduled KM ratio in winter (CHALO observed)
 
@@ -355,6 +355,52 @@ SOCIAL_FLAG_BUFFER_M        = 500
 HEADWAY_HP_MIN              = 15
 HEADWAY_MP_MIN              = 30
 HEADWAY_LP_MIN              = 60
+
+# ─── v3.3 Phase-1 audit response: post-cycle spare ratio ────────────────────
+# The fleet computed by ceil(Cycle_Time / Headway) is the *operating* fleet.
+# Standard transit-planning practice adds a spare ratio (typically 10–20%)
+# to cover scheduled maintenance, breakdown rotation, and depot storage.
+# 15% is the SSCL operational target. SSCL backbone routes are NOT bumped
+# by this multiplier — their fleet is the empirical CHALO bus count and
+# already includes spare allocation in the SSCL operational budget.
+FLEET_SPARE_RATIO           = 1.15
+
+# ─── v3.3: Tourist Corridor + Seasonal Operability flags ────────────────────
+# Routes whose name contains any TOURIST_CORRIDOR_KEYWORDS token are tagged
+# Tourist_Corridor=True at ingestion. Routes touching SEASONAL_SUSPENDED
+# tokens are flagged Winter_Suspended (Mughal Road / Sinthan / Sadhna /
+# Z-Morh portal close in winter). The tags do NOT alter CDI, headway, or
+# fleet — they are surfaced for planner review and used by the seasonal
+# Folium map layer in Phase 4. (The proposal to multiply tourist CDI ×1.3
+# was dropped after audit: it would compound with the existing Tier-3 POI
+# weight and the Phase-2 catchment penalty, triple-counting tourism.)
+TOURIST_CORRIDOR_KEYWORDS = (
+    "gulmarg", "pahalgam", "sonmarg", "sonamarg", "doodhpathri", "yusmarg",
+    "tangmarg", "aharbal", "kokernag", "verinag", "achabal", "harwan",
+    "mughal", "shalimar", "nishat", "chashme", "pari mahal",
+    "boulevard", "dal lake", "nigeen", "tulip", "amarnath", "kheer bhawani",
+)
+SEASONAL_SUSPENDED_KEYWORDS = (
+    "mughal road", "sinthan", "sadhna", "z-morh", "zmorh", "kishtwar",
+    "doodhpathri", "yusmarg", "aharbal",
+)
+
+# ─── v3.3: Vehicle capacities + emissions factors (Phase 4 derived only) ────
+# Used ONLY for the new Load_Ratio / Emissions_Proxy outputs. Do NOT feed
+# these back into Step 8 fleet sizing (would double-count headway/capacity).
+VEHICLE_CAPACITY_HPV         = 60      # 12m bus, peak crush load (seated+standing)
+VEHICLE_CAPACITY_MPV         = 35      # 9m bus
+VEHICLE_CAPACITY_LPV         = 20      # minibus / Sumo
+EMISSIONS_GCO2_PER_KM_DIESEL = 950.0   # g CO2 / km — diesel city bus baseline
+EMISSIONS_GCO2_PER_KM_EBUS   = 30.0    # g CO2 / km — Indian grid mix electric
+
+# Phase-4 demand proxy (matches cross_evaluate.py constants — keep in sync).
+PHASE4_MODE_SHARE            = 0.09
+PHASE4_TRIP_RATE             = 1.6
+PHASE4_SERVICE_HOURS         = 16
+PHASE4_FARE_INR              = 10.0    # avg single-trip fare proxy (post free-fare)
+PHASE4_OPERATING_COST_PER_KM = 65.0    # INR/km diesel minibus all-in
+PHASE4_JOURNEY_TIME_FLAG_MIN = 45      # passenger journey time amber threshold
 
 # Junction penalty (unchanged)
 JUNCTION_PENALTY_PER_TURN_MIN = 0.5
@@ -1037,12 +1083,27 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
         else:
             route_type = "Regional_District"
 
+        # v3.3: Tourist Corridor + Seasonal Operability tags (Phase-1 audit).
+        # Pure ingestion-side flags — no CDI/headway/fleet impact. Used by
+        # the Phase-4 seasonal map layer and surfaced for planner review.
+        name_lc = str(row.get("Route_Name", "")).lower()
+        tourist_corridor = any(k in name_lc for k in TOURIST_CORRIDOR_KEYWORDS)
+        suspended        = any(k in name_lc for k in SEASONAL_SUSPENDED_KEYWORDS)
+        if suspended:
+            seasonal_op = "Winter_Suspended"
+        elif tourist_corridor:
+            seasonal_op = "Seasonal"
+        else:
+            seasonal_op = "Year_Round"
+
         rows.append({**row.to_dict(),
-                     "geometry":        geom,
-                     "Route_KM":        round(km, 3),
-                     "OSRM_Duration_S": round(max(0.0, duration_s), 1),
-                     "Geo_Source":      source,
-                     "Route_Type":      route_type})
+                     "geometry":            geom,
+                     "Route_KM":            round(km, 3),
+                     "OSRM_Duration_S":     round(max(0.0, duration_s), 1),
+                     "Geo_Source":          source,
+                     "Route_Type":          route_type,
+                     "Tourist_Corridor":    tourist_corridor,
+                     "Seasonal_Operability": seasonal_op})
 
     gdf  = gpd.GeoDataFrame(rows, geometry="geometry", crs=WGS84_CRS)
     n0   = len(gdf)
@@ -2246,10 +2307,58 @@ def step5_assign_priority_bands(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             log.info("  CMP lock: %d SSCL trunk(s) re-elevated to HP after Jenks.",
                      cmp_demoted)
 
+    # v3.3: Inter-district + District-HQ floor — Regional_District routes that
+    # touch any DH attractor are unconditionally lifted from LP→MP regardless
+    # of CDI. Social_Flag already covers DH proximity (it's in the attractor
+    # list), but the proposal asked for an explicit, named floor so the audit
+    # can show the count separately.
+    dh_keywords = ("DH ", "District Court", "DC Office")
+    is_dh_route = gdf.apply(
+        lambda r: (r.get("Route_Type") == "Regional_District")
+                  and bool(r.get("Social_Flag", False)),
+        axis=1,
+    )
+    dh_lp_mask = is_dh_route & (gdf["Priority_Band"] == "LP")
+    dh_promoted_n = int(dh_lp_mask.sum())
+    if dh_promoted_n:
+        gdf.loc[dh_lp_mask, "Priority_Band"] = "MP"
+    gdf["District_HQ_Floor"] = is_dh_route.values
+
     n_hp, n_mp, n_lp = ((gdf["Priority_Band"] == b).sum() for b in ("HP","MP","LP"))
     log.info("  Priority bands — HP: %d  MP: %d  LP: %d  "
-             "(%d Social LP→MP, %d road-promoted, %d road-demoted)",
-             n_hp, n_mp, n_lp, social_lp_mask.sum(), promote_n, demote_n)
+             "(%d Social LP→MP, %d District-HQ LP→MP, %d road-promoted, %d road-demoted)",
+             n_hp, n_mp, n_lp, social_lp_mask.sum(), dh_promoted_n,
+             promote_n, demote_n)
+    return gdf
+
+
+def step5b_flag_sscl_cdi_conflicts(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    v3.3 Phase-1 audit: flag non-SSCL routes whose Final_CDI exceeds the
+    weakest SSCL backbone CDI. Surfaces for PLANNER REVIEW — NO automatic
+    reclassification (the proposal explicitly forbade it). The SSCL backbone
+    is a political deployment commitment, not a demand-justified one, so
+    over-performing private routes deserve audit attention but should not
+    silently displace SSCL routes from the trunk network.
+    """
+    if "CMP_Trunk" not in gdf.columns or "Final_CDI" not in gdf.columns:
+        gdf["SSCL_CDI_Conflict"] = False
+        return gdf
+    sscl_cdi = gdf.loc[gdf["CMP_Trunk"] == True, "Final_CDI"]
+    if sscl_cdi.empty:
+        gdf["SSCL_CDI_Conflict"] = False
+        return gdf
+    sscl_min = float(sscl_cdi.min())
+    conflict_mask = (
+        (gdf["CMP_Trunk"] != True)
+        & (gdf["Final_CDI"] > sscl_min)
+        & (gdf["Action_Taken"] != "MERGED_INTO_TRUNK")
+    )
+    gdf["SSCL_CDI_Conflict"] = conflict_mask
+    n = int(conflict_mask.sum())
+    log.info("Step 5b: SSCL-vs-CDI conflict flag — %d non-SSCL active routes "
+             "have Final_CDI > weakest SSCL trunk (%.4f). Planner review only; "
+             "no auto-reclassification.", n, sscl_min)
     return gdf
 
 
@@ -2323,16 +2432,23 @@ def step8_compute_fleet_required(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     lifelines floor at MIN_FLEET_REGIONAL (1) — the previous blanket "2"
     inflated rural fleet counts beyond justified demand.
     """
-    log.info("Step 8: Computing Fleet_Required = CEILING(Cycle_Time / Headway). "
-             "Floors: Urban/Peri=%d  Regional_District=%d.",
-             MIN_FLEET_URBAN, MIN_FLEET_REGIONAL)
+    log.info("Step 8: Computing Fleet_Required = CEILING(Cycle_Time / Headway) "
+             "× spare_ratio %.2f. Floors: Urban/Peri=%d  Regional_District=%d.",
+             FLEET_SPARE_RATIO, MIN_FLEET_URBAN, MIN_FLEET_REGIONAL)
 
     fleet_required_list = []
-    floored_urban = floored_regional = 0
+    floored_urban = floored_regional = spare_bumped = 0
 
     for _, row in gdf.iterrows():
-        raw_fleet  = max(1, math.ceil(
+        operating  = max(1, math.ceil(
             row["Cycle_Time_Min"] / max(1, row["Headway_Min"])))
+        # v3.3: post-cycle spare ratio (15%). SSCL routes get this in Step 8
+        # too, but Step 9 then OVERWRITES Fleet_Required with the empirical
+        # CHALO bus count, so the spare bump only affects non-SSCL routes
+        # in the final output. Standard transit-planning practice.
+        raw_fleet  = max(1, math.ceil(operating * FLEET_SPARE_RATIO))
+        if raw_fleet > operating:
+            spare_bumped += 1
         route_type = row.get("Route_Type", "Urban")
         floor      = (MIN_FLEET_REGIONAL if route_type == "Regional_District"
                       else MIN_FLEET_URBAN)
@@ -2738,6 +2854,16 @@ def export_csv(gdf: gpd.GeoDataFrame, file_map: dict, out_path: str) -> None:
         "CMP_Trunk", "CMP_Route_ID",
         "Population_Served", "HV_POI_Count",
         "Overlap_Metric", "Geo_Source",
+        # v3.3 Phase-1 audit additions
+        "Tourist_Corridor", "Seasonal_Operability",
+        "District_HQ_Floor", "SSCL_CDI_Conflict",
+        "Daily_Trips", "Daily_KM",
+        "Daily_Capacity_Pax", "Daily_Demand_Pax",
+        "Load_Ratio", "Load_Flag",
+        "Pax_Journey_Time_Min", "Journey_Time_Flag",
+        "Daily_Revenue_INR", "Daily_Op_Cost_INR",
+        "Viability_Ratio", "Subsidy_Risk_Flag",
+        "Emissions_GCO2_Daily", "Equity_Score",
     ] if c in gdf.columns]
     df_out = gdf[export_cols].copy()
     df_out["Map_File"] = df_out["New_Route_ID"].map(file_map).fillna("")
@@ -2754,7 +2880,15 @@ def export_geojson(gdf: gpd.GeoDataFrame, out_path: str) -> None:
         "HPV_Count", "MPV_Count",
         "Social_Flag", "Population_Served", "Final_CDI",
         "CMP_Trunk", "CMP_Route_ID",
-        "Congestion_Zone", "geometry",
+        "Congestion_Zone",
+        # v3.3 Phase-1 audit additions
+        "Tourist_Corridor", "Seasonal_Operability",
+        "SSCL_CDI_Conflict", "District_HQ_Floor",
+        "Load_Ratio", "Load_Flag",
+        "Pax_Journey_Time_Min", "Journey_Time_Flag",
+        "Viability_Ratio", "Subsidy_Risk_Flag",
+        "Emissions_GCO2_Daily", "Equity_Score",
+        "geometry",
     ] if c in active_gdf.columns]
     export_gdf = active_gdf[keep_cols]
     if export_gdf.crs != WGS84_CRS:
@@ -3696,6 +3830,131 @@ def export_xlsx(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     log.info("  XLSX written: %d data rows, 4 sheets.", len(df_out))
 
 
+def compute_phase4_metrics(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    v3.3 Phase-1 audit additions — derived per-route KPIs computed AFTER all
+    classification and fleet sizing is locked. These do NOT feed back into
+    CDI/headway/fleet (would create circularity); they exist as reporting
+    flags for the planner's review:
+
+      • Daily_Trips      — service-hour round trips per route
+      • Daily_KM         — Daily_Trips × Route_KM
+      • Daily_Capacity   — Fleet × per-bus capacity × Daily_Trips
+      • Daily_Demand     — Population_Served × MODE_SHARE × TRIP_RATE
+      • Load_Ratio       — Daily_Demand / Daily_Capacity
+      • Load_Flag        — Green (0.4–0.85) / Amber (<0.4 or 0.85–1.0) / Red (>1.0 or 0)
+      • Pax_Journey_Time — 5.5 (access) + Headway/2 (wait) + Cycle/2 (in-vehicle)
+      • Journey_Time_Flag— True if > PHASE4_JOURNEY_TIME_FLAG_MIN
+      • Daily_Revenue    — Daily_Demand × PHASE4_FARE_INR
+      • Daily_Op_Cost    — Daily_KM × PHASE4_OPERATING_COST_PER_KM
+      • Viability_Ratio  — Daily_Revenue / Daily_Op_Cost  (1.0 = self-funding)
+      • Subsidy_Risk     — True if Viability_Ratio < 0.5 AND not Social_Flag
+      • Emissions_GCO2_Daily — Daily_KM × emission factor (e-bus for SSCL,
+                               diesel otherwise)
+      • Equity_Score     — relative score [0,1] = (Population_Served weighted
+                               by Social_Flag×1.5 boost), normalised across
+                               the active network
+    """
+    log.info("Phase 4: computing derived per-route KPIs "
+             "(Load_Ratio, Journey_Time, Viability, Emissions, Equity)…")
+    gdf = gdf.copy()
+
+    headway   = gdf["Headway_Min"].astype(float).clip(lower=1.0)
+    cycle     = gdf.get("Cycle_Time_Min",
+                        pd.Series(0.0, index=gdf.index)).astype(float)
+    fleet     = gdf["Fleet_Required"].astype(float).clip(lower=0.0)
+    route_km  = gdf["Route_KM"].astype(float).clip(lower=0.0)
+    pop_serv  = gdf.get("Population_Served",
+                        pd.Series(0.0, index=gdf.index)).astype(float)
+    hpv       = gdf.get("HPV_Count", pd.Series(0, index=gdf.index)).astype(float)
+    mpv       = gdf.get("MPV_Count", pd.Series(0, index=gdf.index)).astype(float)
+    lpv       = gdf.get("LPV_Count", pd.Series(0, index=gdf.index)).astype(float)
+
+    # Service-day operational KPIs
+    daily_trips = (PHASE4_SERVICE_HOURS * 60.0) / headway * 2.0
+    daily_km    = daily_trips * route_km
+    avg_cap     = (hpv * VEHICLE_CAPACITY_HPV
+                   + mpv * VEHICLE_CAPACITY_MPV
+                   + lpv * VEHICLE_CAPACITY_LPV)
+    # avg_cap is the SUM of seat-capacity across the route's fleet.
+    # If HPV/MPV/LPV not yet split, fall back to fleet × MPV capacity.
+    avg_cap     = avg_cap.where(avg_cap > 0, fleet * VEHICLE_CAPACITY_MPV)
+    # Per-bus capacity = avg_cap / fleet; total daily seat-capacity served
+    # on this route = per-bus capacity × trips × fleet = avg_cap × trips.
+    daily_capacity = avg_cap * daily_trips
+
+    daily_demand   = pop_serv * PHASE4_MODE_SHARE * PHASE4_TRIP_RATE
+    load_ratio     = daily_demand / daily_capacity.where(daily_capacity > 0, np.nan)
+    load_ratio     = load_ratio.fillna(0.0)
+
+    def _load_flag(lr: float) -> str:
+        if lr <= 0:        return "Red_NoCapacity"
+        if lr > 1.0:       return "Red_Overload"
+        if lr >= 0.4 and lr <= 0.85: return "Green"
+        if lr < 0.4:       return "Amber_Under"
+        return "Amber_Tight"   # 0.85–1.0
+
+    pax_journey_time = 5.5 + headway / 2.0 + cycle / 2.0
+    journey_flag     = pax_journey_time > PHASE4_JOURNEY_TIME_FLAG_MIN
+
+    daily_revenue  = daily_demand * PHASE4_FARE_INR
+    daily_op_cost  = daily_km * PHASE4_OPERATING_COST_PER_KM
+    viability      = daily_revenue / daily_op_cost.where(daily_op_cost > 0, np.nan)
+    viability      = viability.fillna(0.0)
+    subsidy_risk   = (viability < 0.5) & (~gdf.get("Social_Flag", pd.Series(False, index=gdf.index)).astype(bool))
+
+    # Emissions: SSCL = e-bus, everything else = diesel
+    emiss_factor = np.where(
+        gdf.get("CMP_Trunk", pd.Series(False, index=gdf.index)).astype(bool),
+        EMISSIONS_GCO2_PER_KM_EBUS, EMISSIONS_GCO2_PER_KM_DIESEL,
+    )
+    emissions_daily = daily_km * emiss_factor   # grams CO2 / day
+
+    # Equity score: normalise (Pop_Served × 1.5-if-social) across active routes
+    active_mask = gdf["Action_Taken"] != "MERGED_INTO_TRUNK"
+    social_boost = np.where(
+        gdf.get("Social_Flag", pd.Series(False, index=gdf.index)).astype(bool),
+        1.5, 1.0,
+    )
+    eq_raw = pop_serv * social_boost
+    eq_max = float(eq_raw[active_mask].max()) if active_mask.any() else 1.0
+    eq_max = max(eq_max, 1.0)
+    equity_score = (eq_raw / eq_max).clip(0.0, 1.0)
+
+    gdf["Daily_Trips"]         = daily_trips.round(1)
+    gdf["Daily_KM"]            = daily_km.round(1)
+    gdf["Daily_Capacity_Pax"]  = daily_capacity.round(0)
+    gdf["Daily_Demand_Pax"]    = daily_demand.round(0)
+    gdf["Load_Ratio"]          = load_ratio.round(3)
+    gdf["Load_Flag"]           = [_load_flag(x) for x in load_ratio]
+    gdf["Pax_Journey_Time_Min"] = pax_journey_time.round(1)
+    gdf["Journey_Time_Flag"]   = journey_flag.values
+    gdf["Daily_Revenue_INR"]   = daily_revenue.round(0)
+    gdf["Daily_Op_Cost_INR"]   = daily_op_cost.round(0)
+    gdf["Viability_Ratio"]     = viability.round(3)
+    gdf["Subsidy_Risk_Flag"]   = subsidy_risk.values
+    gdf["Emissions_GCO2_Daily"] = emissions_daily.round(0)
+    gdf["Equity_Score"]        = equity_score.round(3)
+
+    # Audit summary (active routes only)
+    act = gdf[active_mask]
+    log.info("  Load_Flag: Green=%d  Amber_Under=%d  Amber_Tight=%d  "
+             "Red_Overload=%d  Red_NoCap=%d",
+             (act["Load_Flag"] == "Green").sum(),
+             (act["Load_Flag"] == "Amber_Under").sum(),
+             (act["Load_Flag"] == "Amber_Tight").sum(),
+             (act["Load_Flag"] == "Red_Overload").sum(),
+             (act["Load_Flag"] == "Red_NoCapacity").sum())
+    log.info("  Pax journey time >%d min: %d routes", PHASE4_JOURNEY_TIME_FLAG_MIN,
+             int(act["Journey_Time_Flag"].sum()))
+    log.info("  Subsidy risk (viability<0.5, non-social): %d routes",
+             int(act["Subsidy_Risk_Flag"].sum()))
+    log.info("  Tourist corridors active: %d  |  Winter-suspended: %d",
+             int((act.get("Tourist_Corridor", False) == True).sum()),
+             int((act.get("Seasonal_Operability", "Year_Round") == "Winter_Suspended").sum()))
+    return gdf
+
+
 def export_passenger_impact(gdf: gpd.GeoDataFrame, out_path: str) -> None:
     log.info("Exporting Passenger Impact → %s", out_path)
     active = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"].copy()
@@ -3933,10 +4192,12 @@ def main() -> None:
     gdf = step4a_compute_final_cdi(gdf)
     gdf = step4b_compute_social_flag(gdf)
     gdf = step5_assign_priority_bands(gdf)
+    gdf = step5b_flag_sscl_cdi_conflicts(gdf)  # v3.3 Phase-1 audit: planner-review flag
     gdf = step6_assign_headways(gdf)         # CMP override: 10-min hardcoded
     gdf = step8_compute_fleet_required(gdf)  # v3: floor at MIN, no LPV downgrade
     gdf = step9_compute_vehicle_split(gdf)   # v3: Trunk=85/15 | Feeder=100% MPV
     gdf = zero_merged_route_fleet(gdf)
+    gdf = compute_phase4_metrics(gdf)        # v3.3 Phase-1 audit: derived KPIs
 
     # ── QC ────────────────────────────────────────────────────────────────
     log.info("\n── QC CHECKS ────────────────────────────────────────────────────────")
