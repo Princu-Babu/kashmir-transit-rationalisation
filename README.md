@@ -154,6 +154,85 @@ The engine produces 6 output files per run:
 
 ---
 
+## 🗺️ Route Code Methodology
+
+*(This logic is implemented in the `generate_route_codes.py` script)*
+
+Every route in the network is assigned a deterministic 12-character `Route_Code` derived from its origin and destination stops. The code is a compact, human-inspectable identifier that encodes administrative location, network sector, and stop position — allowing engineers reading the code to infer roughly where the route runs without consulting a lookup table.
+
+### Anatomy of a Route Code
+
+A Route Code consists of exactly 12 alphanumeric characters arranged in three blocks of four:
+
+```
+SRBG  1002  0705
+│     │     │
+│     │     └── Stop block (4 digits): origin stop no. + destination stop no.
+│     └──────── Sector block (4 digits): origin sector ID + destination sector ID
+└────────────── Tehsil block (4 letters): origin tehsil code + destination tehsil code
+
+```
+
+* **Tehsil block (positions 1–4):** Two two-letter tehsil codes concatenated. The first pair identifies the origin's administrative tehsil, the second pair the destination's.
+* *Example:* `SRBG` means the route starts in Srinagar tehsil (`SR`) and ends in Budgam tehsil (`BG`).
+
+
+* **Sector block (positions 5–8):** Two two-digit sector IDs concatenated, each zero-padded. Sectors are the operational sub-zones within a tehsil used for route planning.
+* *Example:* `1002` means origin is in Sector 10, destination is in Sector 02.
+
+
+* **Stop block (positions 9–12):** Two two-digit stop numbers concatenated, each zero-padded. The stop number is the stop's sequence position within its sector.
+* *Example:* `0705` means stop 07 (origin) and stop 05 (destination).
+
+
+### Source of Truth
+
+All three components are read from the master stops file (`Kashmir_Stops_Sectored_V2.csv`), which lists every served stop along with its `Tehsil_Code`, `Sector_ID`, and `Stop_No`. The Route Code is therefore a pure function of the stops master — if a stop's sector or stop number changes upstream, regenerating the codes will reflect that automatically. The route plan itself never assigns these IDs.
+
+### Construction Procedure
+
+For each route in the route plan:
+
+1. **Parse the route name** to extract origin and destination. Two name patterns are supported: bidirectional (`A ↔ B`) and directional (`A to B via X Y Z`). The *via* segment is discarded — only endpoints participate in the code.
+2. **Look up the origin** in the stops master to retrieve its `Tehsil_Code`, `Sector_ID`, and `Stop_No`.
+3. **Look up the destination** using the same process.
+4. **Assemble the three blocks** by concatenating origin and destination values in order: tehsils, then sectors, then stops.
+
+#### Worked Example
+
+Take the route **Parimpora ↔ Hazratbal**:
+
+| Endpoint | Source | Tehsil | Sector | Stop No. |
+| --- | --- | --- | --- | --- |
+| **Parimpora (origin)** | From stops master | `BG` | `02` | `22` |
+| **Hazratbal (destination)** | From stops master | `SR` | `10` | `18` |
+
+* **Concatenation Process:** * `BG` + `SR` → `BGSR`
+* `02` + `10` → `0210`
+* `22` + `18` → `2218`
+
+
+* **Final Route Code:** `BGSR02102218`
+
+### Name Normalization for Matching
+
+Route names and stop names are not guaranteed to match character-for-character across different datasets. To keep the matcher tolerant without producing false matches, lookups are executed in escalating order of looseness until a match is found:
+
+* **Exact match** after uppercasing and trimming whitespace.
+* **Compact match** — both names are reduced to uppercase alphanumerics only, removing spaces and punctuation. This resolves mismatches like `PANTHA CHOWK` ↔ `PANTHACHOWK`.
+* **Suffix-stripped match** — common landmark suffixes (`CHOWK`, `CROSSING`, `HOSPITAL`, `BUS STAND`, `RAILWAY STATION`, `COLLEGE`, `STOP`) are dropped before compacting. This resolves issues like `CHADOORA CHOWK` ↔ `CHADOORA`.
+* **Substring match** in either direction on the compacted form.
+* **Fuzzy close match** using a similarity ratio of 0.85 or higher via `difflib.get_close_matches`. This serves as the last resort to resolve single-character spelling drifts like `BATAMALOO` ↔ `BATAMALLO`.
+
+### Core Design Rules
+
+* **Deterministic and Idempotent:** Re-running the generator on unchanged inputs always produces identical codes.
+* **Direction-Sensitive:** `A → B` and `B → A` produce different codes. For bidirectional (`↔`) routes, the side written first in the route name is treated as the origin.
+* **Not Globally Unique Alone:** Two distinct routes that happen to share the exact same origin and destination stops will receive the same code. If your network configuration allows duplicate terminal routings, pair `Route_Code` with `New_Route_ID` to preserve uniqueness.
+* **Stable Under Unrelated Edits:** Adding new stops to other sectors does not change existing codes; edits only impact routes if they modify the origin or destination stop's specific tehsil, sector, or stop number properties.
+
+---
+
 ## ⚙ Prerequisites
 
 ### Required
