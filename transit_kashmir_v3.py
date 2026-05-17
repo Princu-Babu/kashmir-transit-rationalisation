@@ -146,7 +146,7 @@ CONGESTION_PERI_URBAN       = 1.4    # 1.4× free-flow (Hyderpora–Rangreth bel
 #         walkshed shrunk, snow-prone routes flagged Lifeline,
 #         operated/scheduled KM penalty 15% reflects CHALO Jan data.
 # False → Default summer / shoulder season run.
-WINTER_SCENARIO             = True
+WINTER_SCENARIO             = False
 WINTER_WALKSHED_SHRINK      = 0.65   # Effective walkshed = 65% of summer (snow + cold)
 WINTER_OP_RATIO_PENALTY     = 0.85   # Operated/scheduled KM ratio in winter (CHALO observed)
 
@@ -348,8 +348,12 @@ ROAD_MULTIPLIER_DEFAULT     = 1.00
 CDI_POP_WEIGHT              = 0.50
 CDI_POI_WEIGHT              = 0.50
 
-# Social Obligation (unchanged)
-SOCIAL_FLAG_BUFFER_M        = 500
+# Social Obligation — v3.3.1 audit response (round 2 STEP 10):
+# The 500m buffer + 17-attractor list produced a 91.5% flag rate (313/342),
+# which made Social_Flag effectively a no-op filter. Tightened to 250m and
+# the attractor list restricted to truly critical / lifeline facilities so
+# the flag actually discriminates. Target: ~30-40% of network.
+SOCIAL_FLAG_BUFFER_M        = 250
 
 # Step 6: Headway per Priority Band for Urban/Peri-Urban routes
 HEADWAY_HP_MIN              = 15
@@ -396,11 +400,34 @@ EMISSIONS_GCO2_PER_KM_EBUS   = 30.0    # g CO2 / km — Indian grid mix electric
 
 # Phase-4 demand proxy (matches cross_evaluate.py constants — keep in sync).
 PHASE4_MODE_SHARE            = 0.09
+# v3.3.1 (STEP 6): typology-aware modal capture rate. Urban core gets the
+# CHALO-derived baseline; peri-urban routes capture less because alternative
+# autos/private vehicles are more available; inter-district lifelines have
+# the lowest bus mode share because trip purpose is mostly long-distance
+# and bus competition with shared sumos / private cars is stronger.
+PHASE4_MODE_SHARE_BY_TYPE = {
+    "Urban":             0.090,
+    "Peri_Urban":        0.072,   # × 0.8 of urban
+    "Regional_District": 0.054,   # × 0.6 of urban
+}
 PHASE4_TRIP_RATE             = 1.6
 PHASE4_SERVICE_HOURS         = 16
 PHASE4_FARE_INR              = 10.0    # avg single-trip fare proxy (post free-fare)
 PHASE4_OPERATING_COST_PER_KM = 65.0    # INR/km diesel minibus all-in
 PHASE4_JOURNEY_TIME_FLAG_MIN = 45      # passenger journey time amber threshold
+# v3.3.1 (STEP 7): subsidy-risk threshold raised from 0.5 to 0.6 so the
+# "marginal" band (0.6-1.0) is surfaced separately from outright subsidy
+# dependency. Anything < 0.6 fare-recovery is meaningfully unsustainable.
+PHASE4_SUBSIDY_RISK_THRESHOLD = 0.6
+# v3.3.1 (STEP 1): per-km cycle-time sanity cap. Prevents OSRM glitches or
+# pathological congestion from producing nonsense cycle times. NOTE: the
+# proposal's "second peak multiplier on top of congestion" was rejected
+# (would double-count with CONGESTION_CITY_CORE=2.2). Cap only.
+CYCLE_TIME_CAP_MIN_PER_KM = {
+    "Urban":             4.0,    # max 4 min/km one-way → 8 min/km round
+    "Peri_Urban":        2.5,
+    "Regional_District": 1.5,
+}
 
 # Junction penalty (unchanged)
 JUNCTION_PENALTY_PER_TURN_MIN = 0.5
@@ -450,24 +477,21 @@ CHALO_SERVICE_START_HR      = 6
 CHALO_SERVICE_END_HR        = 22
 
 # Social Obligation Attractors — Kashmir / Srinagar specific (was Jammu)
+# v3.3.1 audit response (STEP 10): pruned from 17 to 11. Industrial estates
+# removed (they're employment hubs, not social-obligation lifelines — they
+# get fair treatment via the POI gravity score already). Duplicate hospital
+# entries collapsed. Target flag rate ~30-40% of network instead of 91.5%.
 SOCIAL_OBLIGATION_ATTRACTORS = [
-    # KP migrant townships (Govt of India ORM-managed)
+    # KP migrant townships (Govt of India ORM-managed lifeline corridors)
     ("Sheikhpora KP Township Budgam",  33.9683, 74.6736),
     ("Vessu KP Township Qazigund",     33.6478, 75.1431),
     ("Mattan KP Township Anantnag",    33.7406, 75.2347),
     ("Veerwan KP Camp Baramulla",      34.2025, 74.3450),
-    # Tertiary hospitals (Srinagar metropolitan)
+    # Tertiary hospitals — Srinagar metropolitan (3 truly tertiary referral)
     ("SKIMS Soura",                    34.1308, 74.8472),
     ("SMHS Hospital Karan Nagar",      34.0842, 74.7956),
     ("Lal Ded Hospital",               34.0822, 74.8059),
-    ("Bone & Joint Hospital Barzulla", 34.0539, 74.8095),
-    ("JLNM Hospital Rainawari",        34.1019, 74.8311),
-    ("GMC Srinagar",                   34.0842, 74.7956),
-    # Industrial estates (Kashmir Valley)
-    ("Khonmoh Industrial Estate",      34.0419, 74.8825),
-    ("Rangreth Industrial Estate",     34.0244, 74.7906),
-    ("Lassipora Industrial Pulwama",   33.8569, 74.9156),
-    # District-HQ hospitals (lifeline routes)
+    # District-HQ hospitals (rural lifeline routes)
     ("DH Pulwama",                     33.8716, 74.8983),
     ("DH Ganderbal",                   34.2275, 74.7775),
     ("DH Budgam",                      33.9908, 74.7115),
@@ -1567,6 +1591,7 @@ def compute_cycle_times(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
              (TERMINAL_LAYOVER_FACTOR - 1) * 100)
 
     zones, n_stops_list, stop_penalties, cycle_times = [], [], [], []
+    capped_n = 0
 
     for _, row in gdf.iterrows():
         start_lat = float(row.get("Start_Lat", 0.0))
@@ -1574,6 +1599,7 @@ def compute_cycle_times(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         osrm_min  = float(row["OSRM_Duration_S"]) / 60.0
         junc_pen  = float(row["Junction_Penalty_Min"])
         route_km  = float(row["Route_KM"])
+        route_type = row.get("Route_Type", "Urban")
 
         # Congestion zone (Directive 2)
         zone, cong_mult = _detect_congestion_zone(start_lat, end_lat)
@@ -1587,6 +1613,16 @@ def compute_cycle_times(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
         # Round-trip + terminal layover buffer
         cycle = one_way * 2 * TERMINAL_LAYOVER_FACTOR
+
+        # v3.3.1 (STEP 1): per-km cycle-time sanity cap. Pure upper bound —
+        # prevents OSRM glitches or pathological congestion math from producing
+        # runaway cycle times. NOT a second peak multiplier (rejected during
+        # audit: would double-count with the existing CONGESTION_CITY_CORE).
+        cap_per_km = CYCLE_TIME_CAP_MIN_PER_KM.get(route_type, 4.0)
+        cycle_cap  = route_km * 2.0 * cap_per_km  # round-trip basis
+        if cycle_cap > 0 and cycle > cycle_cap:
+            cycle = cycle_cap
+            capped_n += 1
 
         zones.append(zone)
         n_stops_list.append(n_stops)
@@ -1607,6 +1643,12 @@ def compute_cycle_times(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
              gdf["Cycle_Time_Min"].mean(),
              gdf["Cycle_Time_Min"].max(),
              gdf["Cycle_Time_Min"].min())
+    if capped_n:
+        log.info("  Per-km sanity cap (v3.3.1): %d routes capped at "
+                 "{Urban:%.1f / Peri:%.1f / Inter:%.1f} min/km × 2 directions.",
+                 capped_n, CYCLE_TIME_CAP_MIN_PER_KM["Urban"],
+                 CYCLE_TIME_CAP_MIN_PER_KM["Peri_Urban"],
+                 CYCLE_TIME_CAP_MIN_PER_KM["Regional_District"])
     return gdf
 
 
@@ -2334,31 +2376,69 @@ def step5_assign_priority_bands(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def step5b_flag_sscl_cdi_conflicts(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    v3.3 Phase-1 audit: flag non-SSCL routes whose Final_CDI exceeds the
-    weakest SSCL backbone CDI. Surfaces for PLANNER REVIEW — NO automatic
-    reclassification (the proposal explicitly forbade it). The SSCL backbone
-    is a political deployment commitment, not a demand-justified one, so
-    over-performing private routes deserve audit attention but should not
-    silently displace SSCL routes from the trunk network.
+    v3.3.1 Phase-1 audit (round 2 STEP 11): tightened conflict flag with
+    +0.2 CDI delta. The v3.3 flag triggered on 78% of active routes (any
+    non-SSCL CDI > weakest SSCL CDI), which made it a near-universal signal
+    instead of a planner-actionable one. Now requires a MEANINGFUL delta:
+
+      • SSCL_CDI_Conflict_Strong : non-SSCL active route with
+        Final_CDI ≥ (max_sscl_cdi - SSCL_CONFLICT_DELTA).
+        These are routes that are at-or-above the strongest SSCL trunk
+        — strong displacement candidates if the SSCL deployment political
+        constraint were relaxed.
+
+      • SSCL_CDI_Conflict_Weak_SSCL : SSCL backbone route whose
+        Final_CDI ≤ (max_non_sscl_cdi - SSCL_CONFLICT_DELTA).
+        These are SSCL trunks that are demand-justified less well than
+        nearby private routes — political deployment locked in regardless.
+
+    Both flags are PLANNER REVIEW ONLY. No automatic reclassification —
+    the SSCL backbone is a Govt of J&K deployment commitment.
     """
+    SSCL_CONFLICT_DELTA = 0.2  # CDI units (0-1 scale)
     if "CMP_Trunk" not in gdf.columns or "Final_CDI" not in gdf.columns:
-        gdf["SSCL_CDI_Conflict"] = False
+        gdf["SSCL_CDI_Conflict"]            = False
+        gdf["SSCL_CDI_Conflict_Strong"]     = False
+        gdf["SSCL_CDI_Conflict_Weak_SSCL"]  = False
         return gdf
-    sscl_cdi = gdf.loc[gdf["CMP_Trunk"] == True, "Final_CDI"]
-    if sscl_cdi.empty:
-        gdf["SSCL_CDI_Conflict"] = False
+
+    sscl_mask = gdf["CMP_Trunk"] == True
+    sscl_cdi  = gdf.loc[sscl_mask, "Final_CDI"]
+    active    = gdf["Action_Taken"] != "MERGED_INTO_TRUNK"
+    non_sscl_active_cdi = gdf.loc[(~sscl_mask) & active, "Final_CDI"]
+
+    if sscl_cdi.empty or non_sscl_active_cdi.empty:
+        gdf["SSCL_CDI_Conflict"]            = False
+        gdf["SSCL_CDI_Conflict_Strong"]     = False
+        gdf["SSCL_CDI_Conflict_Weak_SSCL"]  = False
         return gdf
-    sscl_min = float(sscl_cdi.min())
-    conflict_mask = (
-        (gdf["CMP_Trunk"] != True)
-        & (gdf["Final_CDI"] > sscl_min)
-        & (gdf["Action_Taken"] != "MERGED_INTO_TRUNK")
+
+    sscl_max     = float(sscl_cdi.max())
+    non_sscl_max = float(non_sscl_active_cdi.max())
+
+    strong_mask = (
+        (~sscl_mask)
+        & active
+        & (gdf["Final_CDI"] >= sscl_max - SSCL_CONFLICT_DELTA)
     )
-    gdf["SSCL_CDI_Conflict"] = conflict_mask
-    n = int(conflict_mask.sum())
-    log.info("Step 5b: SSCL-vs-CDI conflict flag — %d non-SSCL active routes "
-             "have Final_CDI > weakest SSCL trunk (%.4f). Planner review only; "
-             "no auto-reclassification.", n, sscl_min)
+    weak_sscl_mask = (
+        sscl_mask
+        & (gdf["Final_CDI"] <= non_sscl_max - SSCL_CONFLICT_DELTA)
+    )
+
+    gdf["SSCL_CDI_Conflict_Strong"]    = strong_mask
+    gdf["SSCL_CDI_Conflict_Weak_SSCL"] = weak_sscl_mask
+    # Backward-compat single flag = OR of both
+    gdf["SSCL_CDI_Conflict"] = strong_mask | weak_sscl_mask
+
+    n_strong = int(strong_mask.sum())
+    n_weak   = int(weak_sscl_mask.sum())
+    log.info("Step 5b (v3.3.1 +%.2f delta): %d non-SSCL routes at/above "
+             "strongest SSCL trunk (max_sscl_cdi=%.4f); %d SSCL routes below "
+             "strongest non-SSCL by ≥%.2f (max_non_sscl_cdi=%.4f). "
+             "Planner review only; no auto-reclassification.",
+             SSCL_CONFLICT_DELTA, n_strong, sscl_max, n_weak,
+             SSCL_CONFLICT_DELTA, non_sscl_max)
     return gdf
 
 
@@ -2857,6 +2937,7 @@ def export_csv(gdf: gpd.GeoDataFrame, file_map: dict, out_path: str) -> None:
         # v3.3 Phase-1 audit additions
         "Tourist_Corridor", "Seasonal_Operability",
         "District_HQ_Floor", "SSCL_CDI_Conflict",
+        "SSCL_CDI_Conflict_Strong", "SSCL_CDI_Conflict_Weak_SSCL",
         "Daily_Trips", "Daily_KM",
         "Daily_Capacity_Pax", "Daily_Demand_Pax",
         "Load_Ratio", "Load_Flag",
@@ -3883,7 +3964,14 @@ def compute_phase4_metrics(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     # on this route = per-bus capacity × trips × fleet = avg_cap × trips.
     daily_capacity = avg_cap * daily_trips
 
-    daily_demand   = pop_serv * PHASE4_MODE_SHARE * PHASE4_TRIP_RATE
+    # v3.3.1 (STEP 6): typology-aware modal capture rate. Urban core uses
+    # the CHALO-derived 9% baseline; peri-urban × 0.8; inter-district × 0.6
+    # (private auto / shared sumo competition is stronger on long-distance
+    # routes, so the bus capture rate falls).
+    mode_share = gdf.get("Route_Type", pd.Series("Urban", index=gdf.index)) \
+                    .map(PHASE4_MODE_SHARE_BY_TYPE).fillna(PHASE4_MODE_SHARE) \
+                    .astype(float)
+    daily_demand   = pop_serv * mode_share * PHASE4_TRIP_RATE
     load_ratio     = daily_demand / daily_capacity.where(daily_capacity > 0, np.nan)
     load_ratio     = load_ratio.fillna(0.0)
 
@@ -3901,7 +3989,10 @@ def compute_phase4_metrics(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     daily_op_cost  = daily_km * PHASE4_OPERATING_COST_PER_KM
     viability      = daily_revenue / daily_op_cost.where(daily_op_cost > 0, np.nan)
     viability      = viability.fillna(0.0)
-    subsidy_risk   = (viability < 0.5) & (~gdf.get("Social_Flag", pd.Series(False, index=gdf.index)).astype(bool))
+    # v3.3.1 (STEP 7): tightened threshold from 0.5 → 0.6.  <0.6 fare-recovery
+    # is meaningfully unsustainable; 0.6-1.0 is "marginal", >1.0 self-sustaining.
+    subsidy_risk   = (viability < PHASE4_SUBSIDY_RISK_THRESHOLD) & \
+                     (~gdf.get("Social_Flag", pd.Series(False, index=gdf.index)).astype(bool))
 
     # Emissions: SSCL = e-bus, everything else = diesel
     emiss_factor = np.where(
@@ -3947,7 +4038,8 @@ def compute_phase4_metrics(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
              (act["Load_Flag"] == "Red_NoCapacity").sum())
     log.info("  Pax journey time >%d min: %d routes", PHASE4_JOURNEY_TIME_FLAG_MIN,
              int(act["Journey_Time_Flag"].sum()))
-    log.info("  Subsidy risk (viability<0.5, non-social): %d routes",
+    log.info("  Subsidy risk (viability<%.2f, non-social): %d routes",
+             PHASE4_SUBSIDY_RISK_THRESHOLD,
              int(act["Subsidy_Risk_Flag"].sum()))
     log.info("  Tourist corridors active: %d  |  Winter-suspended: %d",
              int((act.get("Tourist_Corridor", False) == True).sum()),
