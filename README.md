@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.2-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.2"/>
+  <img src="https://img.shields.io/badge/Engine-v3.3.1-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.1"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-May_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/In--Scope_Routes-342-6A1B9A?style=for-the-badge" alt="Routes"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.2
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.1
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -307,7 +307,7 @@ The winter vs summer delta reveals which routes lose viability under snow condit
 
 ```
 kashmir-transit-rationalisation/
-├── transit_kashmir_v3.py         # 🔧 Main engine (v3.1, vehicle-category aware)
+├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.1 — Phase-1 audit round 2)
 ├── extract_pois_kashmir.py       # 🗺  POI extractor (Overpass API + OSRM snap)
 ├── crop_raster.py                # ✂️ Population raster cropper (WorldPop → Study Area)
 ├── latlon.py                     # 📍 ArcGIS geocoder for route terminals
@@ -464,6 +464,32 @@ The audit's longer-horizon recommendations are scoped to v4 and have NOT been at
 
 ---
 
+## 🛠 Changes in v3.3 (Phase-1 Audit, round 1)
+
+v3.3 layered planner-review flags and a derived KPI sheet on top of v3.2 without altering the rationalisation maths.
+
+| Area | Change |
+|---|---|
+| **Ingestion** | New flags per route: `Route_Type` (Urban / Peri_Urban / Regional_District), `Tourist_Corridor`, `Seasonal_Operability` (Year-round / Seasonal / Winter-suspended). |
+| **Fleet sizing** | Post-cycle spare ratio of 1.15 applied to `Fleet_Required` (was 1.0). Industry-standard buffer for breakdowns, deadheading, and shift changes. |
+| **Classification** | Step 5b: `SSCL_CDI_Conflict` flag surfaces non-SSCL routes whose CDI exceeds the worst SSCL trunk — planner-review only, no auto-reclassification. |
+| **Phase 4 (new)** | Derived per-route KPIs computed *after* fleet locks (no feedback into CDI): `Daily_Trips`, `Daily_KM`, `Daily_Capacity_Pax`, `Daily_Demand_Pax`, `Load_Ratio`, `Load_Flag`, `Pax_Journey_Time_Min`, `Daily_Revenue_INR`, `Daily_Op_Cost_INR`, `Viability_Ratio`, `Subsidy_Risk_Flag`, `Emissions_GCO2_Daily`, `Equity_Score`. |
+
+## 🛠 Changes in v3.3.1 (Phase-1 Audit, round 2)
+
+Round 2 was a tightening pass on the v3.3 additions — each fix keyed STEP 1 … STEP 11 in code.
+
+| ID | What was wrong | Fix |
+|---|---|---|
+| **STEP 1** | OSRM glitches and long inter-district highway routes occasionally produced Cycle_Time_Min values implying >5 min/km, which then sized absurd fleet on those routes. | Per-km cycle-time sanity cap. Routes exceeding the cap are clipped and logged. |
+| **STEP 6** | `PHASE4_MODE_SHARE` was a single 9% constant for all routes, but inter-district routes face heavier shared-sumo / private-auto competition. | Typology-aware modal capture: Urban 9% (CHALO baseline), Peri_Urban ×0.8, Regional_District ×0.6. |
+| **STEP 7** | `Subsidy_Risk_Flag` threshold of 0.5 hid many marginal routes that would still be politically risky if unsubsidised. | Threshold raised 0.5 → 0.6 (any route with Viability_Ratio < 0.6 and not Social_Flag is flagged). |
+| **STEP 10** | Social Obligation list had 17 entries, including industrial estates that don't actually need the lifeline floor. | Pruned to 11 entries (KP townships + district hospitals + camps). |
+| **STEP 11** | `SSCL_CDI_Conflict` triggered on 78% of active routes — any route with CDI ≥ worst SSCL trunk. Useless as a planner-review filter. | Tightened with a +0.2 CDI delta; `SSCL_CDI_Conflict_Strong` vs `_Weak_SSCL` split for review prioritisation. |
+| **cross_evaluate (this commit)** | Objective mixed engine one-way trips with CHALO bus-trips; SSCL "implied pax" used dedup-residual catchment. Produced 561,389 objective and a misleading 0.21× pax ratio. | Round-trip normalisation; headway-adjusted SSCL fleet parity as the sole objective (current value 1,599). UTF-8 stdout for Windows. |
+
+---
+
 ## 🔑 Key CHALO/SSCL Data Points
 
 | Metric | Value | Source |
@@ -485,5 +511,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.2 — May 2026 (audit response)</i>
+  <i>Engine v3.3.1 — May 2026 (Phase-1 audit round 2)</i>
 </p>
