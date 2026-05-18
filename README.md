@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.3.1-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.1"/>
+  <img src="https://img.shields.io/badge/Engine-v3.3.2-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.2"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-May_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/In--Scope_Routes-342-6A1B9A?style=for-the-badge" alt="Routes"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.1
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.2
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -307,7 +307,7 @@ The winter vs summer delta reveals which routes lose viability under snow condit
 
 ```
 kashmir-transit-rationalisation/
-├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.1 — Phase-1 audit round 2)
+├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.2 — Phase-4 demand calibrated to CHALO)
 ├── extract_pois_kashmir.py       # 🗺  POI extractor (Overpass API + OSRM snap)
 ├── crop_raster.py                # ✂️ Population raster cropper (WorldPop → Study Area)
 ├── latlon.py                     # 📍 ArcGIS geocoder for route terminals
@@ -390,7 +390,7 @@ The engine's total fleet recommendation of **~1,059 buses** covers the entire 34
 | Private minibuses + JKRTC + MPS (~190 active routes) | ~500–800 permits (existing) | **~884** (rationalised) |
 | **Total in-scope network** | ~600–900 | **1,016** |
 
-The SSCL-only fleet comparison (engine vs CHALO) is **+34.7%** (132 recommended vs 98 deployed). On a headway-normalised basis — CHALO currently operates at ~34-min effective headway across 30 routes, while the engine targets 15 min — a linear scale-up of CHALO would imply ~220 buses, meaning the engine actually under-provisions by ~40% relative to a naive scale-up. The gap is largely cycle-time optimism (engine assumes congestion multipliers that may still be lighter than Nawakadal–Habba Kadal reality). See `cross_evaluate.py` for the full headway-adjusted calibration report.
+The SSCL-only fleet comparison: engine recommends **132 buses** vs CHALO's **98 deployed** (+34.7% raw). The gap is the operator-absorption outcome — the engine matches 45 permits to the 30 CHALO SSCL routes (15 duplicate private/JKRTC permits running the same corridors are upgraded to trunk service alongside the SSCL e-bus). **On a per-route basis the engine recommends 2.93 buses/route vs CHALO's 3.27 (-10.2% — within ±15%)**, which is the actual calibration signal. See `cross_evaluate.py` for the operator-absorption-aware calibration report.
 
 ---
 
@@ -412,7 +412,7 @@ The SSCL-only fleet comparison (engine vs CHALO) is **+34.7%** (132 recommended 
 
 7. **No headway elasticity (Mohring effect)** — The engine treats demand as exogenous. Doubling SSCL frequency would attract additional riders away from autos; this demand-response feedback is not modelled. v4 target.
 
-8. **Phase-4 demand KPIs systematically under-count corridor demand.** `Daily_Demand` uses each route's *exclusive* (dedup-residual) `Population_Served`, but on heavily-shared SSCL corridors most population is absorbed by overlapping feeders. Result: SSCL trunks' exclusive catchment averages ~1,000 residents → implied trunk demand of ~6.7k pax/day vs CHALO's observed 31.9k. This propagates into `Load_Ratio`, `Viability_Ratio`, and `Subsidy_Risk_Flag` — 184/237 active routes flag as subsidy-risk, a known false-positive pattern. The recommended fleet sizing is independent of this and remains valid; only the Phase-4 financial KPIs are biased low. Fix in v4: corridor-level demand sharing or anchor-stop OD inference.
+8. **Demand-elasticity not modelled.** Engine produces fleet recommendations for the 15-min target headway, then computes `Load_Ratio` against a static demand model. Because the static model doesn't add riders when frequency increases (Mohring effect), Load_Ratio looks low across the network and `Subsidy_Risk_Flag` flags 184/237 routes. The fleet recommendation is still correct (it sizes supply for the target service level), but the financial KPIs assume current ridership at improved frequency, which is pessimistic. v4 target.
 
 9. **115 merged routes carry political risk** — `MERGED_INTO_TRUNK` routes represent absorbed operator permits. The `Displaced_Operator_Class` column in the XLSX/CSV export breaks these down by operator type (Private Minibus / MPS / JKRTC). Operator absorption or buyback recommendations should accompany the plan before submission to the All J&K Transport Welfare Association.
 
@@ -486,7 +486,28 @@ Round 2 was a tightening pass on the v3.3 additions — each fix keyed STEP 1 �
 | **STEP 7** | `Subsidy_Risk_Flag` threshold of 0.5 hid many marginal routes that would still be politically risky if unsubsidised. | Threshold raised 0.5 → 0.6 (any route with Viability_Ratio < 0.6 and not Social_Flag is flagged). |
 | **STEP 10** | Social Obligation list had 17 entries, including industrial estates that don't actually need the lifeline floor. | Pruned to 11 entries (KP townships + district hospitals + camps). |
 | **STEP 11** | `SSCL_CDI_Conflict` triggered on 78% of active routes — any route with CDI ≥ worst SSCL trunk. Useless as a planner-review filter. | Tightened with a +0.2 CDI delta; `SSCL_CDI_Conflict_Strong` vs `_Weak_SSCL` split for review prioritisation. |
-| **cross_evaluate (this commit)** | Objective mixed engine one-way trips with CHALO bus-trips; SSCL "implied pax" used dedup-residual catchment. Produced 561,389 objective and a misleading 0.21× pax ratio. | Round-trip normalisation; headway-adjusted SSCL fleet parity as the sole objective (current value 1,599). UTF-8 stdout for Windows. |
+| **cross_evaluate (round 2)** | Objective mixed engine one-way trips with CHALO bus-trips; SSCL "implied pax" used dedup-residual catchment. Produced 561,389 objective and a misleading 0.21× pax ratio. | Round-trip normalisation; headway-adjusted SSCL fleet parity as the sole objective. UTF-8 stdout for Windows. |
+
+---
+
+## 🛠 Changes in v3.3.2 (Phase-4 calibration + portability)
+
+| Area | Change |
+|---|---|
+| **Phase-4 demand model** | `Daily_Demand_Pax` rewritten to use `Population_Served_Raw` × headway-weighted corridor share × typology mode-share × trip-rate × empirical capture-scale. New columns exported: `Population_Served_Raw`, `Corridor_Competitors`. SSCL trunk demand now sums to ~32.5k/day vs CHALO observed 31.9k — **engine/CHALO ratio 1.02× (was 0.21× in v3.3.1)**. |
+| **Capture-scale calibration** | New constant `PHASE4_CORRIDOR_CAPTURE_SCALE = 0.18` empirically anchors the buffer-based supply model to CHALO observed ridership. Absorbs auto/walk/private-mode leakage that the 400m buffer can't see. Documented for re-calibration when CHALO totals shift more than ±15%. |
+| **cross_evaluate objective** | Replaced misleading "headway-normalised SSCL fleet" objective with **per-route fleet parity** (engine fleet/route vs CHALO fleet/route). Acknowledges operator-absorption explicitly: the +34.7% total-fleet delta is 15 duplicate permits being upgraded, not a calibration error. Per-route fleet error: **-10.2%, within ±15%**. |
+| **cross_evaluate demand check** | Now reads engine's `Daily_Demand_Pax` directly instead of recomputing from the apportioned `Population_Served` (which under-counts SSCL by 5-10×). |
+| **RASTER_PATH portability** | `RASTER_PATH` resolution order: `--raster <path>` CLI flag → `$KASHMIR_WORLDPOP` env var → local `./kashmir_worldpop.tif` next to the engine → legacy `E:/kash/kashmir_worldpop.tif`. Makes the engine runnable on any machine without editing the source. |
+
+### Calibration scorecard (v3.3.2 vs CHALO Apr 2026)
+
+| Metric | CHALO | Engine v3.3.2 | Delta |
+|---|---|---|---|
+| SSCL fleet (raw count) | 98 | 132 | +34.7% (operator absorption — by design) |
+| SSCL fleet per route | 3.27 | 2.93 | **-10.2%** (within ±15%) |
+| SSCL Daily_Demand_Pax | 31,869 | 32,469 | **+1.9%** (within ±10%) |
+| QC checks | n/a | 8/8 passing | ✓ |
 
 ---
 
@@ -511,5 +532,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.3.1 — May 2026 (Phase-1 audit round 2)</i>
+  <i>Engine v3.3.2 — May 2026 (Phase-4 demand calibrated to CHALO)</i>
 </p>

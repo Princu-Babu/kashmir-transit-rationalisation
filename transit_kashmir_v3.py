@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.1
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.2
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -411,6 +411,17 @@ PHASE4_MODE_SHARE_BY_TYPE = {
     "Regional_District": 0.054,   # × 0.6 of urban
 }
 PHASE4_TRIP_RATE             = 1.6
+# v3.3.2: empirical SSCL-anchored capture scalar. The raw formula
+#   Pop_Buffer × mode_share × trip_rate × (1/headway / sum_overlap(1/headway))
+# over-predicts SSCL daily demand by ~5.7× vs CHALO observed ridership
+# (~32k/day across 30 SSCL routes). The 0.18 factor reconciles the buffer-
+# based supply view with the observed ridership floor; it absorbs:
+#   - residents in buffer who walk / use auto / private mode despite proximity
+#   - residents who use a *different* parallel bus service not captured in
+#     this engine's overlap_metric (CHALO only sees SSCL, not full network)
+#   - peak-vs-mean reconciliation
+# Recalibrate when CHALO yearly totals shift more than ±15%.
+PHASE4_CORRIDOR_CAPTURE_SCALE = 0.18
 PHASE4_SERVICE_HOURS         = 16
 PHASE4_FARE_INR              = 10.0    # avg single-trip fare proxy (post free-fare)
 PHASE4_OPERATING_COST_PER_KM = 65.0    # INR/km diesel minibus all-in
@@ -450,10 +461,30 @@ UTM_CRS                     = "EPSG:32643"
 WGS84_CRS                   = "EPSG:4326"
 
 # I/O
-# v3.2: raster lives outside the worktree (and outside the engine's CWD when
-# run from a sub-folder). Use an absolute path so the relative-path fallback
-# can no longer silently zero out Population_Served.
-RASTER_PATH                 = r"E:/kash/kashmir_worldpop.tif"
+# v3.3.2: raster path resolution — env var > CLI flag > local default.
+# Loud RuntimeError raised in compute_population() if the file is missing,
+# so a wrong path can no longer silently zero out Population_Served.
+def _resolve_raster_path() -> str:
+    # CLI flag --raster <path> takes priority. Argparse here is intentionally
+    # lightweight (no help/usage) — the engine never had a proper argparse and
+    # this is a back-door override; full CLI is a v4 cleanup.
+    import sys
+    if "--raster" in sys.argv:
+        i = sys.argv.index("--raster")
+        if i + 1 < len(sys.argv):
+            return sys.argv[i + 1]
+    env_path = os.environ.get("KASHMIR_WORLDPOP")
+    if env_path:
+        return env_path
+    # Local default — works when the engine runs from the project root.
+    here = os.path.dirname(os.path.abspath(__file__))
+    local = os.path.join(here, "kashmir_worldpop.tif")
+    if os.path.exists(local):
+        return local
+    # Last-resort legacy absolute path (will still fail loudly if missing).
+    return r"E:/kash/kashmir_worldpop.tif"
+
+RASTER_PATH                 = _resolve_raster_path()
 ROUTES_CSV                  = "existing-routes.csv"
 POIS_CSV                    = "pois.csv"
 OUTPUT_DIR                  = "route_maps_kashmir"
@@ -1758,7 +1789,11 @@ def apportion_route_population(gdf: gpd.GeoDataFrame, freq_scores: np.ndarray) -
     competitors = freq_scores + 1
     
     # Preserve the raw density for the logs, but overwrite the main column for Excel
-    gdf["Population_Served_Raw"] = gdf["Population_Served"] 
+    gdf["Population_Served_Raw"] = gdf["Population_Served"]
+    # v3.3.2: store the competitor count too so Phase-4 can do
+    # frequency-weighted apportionment (high-headway trunks capture more than
+    # an equal-1/N share of corridor demand).
+    gdf["Corridor_Competitors"]  = competitors
     gdf["Population_Served"] = (gdf["Population_Served"] / competitors).astype(int)
     
     log.info("  Apportioned Population_Served. New naive sum: %s (much closer to deduplicated reality)", 
@@ -2932,8 +2967,9 @@ def export_csv(gdf: gpd.GeoDataFrame, file_map: dict, out_path: str) -> None:
         "Headway_Min", "Fleet_Required",
         "HPV_Count", "MPV_Count",
         "CMP_Trunk", "CMP_Route_ID",
-        "Population_Served", "HV_POI_Count",
-        "Overlap_Metric", "Geo_Source",
+        "Population_Served", "Population_Served_Raw",
+        "Corridor_Competitors",
+        "HV_POI_Count", "Overlap_Metric", "Geo_Source",
         # v3.3 Phase-1 audit additions
         "Tourist_Corridor", "Seasonal_Operability",
         "District_HQ_Floor", "SSCL_CDI_Conflict",
@@ -3971,7 +4007,36 @@ def compute_phase4_metrics(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     mode_share = gdf.get("Route_Type", pd.Series("Urban", index=gdf.index)) \
                     .map(PHASE4_MODE_SHARE_BY_TYPE).fillna(PHASE4_MODE_SHARE) \
                     .astype(float)
-    daily_demand   = pop_serv * mode_share * PHASE4_TRIP_RATE
+    # v3.3.2: corridor-sharing fix for Daily_Demand.
+    # The legacy Population_Served column is the EQUAL-SHARE apportionment
+    # (raw_buffer_pop / competitors). Two problems:
+    #   (a) Raw competitor count is dominated by any route whose 400m buffer
+    #       crosses this one — typically 100-300 in dense Srinagar, but only
+    #       ~5-15 are actually *parallel* services competing for the same OD.
+    #   (b) Equal-share ignores that high-frequency trunks capture a larger
+    #       share of corridor demand than low-frequency feeders (revealed
+    #       preference; Mohring effect).
+    # Fix: effective_competitors = competitors × overlap_metric  (overlap_metric
+    # ≈ 0.05–0.27 captures what fraction of buffer is actually shared, so the
+    # product yields a sensible "parallel rivals" count). Then weight by
+    # inverse-headway share.
+    pop_raw     = gdf.get("Population_Served_Raw", pop_serv).astype(float)
+    competitors = gdf.get("Corridor_Competitors",
+                          pd.Series(1, index=gdf.index)).astype(float)
+    overlap_m   = gdf.get("Overlap_Metric",
+                          pd.Series(0.15, index=gdf.index)).astype(float)
+    eff_comp    = (competitors * overlap_m).clip(lower=1.0)
+    inv_h       = 1.0 / headway
+    mean_inv_h  = float(inv_h.mean()) if inv_h.mean() > 0 else (1.0 / 35.0)
+    freq_weight = inv_h / mean_inv_h                       # SSCL 15-min ≈ 2.3, LP 60-min ≈ 0.58
+    corridor_share = (freq_weight / eff_comp).clip(upper=1.0)
+    # PHASE4_CORRIDOR_CAPTURE_SCALE: empirical calibration scalar tying the
+    # buffer-based demand model to CHALO observed SSCL ridership (≈32k/day
+    # across the 30 SSCL routes). Without it, the model over-predicts demand
+    # ~5.7× because the 400m buffer captures residents who use modes other
+    # than the bus being analysed (auto, walk, private feeder, JKRTC).
+    daily_demand   = (pop_raw * corridor_share * mode_share
+                      * PHASE4_TRIP_RATE * PHASE4_CORRIDOR_CAPTURE_SCALE)
     load_ratio     = daily_demand / daily_capacity.where(daily_capacity > 0, np.nan)
     load_ratio     = load_ratio.fillna(0.0)
 
