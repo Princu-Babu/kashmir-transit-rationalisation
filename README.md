@@ -378,17 +378,19 @@ All **30 SSCL (Srinagar Smart City Limited) e-bus routes** from CHALO ridership 
 
 **Total deployed fleet**: 98 buses (73 × 9-metre + 25 × 12-metre)
 
+> **Effective headway note** — at 98 buses across 30 routes, CHALO's observed bus-trip count (~855/day → ~28.5 round trips/route) implies an *effective* average headway of ~34 min, not 15. The 15-min target is the engine's recommended service level, not the current operating state.
+
 ### Fleet context: SSCL deployed vs engine-recommended
 
 The engine's total fleet recommendation of **~1,059 buses** covers the entire 342-route rationalised network — not just the SSCL e-bus pilot. These are not comparable numbers:
 
 | Segment | Currently deployed | Engine-recommended |
 |---|---|---|
-| SSCL e-buses (30 routes) | **98** (CHALO data, Apr 2026) | **~140–180** (demand-justified at 15-min headway) |
-| Private minibuses + JKRTC + MPS (212 active routes) | ~500–800 permits (existing) | **~880** (rationalised) |
-| **Total in-scope network** | ~600–900 | **~1,059** |
+| SSCL e-buses (30 routes / 45 matched permits) | **98** (CHALO data, Apr 2026) | **132** (demand-justified at 15-min headway) |
+| Private minibuses + JKRTC + MPS (~190 active routes) | ~500–800 permits (existing) | **~884** (rationalised) |
+| **Total in-scope network** | ~600–900 | **1,016** |
 
-The SSCL-only fleet comparison (engine vs CHALO) is within ±15% — see `cross_evaluate.py` for the full calibration report.
+The SSCL-only fleet comparison (engine vs CHALO) is **+34.7%** (132 recommended vs 98 deployed). On a headway-normalised basis — CHALO currently operates at ~34-min effective headway across 30 routes, while the engine targets 15 min — a linear scale-up of CHALO would imply ~220 buses, meaning the engine actually under-provisions by ~40% relative to a naive scale-up. The gap is largely cycle-time optimism (engine assumes congestion multipliers that may still be lighter than Nawakadal–Habba Kadal reality). See `cross_evaluate.py` for the full headway-adjusted calibration report.
 
 ---
 
@@ -410,7 +412,9 @@ The SSCL-only fleet comparison (engine vs CHALO) is within ±15% — see `cross_
 
 7. **No headway elasticity (Mohring effect)** — The engine treats demand as exogenous. Doubling SSCL frequency would attract additional riders away from autos; this demand-response feedback is not modelled. v4 target.
 
-8. **115 merged routes carry political risk** — `MERGED_INTO_TRUNK` routes represent absorbed operator permits. The `Displaced_Operator_Class` column in the XLSX/CSV export breaks these down by operator type (Private Minibus / MPS / JKRTC). Operator absorption or buyback recommendations should accompany the plan before submission to the All J&K Transport Welfare Association.
+8. **Phase-4 demand KPIs systematically under-count corridor demand.** `Daily_Demand` uses each route's *exclusive* (dedup-residual) `Population_Served`, but on heavily-shared SSCL corridors most population is absorbed by overlapping feeders. Result: SSCL trunks' exclusive catchment averages ~1,000 residents → implied trunk demand of ~6.7k pax/day vs CHALO's observed 31.9k. This propagates into `Load_Ratio`, `Viability_Ratio`, and `Subsidy_Risk_Flag` — 184/237 active routes flag as subsidy-risk, a known false-positive pattern. The recommended fleet sizing is independent of this and remains valid; only the Phase-4 financial KPIs are biased low. Fix in v4: corridor-level demand sharing or anchor-stop OD inference.
+
+9. **115 merged routes carry political risk** — `MERGED_INTO_TRUNK` routes represent absorbed operator permits. The `Displaced_Operator_Class` column in the XLSX/CSV export breaks these down by operator type (Private Minibus / MPS / JKRTC). Operator absorption or buyback recommendations should accompany the plan before submission to the All J&K Transport Welfare Association.
 
 ---
 
