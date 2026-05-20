@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.3.3-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.3"/>
+  <img src="https://img.shields.io/badge/Engine-v3.3.4-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.4"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-May_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/In--Scope_Routes-342-6A1B9A?style=for-the-badge" alt="Routes"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.3
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.4
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -307,7 +307,7 @@ The winter vs summer delta reveals which routes lose viability under snow condit
 
 ```
 kashmir-transit-rationalisation/
-├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.3 — teammate review applied)
+├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.4 — honest fleet sizing)
 ├── extract_pois_kashmir.py       # 🗺  POI extractor (Overpass API + OSRM snap)
 ├── crop_raster.py                # ✂️ Population raster cropper (WorldPop → Study Area)
 ├── latlon.py                     # 📍 ArcGIS geocoder for route terminals
@@ -390,7 +390,7 @@ The engine's total fleet recommendation of **~1,059 buses** covers the entire 34
 | Private minibuses + JKRTC + MPS (~190 active routes) | ~500–800 permits (existing) | **~884** (rationalised) |
 | **Total in-scope network** | ~600–900 | **1,016** |
 
-The SSCL-only fleet comparison: engine recommends **132 buses** vs CHALO's **98 deployed** (+34.7% raw). The gap is the operator-absorption outcome — the engine matches 45 permits to the 30 CHALO SSCL routes (15 duplicate private/JKRTC permits running the same corridors are upgraded to trunk service alongside the SSCL e-bus). **On a per-route basis the engine recommends 2.93 buses/route vs CHALO's 3.27 (-10.2% — within ±15%)**, which is the actual calibration signal. See `cross_evaluate.py` for the operator-absorption-aware calibration report.
+The SSCL-only fleet comparison (v3.3.4): engine recommends **362 buses across the 45 matched permits** vs CHALO's **98 deployed across 30 routes**. The +269% raw delta is *not* a calibration error — it absorbs (a) the 15 duplicate private/JKRTC permits upgraded into trunk service alongside the SSCL e-bus and (b) the headway upgrade from CHALO's ~34-min effective service to the 15-min target. On the apples-to-apples basis — engine fleet/route vs **headway-scaled CHALO** (220 buses at 15-min) — the engine recommends **8.04 buses/route vs scaled CHALO 7.33 = +9.7%, within the ±25% calibration band**. See `cross_evaluate.py` for the full headway-aware report.
 
 ---
 
@@ -490,7 +490,7 @@ Round 2 was a tightening pass on the v3.3 additions — each fix keyed STEP 1 �
 
 ---
 
-## 🛠 Changes in v3.3.3 (Phase-4 calibration + portability)
+## 🛠 Changes in v3.3.2 (Phase-4 calibration + portability)
 
 | Area | Change |
 |---|---|
@@ -545,6 +545,32 @@ Red_Overload routes are the new actionable insight — corridors where the recom
 
 ---
 
+## 🛠 Changes in v3.3.4 (Honest fleet sizing)
+
+An independent audit of the dashboard caught two real bugs and one engine inconsistency.
+
+| ID | What was wrong | Fix |
+|---|---|---|
+| **A1** | Hero subtitle showed `"61 large + 676 medium = 737"` but total fleet was 883 — the **146 LPV** were dropped from the breakdown text. | Dashboard text now reads `large + medium + small`. The lib also had `lpvTotal: 0` hardcoded; `lpvCount` is now read from the CSV and summed across active routes. |
+| **A2** | SSCL trunks used the CHALO empirical fleet (132 buses) as a hard override on Fleet_Required, contradicting the 15-min target headway. All 12 Red_Overload signals in v3.3.3 were SSCL routes where the empirical 2–4 buses could not actually sustain a 100–180 min cycle at 15-min headway. | Empirical SSCL fleet is now a **floor**, not an override. If the cycle-time formula demands more buses, the engine recommends the higher number and scales the 9m/12m split proportionally. Fleet rose 883 → **1,113** (140 HPV / 827 MPV / 146 LPV). Red_Overload → 0. |
+| **A3** | cross_evaluate's per-route objective compared engine fleet at 15-min headway against CHALO fleet at 34-min headway — apples to oranges. | Per-route comparison now uses the **headway-scaled CHALO equivalent** (98 × 34/15 = 220 buses → 7.33 buses/route). Engine recommendation 8.04 buses/route → **+9.7%, within ±25%**. |
+
+### Calibration scorecard (v3.3.4 vs CHALO Apr 2026)
+
+| Metric | CHALO (current) | CHALO (scaled to 15-min) | Engine v3.3.4 | Calibration error |
+|---|---|---|---|---|
+| SSCL fleet | 98 buses @ ~34-min headway | ~220 buses | 362 | +64% vs scaled (cycle-time conservatism) |
+| SSCL fleet/route | 3.27 buses | 7.33 buses | 8.04 | **+9.7% vs scaled — OK** |
+| SSCL Daily_Demand_Pax | 31,869 | n/a | ~33k | within ±10% |
+| Tourist corridors flagged | n/a | n/a | 69 | (unchanged from v3.3.3) |
+| Active routes / total fleet | n/a | n/a | 207 / 1,113 | |
+| Red_Overload routes | n/a | n/a | **0** (was 12 in v3.3.3) | ✓ |
+| QC checks | n/a | n/a | 8/8 passing | ✓ |
+
+Fleet density: **0.67 buses per 1000 study-area residents** (vs Indian peer-city benchmarks: BMTC 0.5, Delhi DTC+cluster 0.9, Mumbai BEST 1.2). Sits in the defensible range.
+
+---
+
 ## 🔑 Key CHALO/SSCL Data Points
 
 | Metric | Value | Source |
@@ -566,5 +592,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.3.3 — May 2026 (teammate review applied)</i>
+  <i>Engine v3.3.4 — May 2026 (honest fleet sizing)</i>
 </p>

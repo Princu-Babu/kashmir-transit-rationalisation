@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.3
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.4
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -2788,20 +2788,34 @@ def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             return pd.Series({"HPV_Count": 0, "MPV_Count": 0,
                               "LPV_Count": 0, "Fleet_Required": 0})
 
-        # v3.2: SSCL table override — only when this dataset row IS the
-        # canonical injected SSCL route (CMP_Trunk + non-empty CMP_Route_ID).
+        # v3.2: SSCL table provides the CURRENT bus_9m / bus_12m split.
+        # v3.3.4 (audit): treat the empirical SSCL fleet as a FLOOR, not a
+        # hard override. If the formula-based Fleet_Required (from Step 8 +
+        # spare ratio) demands MORE buses to actually sustain the 15-min
+        # target headway, recommend the higher number. Vehicle split scales
+        # proportionally on the empirical 9m/12m ratio so the recommendation
+        # stays realistic for the SSCL deployment plan. Eliminates the
+        # contradictory "Red_Overload at empirical fleet" signal that
+        # appeared for 12 SSCL routes in v3.3.3.
         if bool(row.get("CMP_Trunk", False)) and cmp_id:
             sscl_split = _sscl_bus_split(cmp_id)
             if sscl_split is not None:
                 bus_9m, bus_12m = sscl_split
-                if bus_9m + bus_12m > 0:
+                empirical = bus_9m + bus_12m
+                if empirical > 0:
                     sscl_override_n += 1
+                    effective = max(empirical, fleet)
+                    if effective == empirical or empirical == 0:
+                        hpv_eff, mpv_eff = bus_12m, bus_9m
+                    else:
+                        scale = effective / empirical
+                        hpv_eff = int(round(bus_12m * scale))
+                        mpv_eff = effective - hpv_eff
                     return pd.Series({
-                        "HPV_Count":      bus_12m,
-                        "MPV_Count":      bus_9m,
+                        "HPV_Count":      hpv_eff,
+                        "MPV_Count":      mpv_eff,
                         "LPV_Count":      0,
-                        # Override Fleet_Required so QC1 stays satisfied
-                        "Fleet_Required": bus_9m + bus_12m,
+                        "Fleet_Required": effective,
                     })
 
         hpv = mpv = lpv = 0

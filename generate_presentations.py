@@ -251,7 +251,7 @@ def add_title_slide(prs: Presentation, title: str, subtitle: str, tag: str,
     foot = slide.shapes.add_textbox(Inches(5.0), Inches(6.7),
                                     Inches(8.0), Inches(0.5))
     p = foot.text_frame.paragraphs[0]
-    p.text = "Engine v3.3.3  •  May 2026  •  Teammate review: tourist boost + Daily_Capacity fix"
+    p.text = "Engine v3.3.4  •  May 2026  •  Fleet sizing honours 15-min target (SSCL empirical = floor)"
     run = p.runs[0]
     run.font.size = Pt(11)
     run.font.italic = True

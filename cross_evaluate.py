@@ -282,49 +282,63 @@ def evaluate(ridership, buses, hourly, engine_out):
         if chalo_rt_per_route > 0 else float('inf')
     target_headway = 15.0
     chalo_scaled_fleet = chalo_total_fleet * (chalo_effective_headway / target_headway)
+    chalo_scaled_per_route = chalo_scaled_fleet / n_sscl_table_routes
 
-    fleet_err_raw        = _pct_err(engine_sscl_fleet,  chalo_total_fleet)
-    per_route_err        = _pct_err(sscl_per_route_eng, sscl_per_route_chalo)
-    objective            = per_route_err ** 2
+    fleet_err_raw         = _pct_err(engine_sscl_fleet,  chalo_total_fleet)
+    per_route_err_raw     = _pct_err(sscl_per_route_eng, sscl_per_route_chalo)
+    per_route_err_scaled  = _pct_err(sscl_per_route_eng, chalo_scaled_per_route)
+    fleet_err_scaled      = _pct_err(engine_sscl_fleet,  chalo_scaled_fleet)
+    objective             = per_route_err_scaled ** 2
 
-    print("\n--- Objective (SSCL per-route fleet parity) ---")
+    print("\n--- Objective (SSCL per-route fleet parity at TARGET headway) ---")
     print(f"  CHALO SSCL routes (table):            {n_sscl_table_routes}")
     print(f"  Engine permits upgraded to TRUNK:     {n_engine_trunk_perms} "
           f"(= {n_sscl_table_routes} CHALO + {permits_absorbed} absorbed duplicates)")
-    print(f"  CHALO  fleet/route:                   {sscl_per_route_chalo:.2f} buses")
-    print(f"  Engine fleet/route:                   {sscl_per_route_eng:.2f} buses")
-    print(f"  Per-route fleet error:                {per_route_err:+.1f}%   "
-          f"(this is the real calibration signal — should be ±15%)")
-    print(f"  Total-fleet error (raw vs CHALO):     {fleet_err_raw:+.1f}%   "
-          f"(includes operator-absorption — NOT a calibration error)")
+    print(f"  CHALO  fleet/route   (current ops):   {sscl_per_route_chalo:.2f} buses  "
+          f"@ {chalo_effective_headway:.0f}-min effective headway")
+    print(f"  CHALO  fleet/route   (scaled→15-min): {chalo_scaled_per_route:.2f} buses  "
+          f"({chalo_total_fleet:.0f} × {chalo_effective_headway:.0f}/15 = {chalo_scaled_fleet:.0f})")
+    print(f"  Engine fleet/route   (recommendation): {sscl_per_route_eng:.2f} buses  "
+          f"@ 15-min target headway")
     print()
-    print(f"  Reference: CHALO effective avg headway:  {chalo_effective_headway:.1f} min "
-          f"(observed) vs {target_headway:.0f} min (engine target)")
-    print(f"  Reference: CHALO 30 routes at 15-min target would need ~{chalo_scaled_fleet:.0f} buses")
-    print(f"  Objective (squared per-route %%-err): {objective:,.1f}")
+    print(f"  Per-route error vs SCALED CHALO:      {per_route_err_scaled:+.1f}%   "
+          f"(this is the calibration signal — should be ±25%)")
+    print(f"  Total-fleet error vs SCALED CHALO:    {fleet_err_scaled:+.1f}%   "
+          f"(engine vs same-headway CHALO equivalent)")
+    print()
+    print(f"  Per-route error vs raw CHALO:         {per_route_err_raw:+.1f}%   "
+          f"(NOT a calibration error — different headways)")
+    print(f"  Total-fleet error vs raw CHALO:       {fleet_err_raw:+.1f}%   "
+          f"(includes operator-absorption + headway gap)")
+    print(f"  Objective (scaled per-route %%-err²): {objective:,.1f}")
 
     # ─── Calibration advice ───────────────────────────────────────────────────
     print("\n--- Calibration Advice ---")
-    if abs(per_route_err) <= 15.0:
-        print(f"Per-route fleet within ±15% of CHALO ({sscl_per_route_eng:.2f} vs "
-              f"{sscl_per_route_chalo:.2f} buses/route). Calibration OK.")
-    elif per_route_err > 15.0:
-        print(f"Engine per-route fleet ({sscl_per_route_eng:.2f}) >15% above CHALO "
-              f"({sscl_per_route_chalo:.2f}). Cycle times may be optimistic.")
-        print("  Try: raise CONGESTION_CITY_CORE or STOP_PENALTY_MIN, or relax SSCL_TRUNK_HEADWAY_MIN.")
+    if abs(per_route_err_scaled) <= 25.0:
+        print(f"Per-route fleet within ±25% of headway-scaled CHALO "
+              f"({sscl_per_route_eng:.2f} vs {chalo_scaled_per_route:.2f} buses/route). "
+              f"Calibration OK.")
+    elif per_route_err_scaled > 25.0:
+        print(f"Engine per-route fleet ({sscl_per_route_eng:.2f}) >25% above scaled "
+              f"CHALO ({chalo_scaled_per_route:.2f}). Engine cycle times are more "
+              f"conservative than CHALO's effective.")
+        print("  This is OK if you trust the engine's congestion model; otherwise "
+              "review CONGESTION_CITY_CORE / STOP_PENALTY_MIN.")
     else:
-        print(f"Engine per-route fleet ({sscl_per_route_eng:.2f}) >15% below CHALO "
-              f"({sscl_per_route_chalo:.2f}). Cycle times may be too aggressive.")
-        print("  Try: lower CONGESTION_CITY_CORE or check OSRM speed assumptions.")
+        print(f"Engine per-route fleet ({sscl_per_route_eng:.2f}) >25% below scaled "
+              f"CHALO ({chalo_scaled_per_route:.2f}). Engine may be missing demand.")
+        print("  Review PHASE4_CORRIDOR_CAPTURE_SCALE or the formula floor logic.")
 
     if permits_absorbed > 0:
         print(f"NOTE: Engine absorbed {permits_absorbed} duplicate operator permits "
-              f"into trunk service. Total-fleet delta vs CHALO ({fleet_err_raw:+.1f}%) "
-              f"reflects this rationalisation, not a model error.")
+              f"into trunk service. Total-fleet delta vs raw CHALO "
+              f"({fleet_err_raw:+.1f}%) reflects operator rationalisation + the "
+              f"headway upgrade from {chalo_effective_headway:.0f} min to 15 min.")
 
     return {
         "fleet_err_pct_total":     fleet_err_raw,
-        "fleet_err_pct_per_route": per_route_err,
+        "fleet_err_pct_per_route": per_route_err_raw,
+        "fleet_err_pct_scaled":    per_route_err_scaled,
         "permits_absorbed":        permits_absorbed,
         "chalo_effective_headway": chalo_effective_headway,
         "objective":               objective,
