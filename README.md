@@ -517,7 +517,7 @@ Three concrete corrections raised in code review, applied without changing the r
 
 | ID | What was wrong | Fix |
 |---|---|---|
-| **T1** | Only **4 routes** (all "Parimpora–Harwan" variants) were getting `Tourist_Corridor=True`. The keyword check missed everything else because the permit data records urban hub names at the endpoints (SRINAGAR/PARIMPORA/SOURA), not the tourist destinations along the route. | New tourist-zone centroid set (Gulmarg, Pahalgam, Sonamarg, Tangmarg, Doodhpathri, Yusmarg, Aharbal, Kokernag, Verinag, Achabal, Harwan, Shalimar/Nishat/Cheshma/Pari Mahal, Boulevard, Nigeen, Tulip Garden, Mughal Garden Achabal). Routes whose geometry passes within 2 km of any zone are auto-tagged. Similar geometry check for Mughal Road / Sinthan / Sadhna / Z-Morh / Zojila → `Winter_Suspended`. **Tagged routes jumped 4 → 79.** |
+| **T1** | Only **4 routes** (all "Parimpora–Harwan" variants) were getting `Tourist_Corridor=True`. The keyword check missed everything else because the permit data records urban hub names at the endpoints (SRINAGAR/PARIMPORA/SOURA), not the tourist destinations along the route. | New tourist-zone centroid set, split into two classes (post-audit tightening): **DISTANT** (Gulmarg, Pahalgam, Sonamarg, Tangmarg, Doodhpathri, Yusmarg, Aharbal, Kokernag, Verinag, Achabal, Mughal Garden Achabal, Harwan, Tulip Garden) → geometry within 2 km auto-tags; **INNER_CITY** (Shalimar, Nishat, Cheshma, Pari Mahal, Boulevard, Nigeen) → endpoint within 0.6 km only, to stop downtown-traversing commuter routes being over-tagged. Similar geometry check for Mughal Road / Sinthan / Sadhna / Z-Morh / Zojila → `Winter_Suspended`. **Tagged routes 4 → 69 (post-audit, after tightening).** |
 | **T2** | The proposed tourist boost was supposed to apply ONCE — at catchment-population level — but the existing code had no tourist boost at all (CDI ×1.3 had been rejected in audit, and no replacement was wired). Tier-3 POI weight alone was insufficient. | New `TOURIST_POPULATION_MULTIPLIER = 1.3` applied inside `compute_population()` to routes flagged `Tourist_Corridor`. Single multiplier — propagates consistently through Pop_Score → Final_CDI → classification and through Population_Served_Raw → Phase-4 Daily_Demand. No CDI multiplier and no second POI bump on top. |
 | **T3** | `Daily_Capacity = avg_cap × daily_trips` double-counted — `avg_cap` is fleet-summed seat capacity, `daily_trips` is route-total one-way trips. Result: Load_Ratio collapsed to ~0.001 on every route, so all 237 active routes showed `Amber_Under`. | Replaced with the correct cycle-time-based formula: `Daily_Capacity = Fleet × VehicleCapacity × (ServiceMinutes / Cycle_Time_Min)`. Worked example (LALBAZAR, 9 buses × 35 seats, cycle 99 min): 9 × 35 × 9.7 = **3,058 seats/day** (was an inflated multiple of this). |
 
@@ -531,7 +531,7 @@ Three concrete corrections raised in code review, applied without changing the r
 | `Load_Flag = Red_Overload` | 0 | 12 |
 | `Subsidy_Risk_Flag = True` | 184 | 154 |
 
-Red_Overload routes are the new actionable insight — corridors where the recommended fleet at the 15-min target headway is **still short of demand**. Worth a separate planner review.
+Red_Overload routes are the new actionable insight — corridors where the recommended fleet at the 15-min target headway is **still short of demand**. All 12 are SSCL-table-fleet trunks where the empirical fleet (2–4 buses) cannot sustain a 15-min headway on a 100–180 min cycle. **Interpretation:** either SSCL increases fleet on these corridors, or they accept a longer effective headway. Worth a separate planner review.
 
 ### Calibration scorecard (v3.3.3 vs CHALO Apr 2026)
 
@@ -539,8 +539,8 @@ Red_Overload routes are the new actionable insight — corridors where the recom
 |---|---|---|---|
 | SSCL fleet (raw count) | 98 | 132 | +34.7% (operator absorption — by design) |
 | SSCL fleet per route | 3.27 | 2.93 | **-10.2%** (within ±15%) |
-| SSCL Daily_Demand_Pax | 31,869 | 32,965 | **+3.4%** (within ±10%) |
-| Tourist corridors flagged | n/a | 79 (was 4 in v3.3.2) | ✓ |
+| SSCL Daily_Demand_Pax | 31,869 | 32,686 | **+2.6%** (within ±10%) |
+| Tourist corridors flagged | n/a | 69 (was 4 in v3.3.2) | ✓ |
 | QC checks | n/a | 8/8 passing | ✓ |
 
 ---

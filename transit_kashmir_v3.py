@@ -393,10 +393,24 @@ SEASONAL_SUSPENDED_KEYWORDS = (
 # corridors because the registered permit data (existing-routes.csv) doesn't
 # record tourist endpoints — Origin / Destination are urban hub names
 # (SRINAGAR / PARIMPORA / SOURA) even on routes that physically traverse
-# tourist zones. We additionally tag any route whose GEOMETRY passes within
-# TOURIST_ZONE_BUFFER_KM of one of these centroids.
-TOURIST_ZONE_BUFFER_KM = 2.0
-TOURIST_ZONES_LATLON: Dict[str, Tuple[float, float]] = {
+# tourist zones.
+#
+# v3.3.3 audit fix: split centroids into two classes:
+#   DISTANT  — far-flung tourist destinations whose seasonal visitor surge is
+#              invisible to the WorldPop residential raster. We tag any route
+#              whose GEOMETRY passes within DISTANT buffer. These get the
+#              1.3x catchment boost.
+#   INNER_CITY — Mughal gardens, Boulevard, Nigeen, Cheshma, Pari Mahal —
+#              clustered around 34.13°N / 74.87°E inside Srinagar. ANY
+#              cross-town route traverses near these centroids, so a generous
+#              geometry buffer over-tags every urban commuter line. For
+#              these zones we only tag if the route's TERMINAL endpoint is
+#              within a tight buffer (the route actually serves the gate).
+#              Tagged routes still get the 1.3x boost — they really do carry
+#              extra visitor footfall.
+TOURIST_ZONE_BUFFER_KM = 2.0          # for distant destinations
+TOURIST_INNER_BUFFER_KM = 0.6          # for inner-city zones (endpoint-only)
+TOURIST_ZONES_DISTANT: Dict[str, Tuple[float, float]] = {
     "Gulmarg":       (34.0481, 74.3805),
     "Tangmarg":      (34.0427, 74.4413),
     "Pahalgam":      (34.0151, 75.3322),
@@ -407,15 +421,17 @@ TOURIST_ZONES_LATLON: Dict[str, Tuple[float, float]] = {
     "Kokernag":      (33.6235, 75.3050),
     "Verinag":       (33.5400, 75.2500),
     "Achabal":       (33.6800, 75.2300),
+    "Mughal Garden Achabal": (33.6803, 75.2289),
     "Harwan":        (34.1568, 74.8931),
+    "Tulip Garden":  (34.0884, 74.8836),
+}
+TOURIST_ZONES_INNER_CITY: Dict[str, Tuple[float, float]] = {
     "Shalimar Bagh": (34.1450, 74.8761),
     "Nishat Bagh":   (34.1233, 74.8722),
     "Cheshma Shahi": (34.1158, 74.8854),
     "Pari Mahal":    (34.1131, 74.8825),
     "Dal Boulevard": (34.0833, 74.8500),
     "Nigeen Lake":   (34.1264, 74.8443),
-    "Tulip Garden":  (34.0884, 74.8836),
-    "Mughal Garden Achabal": (33.6803, 75.2289),
 }
 # Seasonal-suspended zone centroids (closed by snow ~Nov–Apr).
 SEASONAL_SUSPENDED_ZONES_LATLON: Dict[str, Tuple[float, float]] = {
@@ -1224,8 +1240,22 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
         tourist_corridor = any(k in name_lc for k in TOURIST_CORRIDOR_KEYWORDS)
         suspended        = any(k in name_lc for k in SEASONAL_SUSPENDED_KEYWORDS)
         if geom is not None and not tourist_corridor:
-            for _, (tlat, tlon) in TOURIST_ZONES_LATLON.items():
+            # Distant tourist destinations: any geometry crossing the buffer.
+            for _, (tlat, tlon) in TOURIST_ZONES_DISTANT.items():
                 if _line_near_point_km(geom, tlat, tlon) <= TOURIST_ZONE_BUFFER_KM:
+                    tourist_corridor = True
+                    break
+        if geom is not None and not tourist_corridor:
+            # Inner-city tourist gates: ENDPOINT must be near. Stops a route
+            # from being tagged just because it passes through downtown.
+            start_lat = float(row["Start_Lat"])
+            start_lon = float(row["Start_Lon"])
+            end_lat   = float(row["End_Lat"])
+            end_lon   = float(row["End_Lon"])
+            for _, (tlat, tlon) in TOURIST_ZONES_INNER_CITY.items():
+                d_start = _haversine_km(start_lat, start_lon, tlat, tlon)
+                d_end   = _haversine_km(end_lat,   end_lon,   tlat, tlon)
+                if min(d_start, d_end) <= TOURIST_INNER_BUFFER_KM:
                     tourist_corridor = True
                     break
         if geom is not None and not suspended:
