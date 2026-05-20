@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.3.4-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.4"/>
+  <img src="https://img.shields.io/badge/Engine-v3.3.5-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.5"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-May_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/In--Scope_Routes-342-6A1B9A?style=for-the-badge" alt="Routes"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.4
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.5
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -307,7 +307,7 @@ The winter vs summer delta reveals which routes lose viability under snow condit
 
 ```
 kashmir-transit-rationalisation/
-├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.4 — honest fleet sizing)
+├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.5 — honest fleet sizing)
 ├── extract_pois_kashmir.py       # 🗺  POI extractor (Overpass API + OSRM snap)
 ├── crop_raster.py                # ✂️ Population raster cropper (WorldPop → Study Area)
 ├── latlon.py                     # 📍 ArcGIS geocoder for route terminals
@@ -390,7 +390,7 @@ The engine's total fleet recommendation of **~1,059 buses** covers the entire 34
 | Private minibuses + JKRTC + MPS (~190 active routes) | ~500–800 permits (existing) | **~884** (rationalised) |
 | **Total in-scope network** | ~600–900 | **1,016** |
 
-The SSCL-only fleet comparison (v3.3.4): engine recommends **362 buses across the 45 matched permits** vs CHALO's **98 deployed across 30 routes**. The +269% raw delta is *not* a calibration error — it absorbs (a) the 15 duplicate private/JKRTC permits upgraded into trunk service alongside the SSCL e-bus and (b) the headway upgrade from CHALO's ~34-min effective service to the 15-min target. On the apples-to-apples basis — engine fleet/route vs **headway-scaled CHALO** (220 buses at 15-min) — the engine recommends **8.04 buses/route vs scaled CHALO 7.33 = +9.7%, within the ±25% calibration band**. See `cross_evaluate.py` for the full headway-aware report.
+The SSCL-only fleet comparison (v3.3.5, conservative phase-1 headways): engine recommends **362 buses across the 45 matched permits** at the **SSCL design target of 15-min headway** (unchanged from v3.3.4). Non-SSCL trunks are now sized at a more realistic 20-min target headway. The +269% raw fleet delta vs CHALO's 98 buses is *not* a calibration error — it absorbs (a) the 15 duplicate private/JKRTC permits upgraded into trunk service alongside the SSCL e-bus and (b) the headway upgrade from CHALO's ~34-min effective service to the 15-min target. On the apples-to-apples basis — engine fleet/route vs **headway-scaled CHALO** (220 buses at 15-min) — the engine recommends **8.04 buses/route vs scaled CHALO 7.33 = +9.7%, within the ±25% calibration band**. See `cross_evaluate.py`.
 
 ---
 
@@ -571,6 +571,36 @@ Fleet density: **0.67 buses per 1000 study-area residents** (vs Indian peer-city
 
 ---
 
+## 🛠 Changes in v3.3.5 (Conservative phase-1 headways)
+
+After v3.3.4 the fleet recommendation came in at 1,113 buses, an **+85% expansion over Srinagar's current operations** (~600 buses). Reality check raised a fair concern: is 15-min headway on **130 trunk routes** politically and operationally achievable in Year-1? Indian peer cities (Chandigarh CTU at the closest size) hit 15-min on only a handful of routes; most run at 20-30 min.
+
+v3.3.5 rebalances to a **phase-1 plan** that's still ambitious but defensibly achievable:
+
+| Band | v3.3.4 headway | v3.3.5 headway | Rationale |
+|---|---|---|---|
+| **SSCL trunks** (45 permits / 30 CHALO routes) | 15 min | **15 min (unchanged)** | Matches SSCL's published design target — this is their commitment, not the engine's |
+| **Non-SSCL trunks** (HP band, ~85 routes) | 15 min | **20 min** | Matches BMTC Volvo trunks (10–15) / Chandigarh CTU (15–20). Realistic phase-1 service |
+| **MP feeders** (~54 routes) | 30 min | **35 min** | Closer to peer feeder norms (Pune PMPML, BMTC ordinary) |
+| **LP lifelines** (~23 routes) | 60 min | 60 min (unchanged) | Already at floor for inter-district / lifeline service |
+
+### Outcome (vs v3.3.4)
+
+| Metric | v3.3.4 | v3.3.5 | Δ |
+|---|---|---|---|
+| Total fleet | 1,113 | **988** | **−125 (−11%)** |
+| HPV / MPV / LPV | 140 / 827 / 146 | 138 / 730 / 120 | |
+| Buses per 1000 residents | 0.67 | **0.60** | Between BMTC (0.51) and Chandigarh (0.65) — peer-city band |
+| Active routes / structure | 207 / 50T 157F | 207 / 50T 157F | unchanged |
+| Tourist corridors | 69 | 69 | unchanged |
+| QC checks | 8/8 | 8/8 | ✓ |
+| Red_Overload | 0 | 0 | ✓ |
+| Expansion over current (~600 buses) | +85% | **+65%** | More politically palatable |
+
+This is the **recommended phase-1 plan**. A future "phase-2 aspirational" run can revert to v3.3.4's 15-min HP / 30-min MP for the long-term ambition.
+
+---
+
 ## 🔑 Key CHALO/SSCL Data Points
 
 | Metric | Value | Source |
@@ -592,5 +622,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.3.4 — May 2026 (honest fleet sizing)</i>
+  <i>Engine v3.3.5 — May 2026 (honest fleet sizing)</i>
 </p>

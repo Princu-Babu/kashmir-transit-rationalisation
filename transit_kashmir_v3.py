@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.4
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.5
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -355,10 +355,15 @@ CDI_POI_WEIGHT              = 0.50
 # the flag actually discriminates. Target: ~30-40% of network.
 SOCIAL_FLAG_BUFFER_M        = 250
 
-# Step 6: Headway per Priority Band for Urban/Peri-Urban routes
-HEADWAY_HP_MIN              = 15
-HEADWAY_MP_MIN              = 30
-HEADWAY_LP_MIN              = 60
+# Step 6: Headway per Priority Band for Urban/Peri-Urban routes.
+# v3.3.5 (reality check): non-SSCL trunks moved from 15→20 min and MP from
+# 30→35 min, to land between BMTC Bengaluru (10–15 min trunks) and Mysuru
+# KSRTC (20–30 min). SSCL_TRUNK_HEADWAY_MIN stays at 15 because that is
+# SSCL's published design target for the e-bus backbone — the floor logic
+# in step9 ensures the formula can still raise SSCL fleet when needed.
+HEADWAY_HP_MIN              = 20   # was 15
+HEADWAY_MP_MIN              = 35   # was 30
+HEADWAY_LP_MIN              = 60   # unchanged
 
 # ─── v3.3 Phase-1 audit response: post-cycle spare ratio ────────────────────
 # The fleet computed by ceil(Cycle_Time / Headway) is the *operating* fleet.
