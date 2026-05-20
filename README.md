@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.3.2-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.2"/>
+  <img src="https://img.shields.io/badge/Engine-v3.3.3-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.3"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-May_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/In--Scope_Routes-342-6A1B9A?style=for-the-badge" alt="Routes"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.2
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.3
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -307,7 +307,7 @@ The winter vs summer delta reveals which routes lose viability under snow condit
 
 ```
 kashmir-transit-rationalisation/
-├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.2 — Phase-4 demand calibrated to CHALO)
+├── transit_kashmir_v3.py         # 🔧 Main engine (v3.3.3 — teammate review applied)
 ├── extract_pois_kashmir.py       # 🗺  POI extractor (Overpass API + OSRM snap)
 ├── crop_raster.py                # ✂️ Population raster cropper (WorldPop → Study Area)
 ├── latlon.py                     # 📍 ArcGIS geocoder for route terminals
@@ -490,7 +490,7 @@ Round 2 was a tightening pass on the v3.3 additions — each fix keyed STEP 1 �
 
 ---
 
-## 🛠 Changes in v3.3.2 (Phase-4 calibration + portability)
+## 🛠 Changes in v3.3.3 (Phase-4 calibration + portability)
 
 | Area | Change |
 |---|---|
@@ -507,6 +507,40 @@ Round 2 was a tightening pass on the v3.3 additions — each fix keyed STEP 1 �
 | SSCL fleet (raw count) | 98 | 132 | +34.7% (operator absorption — by design) |
 | SSCL fleet per route | 3.27 | 2.93 | **-10.2%** (within ±15%) |
 | SSCL Daily_Demand_Pax | 31,869 | 32,469 | **+1.9%** (within ±10%) |
+| QC checks | n/a | 8/8 passing | ✓ |
+
+---
+
+## 🛠 Changes in v3.3.3 (Teammate review)
+
+Three concrete corrections raised in code review, applied without changing the rationalisation maths.
+
+| ID | What was wrong | Fix |
+|---|---|---|
+| **T1** | Only **4 routes** (all "Parimpora–Harwan" variants) were getting `Tourist_Corridor=True`. The keyword check missed everything else because the permit data records urban hub names at the endpoints (SRINAGAR/PARIMPORA/SOURA), not the tourist destinations along the route. | New tourist-zone centroid set (Gulmarg, Pahalgam, Sonamarg, Tangmarg, Doodhpathri, Yusmarg, Aharbal, Kokernag, Verinag, Achabal, Harwan, Shalimar/Nishat/Cheshma/Pari Mahal, Boulevard, Nigeen, Tulip Garden, Mughal Garden Achabal). Routes whose geometry passes within 2 km of any zone are auto-tagged. Similar geometry check for Mughal Road / Sinthan / Sadhna / Z-Morh / Zojila → `Winter_Suspended`. **Tagged routes jumped 4 → 79.** |
+| **T2** | The proposed tourist boost was supposed to apply ONCE — at catchment-population level — but the existing code had no tourist boost at all (CDI ×1.3 had been rejected in audit, and no replacement was wired). Tier-3 POI weight alone was insufficient. | New `TOURIST_POPULATION_MULTIPLIER = 1.3` applied inside `compute_population()` to routes flagged `Tourist_Corridor`. Single multiplier — propagates consistently through Pop_Score → Final_CDI → classification and through Population_Served_Raw → Phase-4 Daily_Demand. No CDI multiplier and no second POI bump on top. |
+| **T3** | `Daily_Capacity = avg_cap × daily_trips` double-counted — `avg_cap` is fleet-summed seat capacity, `daily_trips` is route-total one-way trips. Result: Load_Ratio collapsed to ~0.001 on every route, so all 237 active routes showed `Amber_Under`. | Replaced with the correct cycle-time-based formula: `Daily_Capacity = Fleet × VehicleCapacity × (ServiceMinutes / Cycle_Time_Min)`. Worked example (LALBAZAR, 9 buses × 35 seats, cycle 99 min): 9 × 35 × 9.7 = **3,058 seats/day** (was an inflated multiple of this). |
+
+### Phase-4 KPI distribution before / after v3.3.3
+
+| Phase-4 outcome | v3.3.2 (broken capacity) | v3.3.3 |
+|---|---|---|
+| `Load_Flag = Green` | 0 | 7 |
+| `Load_Flag = Amber_Under` | 237 | 187 |
+| `Load_Flag = Amber_Tight` | 0 | 1 |
+| `Load_Flag = Red_Overload` | 0 | 12 |
+| `Subsidy_Risk_Flag = True` | 184 | 154 |
+
+Red_Overload routes are the new actionable insight — corridors where the recommended fleet at the 15-min target headway is **still short of demand**. Worth a separate planner review.
+
+### Calibration scorecard (v3.3.3 vs CHALO Apr 2026)
+
+| Metric | CHALO | Engine v3.3.3 | Delta |
+|---|---|---|---|
+| SSCL fleet (raw count) | 98 | 132 | +34.7% (operator absorption — by design) |
+| SSCL fleet per route | 3.27 | 2.93 | **-10.2%** (within ±15%) |
+| SSCL Daily_Demand_Pax | 31,869 | 32,965 | **+3.4%** (within ±10%) |
+| Tourist corridors flagged | n/a | 79 (was 4 in v3.3.2) | ✓ |
 | QC checks | n/a | 8/8 passing | ✓ |
 
 ---
@@ -532,5 +566,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.3.2 — May 2026 (Phase-4 demand calibrated to CHALO)</i>
+  <i>Engine v3.3.3 — May 2026 (teammate review applied)</i>
 </p>

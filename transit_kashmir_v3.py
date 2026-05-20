@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.2
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.3
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -388,6 +388,52 @@ SEASONAL_SUSPENDED_KEYWORDS = (
     "mughal road", "sinthan", "sadhna", "z-morh", "zmorh", "kishtwar",
     "doodhpathri", "yusmarg", "aharbal",
 )
+
+# v3.3.3 (teammate review): the keyword check alone misses 99% of tourist
+# corridors because the registered permit data (existing-routes.csv) doesn't
+# record tourist endpoints — Origin / Destination are urban hub names
+# (SRINAGAR / PARIMPORA / SOURA) even on routes that physically traverse
+# tourist zones. We additionally tag any route whose GEOMETRY passes within
+# TOURIST_ZONE_BUFFER_KM of one of these centroids.
+TOURIST_ZONE_BUFFER_KM = 2.0
+TOURIST_ZONES_LATLON: Dict[str, Tuple[float, float]] = {
+    "Gulmarg":       (34.0481, 74.3805),
+    "Tangmarg":      (34.0427, 74.4413),
+    "Pahalgam":      (34.0151, 75.3322),
+    "Sonamarg":      (34.3050, 75.2935),
+    "Doodhpathri":   (33.8628, 74.5722),
+    "Yusmarg":       (33.8333, 74.6667),
+    "Aharbal":       (33.6500, 74.7600),
+    "Kokernag":      (33.6235, 75.3050),
+    "Verinag":       (33.5400, 75.2500),
+    "Achabal":       (33.6800, 75.2300),
+    "Harwan":        (34.1568, 74.8931),
+    "Shalimar Bagh": (34.1450, 74.8761),
+    "Nishat Bagh":   (34.1233, 74.8722),
+    "Cheshma Shahi": (34.1158, 74.8854),
+    "Pari Mahal":    (34.1131, 74.8825),
+    "Dal Boulevard": (34.0833, 74.8500),
+    "Nigeen Lake":   (34.1264, 74.8443),
+    "Tulip Garden":  (34.0884, 74.8836),
+    "Mughal Garden Achabal": (33.6803, 75.2289),
+}
+# Seasonal-suspended zone centroids (closed by snow ~Nov–Apr).
+SEASONAL_SUSPENDED_ZONES_LATLON: Dict[str, Tuple[float, float]] = {
+    "Mughal Road (Pir Panjal)": (33.5800, 74.5300),
+    "Sinthan Top":              (33.6300, 75.5500),
+    "Sadhna Pass":              (34.3500, 73.9200),
+    "Z-Morh":                   (34.2700, 75.3000),
+    "Zojila":                   (34.2833, 75.4744),
+}
+SEASONAL_SUSPENDED_BUFFER_KM = 3.0
+
+# v3.3.3 (teammate review): tourist corridor population multiplier.
+# Applied ONCE — at catchment level — so it propagates to Pop_Score (CDI) and
+# Phase-4 Daily_Demand consistently. The earlier proposal to also multiply
+# CDI ×1.3 was rejected (triple-counting tourism). With this single
+# multiplier in place, Tier-3 POI weights stay as-is, no CDI multiplier is
+# applied, and the 1.3× shows up everywhere it should.
+TOURIST_POPULATION_MULTIPLIER = 1.3
 
 # ─── v3.3: Vehicle capacities + emissions factors (Phase 4 derived only) ────
 # Used ONLY for the new Load_Ratio / Emissions_Proxy outputs. Do NOT feed
@@ -1049,6 +1095,35 @@ def _haversine_km(lat1, lon1, lat2, lon2) -> float:
     return 2 * R * math.asin(math.sqrt(a))
 
 
+# v3.3.3 helper: shortest distance (km) from a (lat, lon) point to a LineString
+# stored in WGS84. Used by tourist-corridor and seasonal-suspended tagging.
+# Uses an equirectangular approximation around the point's latitude — accurate
+# to ~0.3% at Srinagar's latitude over the relevant 5-50 km buffer scale.
+def _line_near_point_km(line, plat: float, plon: float) -> float:
+    if line is None or line.is_empty:
+        return float("inf")
+    cos_lat = math.cos(math.radians(plat))
+    # Project line coordinates (lon, lat) to a local metric where 1 unit ≈ 1 km.
+    coords = [((lon - plon) * 111.32 * cos_lat,
+               (lat - plat) * 110.57)
+              for (lon, lat) in line.coords]
+    # Shortest distance from origin (0,0) to the polyline.
+    best = float("inf")
+    for i in range(len(coords) - 1):
+        ax, ay = coords[i]
+        bx, by = coords[i + 1]
+        dx, dy = bx - ax, by - ay
+        if dx == 0 and dy == 0:
+            d = math.hypot(ax, ay)
+        else:
+            t = max(0.0, min(1.0, -(ax * dx + ay * dy) / (dx * dx + dy * dy)))
+            px, py = ax + t * dx, ay + t * dy
+            d = math.hypot(px, py)
+        if d < best:
+            best = d
+    return best
+
+
 def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
     """
     Merge OSRM routing results with the route dataframe.
@@ -1138,12 +1213,26 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
         else:
             route_type = "Regional_District"
 
-        # v3.3: Tourist Corridor + Seasonal Operability tags (Phase-1 audit).
-        # Pure ingestion-side flags — no CDI/headway/fleet impact. Used by
-        # the Phase-4 seasonal map layer and surfaced for planner review.
+        # v3.3.3 (teammate review): Tourist Corridor tagging extended.
+        # v3.3's name-only check missed 99% of corridors because the permit
+        # data records urban hub names at the endpoints, not the tourist
+        # destinations along the way. We now ALSO check whether the route's
+        # geometry passes within TOURIST_ZONE_BUFFER_KM of any tourist
+        # centroid (Gulmarg / Pahalgam / Sonamarg / Mughal Road / Boulevard /
+        # Mughal gardens etc.).
         name_lc = str(row.get("Route_Name", "")).lower()
         tourist_corridor = any(k in name_lc for k in TOURIST_CORRIDOR_KEYWORDS)
         suspended        = any(k in name_lc for k in SEASONAL_SUSPENDED_KEYWORDS)
+        if geom is not None and not tourist_corridor:
+            for _, (tlat, tlon) in TOURIST_ZONES_LATLON.items():
+                if _line_near_point_km(geom, tlat, tlon) <= TOURIST_ZONE_BUFFER_KM:
+                    tourist_corridor = True
+                    break
+        if geom is not None and not suspended:
+            for _, (zlat, zlon) in SEASONAL_SUSPENDED_ZONES_LATLON.items():
+                if _line_near_point_km(geom, zlat, zlon) <= SEASONAL_SUSPENDED_BUFFER_KM:
+                    suspended = True
+                    break
         if suspended:
             seasonal_op = "Winter_Suspended"
         elif tourist_corridor:
@@ -1428,6 +1517,20 @@ def compute_population(gdf: gpd.GeoDataFrame, raster_path: str) -> gpd.GeoDataFr
         for s in stats
     ]
     gdf["Population_Served"] = raw_counts
+
+    # v3.3.3 (teammate review): tourist corridor catchment boost.
+    # Tourist corridors carry seasonal visitor footfall that WorldPop's
+    # residential-only raster cannot see. Apply a 1.3x multiplier at the
+    # catchment level (single source of tourist amplification — no separate
+    # CDI multiplier, no separate POI bump beyond Tier-3 weights).
+    if "Tourist_Corridor" in gdf.columns:
+        tourist_mask = gdf["Tourist_Corridor"].fillna(False).astype(bool)
+        if tourist_mask.any():
+            boosted = (gdf["Population_Served"] * TOURIST_POPULATION_MULTIPLIER).astype(int)
+            gdf.loc[tourist_mask, "Population_Served"] = boosted[tourist_mask]
+            log.info("  Tourist boost applied: %.2fx on %d tourist-corridor routes "
+                     "(catchment-level, single multiplier).",
+                     TOURIST_POPULATION_MULTIPLIER, int(tourist_mask.sum()))
 
     # Convert to % of CMP 2024 total — capped at 100% to guard against raster overcount
     gdf["Population_Served_Pct"] = (
@@ -3988,17 +4091,27 @@ def compute_phase4_metrics(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     lpv       = gdf.get("LPV_Count", pd.Series(0, index=gdf.index)).astype(float)
 
     # Service-day operational KPIs
-    daily_trips = (PHASE4_SERVICE_HOURS * 60.0) / headway * 2.0
+    daily_trips = (PHASE4_SERVICE_HOURS * 60.0) / headway * 2.0  # one-way trips offered
     daily_km    = daily_trips * route_km
+
     avg_cap     = (hpv * VEHICLE_CAPACITY_HPV
                    + mpv * VEHICLE_CAPACITY_MPV
                    + lpv * VEHICLE_CAPACITY_LPV)
     # avg_cap is the SUM of seat-capacity across the route's fleet.
     # If HPV/MPV/LPV not yet split, fall back to fleet × MPV capacity.
     avg_cap     = avg_cap.where(avg_cap > 0, fleet * VEHICLE_CAPACITY_MPV)
-    # Per-bus capacity = avg_cap / fleet; total daily seat-capacity served
-    # on this route = per-bus capacity × trips × fleet = avg_cap × trips.
-    daily_capacity = avg_cap * daily_trips
+
+    # v3.3.3 (teammate review): Daily_Capacity must use CYCLE-TIME based
+    # round-trips per BUS, not route-total one-way trips. The old formula
+    # `avg_cap × daily_trips` double-counted (avg_cap is fleet-summed,
+    # daily_trips is route-totalled).
+    # Correct: Daily_Capacity = Fleet × VehicleCapacity × TripsPerBusPerDay
+    #          TripsPerBusPerDay = ServiceMinutes / Cycle_Time_Min
+    # For LALBAZAR (9 buses × 35 seats, cycle 99 min):
+    #   9 × 35 × (960/99) = 9 × 35 × 9.7 = 3,058 seats/day (correct denominator).
+    cycle_safe     = cycle.clip(lower=1.0)
+    trips_per_bus  = (PHASE4_SERVICE_HOURS * 60.0) / cycle_safe
+    daily_capacity = avg_cap * trips_per_bus
 
     # v3.3.1 (STEP 6): typology-aware modal capture rate. Urban core uses
     # the CHALO-derived 9% baseline; peri-urban × 0.8; inter-district × 0.6
