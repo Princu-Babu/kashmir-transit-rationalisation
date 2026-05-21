@@ -88,7 +88,11 @@ def _load_prior_codes() -> Dict[str, str]:
         for r in data if isinstance(data, list) else []:
             rid  = str(r.get("Route_ID") or "").strip()
             code = str(r.get("Route_Code") or "").strip()
-            if rid and code and not code.startswith("TMP-"):
+            # Skip blank, TMP- placeholders, and UNMATCHED entries from the
+            # generate_route_codes.py output — those should re-mint as TMP- this run.
+            if (rid and code
+                    and not code.startswith("TMP-")
+                    and code.upper() != "UNMATCHED"):
                 out[rid] = code
     except Exception as exc:
         print(f"  ! could not load prior route codes ({exc})", file=sys.stderr)
@@ -103,7 +107,9 @@ def _add_codes(rows: List[Dict[str, str]],
         seq += 1
         existing = (r.get("Route_Code") or "").strip()
         rid      = (r.get("Route_ID") or "").strip()
-        if existing and not existing.startswith("TMP-"):
+        # A literal "UNMATCHED" from generate_route_codes.py is not a real code.
+        is_unmatched = existing.upper() == "UNMATCHED"
+        if existing and not existing.startswith("TMP-") and not is_unmatched:
             code = existing
         elif rid in prior:
             code = prior[rid]; preserved += 1
@@ -131,7 +137,7 @@ def _build_jsons():
             seq += 1
             rid = (r.get("Route_ID") or "").strip()
             existing = (r.get("Route_Code") or "").strip()
-            if existing and not existing.startswith("TMP-"):
+            if existing and not existing.startswith("TMP-") and existing.upper() != "UNMATCHED":
                 code = existing
             elif rid in code_by_id:
                 code = code_by_id[rid]
