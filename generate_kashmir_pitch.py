@@ -509,62 +509,73 @@ def build(prs, stats):
                  size=8, color=GREY, italic=True, anchor=MSO_ANCHOR.TOP)
     footer(s, "Slide 7  ·  Headway plan")
 
-    # ── SLIDE 8 — Phase-4 Load_Flag distribution + calibration ──────────
+    # ── SLIDE 8 — How do we know this plan is right? (plain language) ───
     s = slide_blank(prs)
-    slide_header(s, "Quality signals — Phase-4 diagnostics & CHALO calibration",
+    slide_header(s, "How do we know this plan is right?",
+                 sub="Three quick checks an IAS reviewer can defend in the room",
                  color=GREEN)
-    # left: Load_Flag bar chart (visual proportions)
-    add_text(s, "Load_Flag across 207 active routes", 0.6, 1.5, 6.5, 0.4,
-             size=14, bold=True, color=DARK)
-    flags = [
-        ("Green",        stats['green'], GREEN),
-        ("Amber_Under",  stats['amber'], GOLD),
-        ("Amber_Tight",  stats['tight'], SAFFRON),
-        ("Red_Overload", stats['red'],   DARK),
+
+    # Three big "question cards" — each with its own colour, a question
+    # heading, the answer in plain language, and the supporting number.
+    questions = [
+        # x_start, title-question, answer phrase, big number, sub-line, colour
+        (0.5,
+         "Q1.  Are we matching real ridership?",
+         "Yes — the plan's per-route fleet for the SSCL backbone is within "
+         "10% of what CHALO would need at the same 15-min headway.",
+         "+9.7%",
+         "Engine 8.04  vs  scaled CHALO 7.33 buses/route",
+         GREEN),
+        (4.65,
+         "Q2.  Is anyone going to be left standing?",
+         "No — only 1 active route runs at or above its seat capacity at "
+         "the recommended headway. Every other route has spare seats.",
+         "1 of 207",
+         "Amber_Tight  ·  zero Red_Overload",
+         GOLD),
+        (8.8,
+         "Q3.  Is the fleet count defensible?",
+         "Yes — at 0.60 buses per 1,000 residents Srinagar sits between "
+         "BMTC Bengaluru (0.51) and Chandigarh CTU (0.65). Peer-city band.",
+         "0.60",
+         "buses per 1,000 residents",
+         NAVY),
     ]
-    total_act = sum(c for _, c, _ in flags)
-    by_lf = 2.0
-    bar_max_w = 5.2
-    for i, (lbl, count, col) in enumerate(flags):
-        y = by_lf + i * 0.75
-        # label
-        add_text(s, lbl, 0.6, y + 0.1, 1.7, 0.4,
-                 size=12, bold=True, color=DARK)
-        # bar
-        w = bar_max_w * count / total_act if total_act and count else 0.05
-        add_rect(s, 2.4, y, max(w, 0.05), 0.5, fill=col)
-        # count
-        add_text(s, f"{count}", 2.4 + max(w, 0.05) + 0.1, y + 0.05,
-                 1.0, 0.4, size=12, bold=True, color=col)
-    # commentary
+    cw = 4.0
+    ch = 4.0
+    cy = 1.7
+    for x_start, q, answer, big, sub, col in questions:
+        # Card body
+        add_rect(s, x_start, cy, cw, ch, fill=WHITE, rounded=True, line=col)
+        # Header band
+        add_rect(s, x_start, cy, cw, 0.85, fill=col, rounded=True)
+        add_centered_label(s, q, x_start + 0.15, cy + 0.05, cw - 0.3, 0.75,
+                           size=14, color=WHITE)
+        # Big number
+        add_text(s, big, x_start, cy + 1.05, cw, 1.0,
+                 size=44, bold=True, color=col,
+                 align=PP_ALIGN.CENTER, font="Calibri")
+        # Sub-line
+        add_text(s, sub, x_start + 0.15, cy + 2.05, cw - 0.3, 0.45,
+                 size=11, color=GREY, italic=True, align=PP_ALIGN.CENTER)
+        # Plain-language answer
+        add_text(s, answer, x_start + 0.25, cy + 2.6, cw - 0.5, ch - 2.7,
+                 size=12, color=DARK, anchor=MSO_ANCHOR.TOP)
+
+    # Bottom strip — the calibration anchor in one line
+    add_rect(s, 0.5, 6.05, 12.33, 0.85, fill=GREEN_LT, rounded=True)
+    add_rect(s, 0.5, 6.05, 0.15, 0.85, fill=GREEN, rounded=True)
+    add_text(s, "Calibration anchor:",
+             0.85, 6.15, 3.0, 0.3,
+             size=11, bold=True, color=GREEN)
     add_text(s,
-             "Red_Overload = 0 means no SSCL route is under-provisioned at the target headway. "
-             "v3.3.5 fleet-floor logic eliminated the 12 false Red signals seen in v3.3.3.",
-             0.6, 5.5, 7.0, 1.0,
-             size=10, color=GREY, italic=True)
-    # right: calibration scorecard
-    add_text(s, "Calibration vs CHALO (Apr 2026)",
-             8.0, 1.5, 5.0, 0.4, size=14, bold=True, color=DARK)
-    calib = [
-        ("Per-route fleet (SSCL)",  "8.04",  "vs 7.33 scaled",  "+9.7%",  GREEN),
-        ("SSCL Daily_Demand_Pax",   "32 k",  "vs 31.9 k obs",   "+0.5%",  GREEN),
-        ("Buses / 1000 residents",  "0.60",  "BMTC 0.51 / Chandigarh 0.65", "✓",  GREEN),
-        ("QC checks",               "8 / 8", "block export on fail", "✓", GREEN),
-        ("Red_Overload",            "0",     "was 12 in v3.3.3", "✓", GREEN),
-    ]
-    cy0 = 2.0
-    add_rect(s, 8.0, cy0 - 0.05, 5.1, 4.5, fill=LIGHT, rounded=True)
-    add_rect(s, 8.0, cy0 - 0.05, 0.15, 4.5, fill=GREEN, rounded=True)
-    for i, (k, v, sub, mark, col) in enumerate(calib):
-        y = cy0 + 0.05 + i * 0.85
-        add_text(s, k, 8.25, y, 3.0, 0.3, size=11, bold=True, color=DARK)
-        add_text(s, sub, 8.25, y + 0.32, 3.0, 0.3,
-                 size=9, color=GREY, italic=True)
-        add_text(s, v, 11.4, y, 0.9, 0.3, size=14, bold=True, color=col,
-                 align=PP_ALIGN.RIGHT, font="Calibri")
-        add_text(s, mark, 12.3, y, 0.7, 0.3, size=11, bold=True, color=col,
-                 align=PP_ALIGN.RIGHT)
-    footer(s, "Slide 8  ·  Diagnostics + live calibration")
+             "Every number in this plan was cross-checked against twelve "
+             "months of CHALO ridership data (May 2025 – Apr 2026, "
+             "11.6 M trips across 30 SSCL e-bus routes). "
+             "Engine blocks export if any of the 8 QC checks fails — they all passed.",
+             0.85, 6.42, 12.0, 0.45,
+             size=10.5, color=DARK, italic=True)
+    footer(s, "Slide 8  ·  Plain-language confidence check")
 
     # ── SLIDE 9 — Peer city benchmark bar chart ─────────────────────────
     s = slide_blank(prs)
@@ -697,7 +708,121 @@ def build(prs, stats):
                  size=11, color=DARK, anchor=MSO_ANCHOR.MIDDLE)
     footer(s, "Slide 11  ·  Phase-1 → Phase-2 backlog")
 
-    # ── SLIDE 12 — What this output IS / IS NOT (sandwich) ───────────────
+    # ── SLIDE 11b — Data we need from officers ──────────────────────────
+    s = slide_blank(prs)
+    slide_header(s, "Data we'd need from your office to sharpen v3.4",
+                 sub="Phase-2 features above are limited by data, not by maths. Here is the concrete ask.",
+                 color=TEAL)
+
+    # Each row: priority, dataset, custodian, single-line "why".
+    # v2: compressed to single-line entries — multi-line "why" overflowed.
+    asks = [
+        ("P0", "Master stops register",
+         "Kashmir_Stops_Sectored_V2.csv",
+         "RTOs / SSCL",
+         "Retires the 23 TMP-K placeholder route codes.",
+         SAFFRON),
+        ("P0", "Operator permit registry (live)",
+         "Permit no. · owner · vehicle no. · depot",
+         "RTO offices · J&K Transport Commr",
+         "Exact displaced vehicles → defensible buyback.",
+         SAFFRON),
+        ("P0", "GPS traces — current operators",
+         "30 days · 1 Hz · SSCL + private operators",
+         "SSCL CHALO ops · MTS Kashmir",
+         "Replaces OSRM free-flow + congestion×2.2 model.",
+         SAFFRON),
+        ("P1", "Census 2021 ward-level population",
+         "Ward boundaries + counts",
+         "Census of India · J&K Directorate",
+         "Tighter Pop_Score → tighter CDI bands.",
+         GOLD),
+        ("P1", "AFC / fare-card ridership (per route)",
+         "Per-route per-day boardings",
+         "SSCL CHALO platform",
+         "Enables route-level demand & Mohring elasticity.",
+         GOLD),
+        ("P1", "JKTDC tourist arrival data",
+         "Daily arrivals · Gulmarg / Pahalgam / Sonamarg",
+         "J&K Tourism Dept (JKTDC)",
+         "Real seasonal surge → tourist fleet sizing.",
+         GOLD),
+        ("P2", "Road operability calendar",
+         "NH-44 convoys · Sinthan / Z-Morh / Mughal Road dates",
+         "BRO · J&K Traffic · Border Mgmt",
+         "Auto-flag Winter_Suspended; subtract un-operable hours.",
+         NAVY),
+        ("P2", "Bus stop / depot inventory",
+         "Lat-lon of every stop · depot capacity",
+         "SSCL / JKRTC / RTO offices",
+         "Replaces virtual 500 m stop spacing.",
+         NAVY),
+        ("P2", "Bridge load / road-width registry",
+         "Per-bridge weight limit · arterial road widths",
+         "R&B Dept · MC Srinagar",
+         "Restricts 12 m HPV to roads/bridges that can take it.",
+         NAVY),
+    ]
+
+    # Layout — tighter row height + single-line text so 9 rows + header +
+    # legend all fit comfortably.
+    by_h = 1.55     # column-header band
+    by_a = 1.9      # first data row
+    rh   = 0.52     # row height
+    # Column geometry (x, width)
+    col_geom = [
+        ("Priority",       0.55, 0.85),
+        ("Dataset",        1.55, 4.15),
+        ("Custodian",      5.85, 3.10),
+        ("Why it matters", 9.10, 3.85),
+    ]
+    # Column-header band
+    add_rect(s, 0.45, by_h, 12.55, 0.32, fill=NAVY, rounded=True)
+    for label, x, w in col_geom:
+        add_text(s, label, x, by_h + 0.04, w, 0.26,
+                 size=10, bold=True, color=WHITE)
+    for i, (prio, name, what, who, why, col) in enumerate(asks):
+        y = by_a + i * rh
+        # zebra row
+        if i % 2 == 0:
+            add_rect(s, 0.45, y, 12.55, rh - 0.04, fill=LIGHT)
+        # priority pill
+        add_rect(s, 0.55, y + 0.10, 0.65, rh - 0.24, fill=col, rounded=True)
+        add_centered_label(s, prio, 0.55, y + 0.10, 0.65, rh - 0.24,
+                           size=10, color=WHITE)
+        # dataset name (bold)
+        add_text(s, name, 1.55, y + 0.04, 4.15, 0.24,
+                 size=10, bold=True, color=DARK)
+        # what (italic sub-text)
+        add_text(s, what, 1.55, y + 0.26, 4.15, 0.22,
+                 size=8.5, color=GREY, italic=True)
+        # custodian — single line, vertically centred
+        add_text(s, who, 5.85, y, 3.10, rh - 0.04,
+                 size=9.5, color=DARK, anchor=MSO_ANCHOR.MIDDLE)
+        # why — single line, vertically centred
+        add_text(s, why, 9.10, y, 3.85, rh - 0.04,
+                 size=9.5, color=DARK, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Bottom legend
+    legend_y = by_a + len(asks) * rh + 0.18
+    add_text(s, "Priority key:",
+             0.55, legend_y, 1.4, 0.25, size=10, bold=True, color=GREY)
+    legend = [
+        ("P0", "blocks v3.4 calibration",      SAFFRON),
+        ("P1", "improves accuracy meaningfully", GOLD),
+        ("P2", "future-state polish",          NAVY),
+    ]
+    lx = 1.95
+    for tag, desc, col in legend:
+        add_rect(s, lx, legend_y + 0.02, 0.4, 0.22, fill=col, rounded=True)
+        add_centered_label(s, tag, lx, legend_y + 0.02, 0.4, 0.22, size=8, color=WHITE)
+        add_text(s, desc, lx + 0.5, legend_y, 3.3, 0.25,
+                 size=9.5, color=DARK, italic=True)
+        lx += 3.5
+
+    footer(s, "Slide 12  ·  Data we need from your office")
+
+    # ── SLIDE 13 — What this output IS / IS NOT (sandwich) ───────────────
     s = slide_blank(prs)
     slide_header(s, "What this output is — and what it is not",
                  color=NAVY)
@@ -736,9 +861,9 @@ def build(prs, stats):
         add_centered_label(s, "✗", 7.2, y + 0.07, 0.35, 0.35, size=14, color=WHITE)
         add_text(s, t, 7.7, y, 5.2, 0.8, size=12, color=DARK,
                  anchor=MSO_ANCHOR.MIDDLE)
-    footer(s, "Slide 12  ·  Honest scope")
+    footer(s, "Slide 13  ·  Honest scope")
 
-    # ── SLIDE 13 — Closing / ask ────────────────────────────────────────
+    # ── SLIDE 14 — Closing / ask ────────────────────────────────────────
     s = slide_blank(prs)
     add_rect(s, 0, 0, 13.33, 7.5, fill=NAVY)
     add_rect(s, 0, 6.7, 13.33, 0.8, fill=TEAL)
