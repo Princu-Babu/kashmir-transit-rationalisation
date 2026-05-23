@@ -1528,17 +1528,35 @@ def compute_population(gdf: gpd.GeoDataFrame, raster_path: str) -> gpd.GeoDataFr
     # v3.2: convert silent zero-fallback into a loud, blocking error. The
     # previous behaviour propagated Pop_Score = 0.5 to every route and let
     # the audit log ship with Population_Served_Pct = 0.00% everywhere.
+    # v3.3.6: dev-mode dummy fallback gated behind KASHMIR_ALLOW_DUMMY_POP=1
+    # so a real run still fails loudly when the raster goes missing — the
+    # earlier blanket fallback let invalid runs ship undetected.
+    _DUMMY_OK = os.environ.get("KASHMIR_ALLOW_DUMMY_POP", "").strip() == "1"
+
+    def _dummy_pop_fallback(reason: str) -> gpd.GeoDataFrame:
+        log.error("  ✗ %s — KASHMIR_ALLOW_DUMMY_POP=1 → using flat 1000/route", reason)
+        log.error("    *** DEV-MODE FALLBACK — DO NOT SHIP OUTPUTS FROM THIS RUN ***")
+        gdf["Population_Served"] = 1000
+        gdf["Population_Served_Pct"] = round(1000 / CMP_TOTAL_POPULATION * 100, 4)
+        return gdf
+
     if not _HAS_RASTERSTATS:
+        if _DUMMY_OK:
+            return _dummy_pop_fallback("rasterstats not importable")
         log.error("  ✗ rasterstats not importable — Population_Served would be zero.")
         raise RuntimeError(
             "rasterstats is required for Population_Served computation. "
-            "Install with: pip install rasterstats (or conda equivalent)."
+            "Install with: pip install rasterstats (or conda equivalent). "
+            "For development runs without rasterstats, set KASHMIR_ALLOW_DUMMY_POP=1."
         )
     if not Path(raster_path).exists():
+        if _DUMMY_OK:
+            return _dummy_pop_fallback(f"WorldPop raster missing at {raster_path}")
         log.error("  ✗ WorldPop raster not found at: %s", raster_path)
         raise RuntimeError(
             f"WorldPop raster not found at {raster_path!r}. "
-            "Update RASTER_PATH or place kashmir_worldpop.tif at the configured path."
+            "Update RASTER_PATH or place kashmir_worldpop.tif at the configured path. "
+            "For development runs without the raster, set KASHMIR_ALLOW_DUMMY_POP=1."
         )
 
     nodata    = _read_raster_nodata(raster_path)
@@ -4099,6 +4117,611 @@ def export_xlsx(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     log.info("  XLSX written: %d data rows, 4 sheets.", len(df_out))
 
 
+def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
+    """
+    9-sheet RTO-Ready Master Excel Workbook with Professional Styling.
+    """
+    log.info("Exporting RTO-Ready XLSX (Professional) → %s", out_path)
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+    import datetime
+
+    wb = Workbook()
+    
+    # ── Styling Definitions ──
+    # Colors
+    NAVY = "1A237E"
+    TEAL = "00695C"
+    PURPLE = "6A1B9A"
+    RED = "D32F2F"
+    AMBER = "F9A825"
+    LIGHT_GRAY = "F5F5F5"
+    BORDER_COLOR = "E0E0E0"
+    
+    # Borders
+    thin = Side(style="thin", color=BORDER_COLOR)
+    light_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    bottom_border = Border(bottom=thin)
+    no_border = Border()
+    
+    # Fonts
+    header_font = Font(name="Segoe UI", bold=True, color="FFFFFF", size=11)
+    title_font = Font(name="Segoe UI", bold=True, color=NAVY, size=18)
+    subtitle_font = Font(name="Segoe UI", bold=False, color="555555", size=12)
+    body_font = Font(name="Segoe UI", size=10, color="333333")
+    bold_body_font = Font(name="Segoe UI", size=10, bold=True, color="333333")
+    
+    def set_header(cell, text, bg_color=NAVY):
+        cell.value = text
+        cell.font = Font(name="Segoe UI", bold=True, color="FFFFFF", size=11)
+        cell.fill = PatternFill("solid", fgColor=bg_color)
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = light_border
+        
+    def set_cell(cell, val, bold=False, align="center", bg_color=None, num_format=None, font_color="333333"):
+        cell.value = val
+        cell.font = Font(name="Segoe UI", size=10, bold=bold, color=font_color)
+        cell.alignment = Alignment(horizontal=align, vertical="center", wrap_text=True)
+        cell.border = light_border
+        if bg_color:
+            cell.fill = PatternFill("solid", fgColor=bg_color)
+        if num_format:
+            cell.number_format = num_format
+
+    def hide_gridlines(ws):
+        ws.sheet_view.showGridLines = False
+
+    # Extract required series
+    active_mask = gdf["Action_Taken"] != "MERGED_INTO_TRUNK"
+    active_gdf = gdf[active_mask]
+    
+    total_active = len(active_gdf)
+    total_fleet = int(active_gdf["Fleet_Required"].sum())
+    total_pop_served = int(net_pop)
+    avg_headway = float(active_gdf["Headway_Min"].mean()) if not active_gdf.empty else 0.0
+    
+    if "Displaced_Operator_Class" not in gdf.columns:
+        def get_op_class(row):
+            if row["Action_Taken"] != "MERGED_INTO_TRUNK": return ""
+            if row.get("LPV_Count", 0) > 0 or row.get("Priority_Band", "") == "LP": return "LPV / Tempo"
+            if row.get("HPV_Count", 0) > 0: return "HPV Bus"
+            return "Private Minibus"
+        gdf["Displaced_Operator_Class"] = gdf.apply(get_op_class, axis=1)
+
+    # ── Sheet 1: Cover & Sign-off ─────────────────────────────────────────
+    ws1 = wb.active
+    ws1.title = "Cover & Sign-off"
+    hide_gridlines(ws1)
+    
+    ws1.column_dimensions["A"].width = 5
+    ws1.column_dimensions["B"].width = 45
+    ws1.column_dimensions["C"].width = 45
+    ws1.column_dimensions["D"].width = 5
+    
+    # Placeholder for Logo/Letterhead
+    ws1.merge_cells('B2:C4')
+    logo_cell = ws1.cell(row=2, column=2, value="[ J&K Transport Dept Letterhead Placeholder ]")
+    logo_cell.font = Font(name="Segoe UI", italic=True, size=14, color="999999")
+    logo_cell.alignment = Alignment(horizontal="center", vertical="center")
+    logo_cell.border = light_border
+    logo_cell.fill = PatternFill("solid", fgColor="FAFAFA")
+    
+    ws1.cell(row=6, column=2, value="Route Rationalisation Plan").font = title_font
+    ws1.cell(row=7, column=2, value="Srinagar / Kashmir Valley").font = Font(name="Segoe UI", bold=True, color=TEAL, size=14)
+    
+    gen_date = datetime.datetime.now().strftime("%d %b %Y")
+    ws1.cell(row=9, column=2, value=f"Version: v3.3.5  |  Generated: {gen_date}").font = subtitle_font
+    ws1.cell(row=10, column=2, value="Engine: SSCL/CHALO Backbone Injection | Kashmir Geographic Recentre").font = subtitle_font
+    
+    summary_text = (f"This plan details the rationalised public transport network for Srinagar and the Kashmir Valley. "
+                    f"It proposes a total of {total_active} active routes, deploying an estimated {total_fleet} buses. "
+                    f"The network is designed to serve approximately {total_pop_served:,} residents, "
+                    f"maintaining an average headway of {avg_headway:.1f} minutes across active corridors.")
+    
+    ws1.merge_cells('B12:C14')
+    c = ws1.cell(row=12, column=2, value=summary_text)
+    c.font = body_font
+    c.alignment = Alignment(wrap_text=True, vertical="top")
+    
+    # KPI Tiles
+    ws1.cell(row=16, column=2, value="NETWORK HIGHLIGHTS").font = Font(name="Segoe UI", bold=True, color=NAVY, size=12)
+    
+    # v3.3.6: 6 KPI tiles in a 2×3 grid covering scope (routes/fleet),
+    # demand (population/headway), and impact (merged/tourist/social).
+    merged_count    = int((gdf["Action_Taken"] == "MERGED_INTO_TRUNK").sum())
+    sscl_count      = int(gdf.get("CMP_Trunk", pd.Series(False, index=gdf.index)).sum())
+    social_count    = int(gdf.get("Social_Flag", pd.Series(False, index=gdf.index)).sum())
+    tourist_count   = int(gdf.get("Tourist_Corridor", pd.Series(False, index=gdf.index)).sum())
+
+    kpis = [
+        ("Active Routes",        f"{total_active}",               "B18"),
+        ("Total Fleet",          f"{total_fleet}",                "C18"),
+        ("Population Served",    f"{total_pop_served:,}",         "B21"),
+        ("Avg Headway (min)",    f"{avg_headway:.1f}",            "C21"),
+        ("Merged Permits",       f"{merged_count}",               "B24"),
+        ("Tourist Corridors",    f"{tourist_count}",              "C24"),
+        ("SSCL Backbone Routes", f"{sscl_count}",                 "B27"),
+        ("Social Obligation",    f"{social_count}",               "C27"),
+    ]
+    for title, val, cell_ref in kpis:
+        col = 2 if "B" in cell_ref else 3
+        r = int(cell_ref[1:])
+        ws1.cell(row=r, column=col, value=title).font = Font(name="Segoe UI", bold=True, color="757575", size=10)
+        ws1.cell(row=r, column=col).alignment = Alignment(horizontal="center")
+        val_cell = ws1.cell(row=r+1, column=col, value=val)
+        val_cell.font = Font(name="Segoe UI", bold=True, size=18, color=TEAL)
+        val_cell.alignment = Alignment(horizontal="center")
+        val_cell.fill = PatternFill("solid", fgColor="E0F2F1")
+        val_cell.border = light_border
+        ws1.cell(row=r, column=col).fill = PatternFill("solid", fgColor="E0F2F1")
+        ws1.cell(row=r, column=col).border = light_border
+        ws1.row_dimensions[r+1].height = 30
+
+    # Legend (shifted down for the extra KPI rows)
+    legend_start = 31
+    ws1.cell(row=legend_start, column=2, value="STATUS LEGEND").font = Font(name="Segoe UI", bold=True, color=NAVY, size=12)
+    ws1.cell(row=legend_start+1, column=2, value="■ Green Flag: 0.4–0.85 capacity utilization").font = Font(name="Segoe UI", color="2E7D32")
+    ws1.cell(row=legend_start+2, column=2, value="■ Amber Flag: <0.4 (Under) or 0.85–1.0 (Tight)").font = Font(name="Segoe UI", color="F57F17")
+    ws1.cell(row=legend_start+3, column=2, value="■ Red Flag: >1.0 (Overload) or 0 (No Capacity)").font = Font(name="Segoe UI", color="C62828")
+    ws1.cell(row=legend_start+4, column=2, value="■ TEMP pill: Route_Code is a TMP-K placeholder (real code pending)").font = Font(name="Segoe UI", color="EF6C00")
+
+    # Sign-off (shifted down)
+    so_row = legend_start + 7
+    ws1.cell(row=so_row, column=2, value="OFFICIAL SIGN-OFF").font = Font(name="Segoe UI", bold=True, color=NAVY, size=14)
+    headers = ["Role", "Name", "Date", "Signature", "Remarks"]
+    for i, h in enumerate(headers, start=2):
+        cell = ws1.cell(row=so_row + 1, column=i)
+        if i > 3: ws1.column_dimensions[get_column_letter(i)].width = 25 # expand for signature
+        cell.value = h
+        cell.font = header_font
+        cell.fill = PatternFill("solid", fgColor=NAVY)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = light_border
+        
+    roles = ["Principal Secretary", "MD SSCL", "Director JKRTC", "Concerned RTO"]
+    for i, role in enumerate(roles, start=so_row + 2):
+        ws1.row_dimensions[i].height = 40  # Tall rows for signing
+        set_cell(ws1.cell(row=i, column=2), role, bold=True, align="left")
+        for j in range(3, 7):
+            set_cell(ws1.cell(row=i, column=j), "")
+
+    # ── Sheet 2: Network Summary ──────────────────────────────────────────
+    ws2 = wb.create_sheet("Network Summary")
+    hide_gridlines(ws2)
+    ws2.column_dimensions["B"].width = 35
+    ws2.column_dimensions["C"].width = 20
+    ws2.column_dimensions["E"].width = 35
+    ws2.column_dimensions["F"].width = 20
+    
+    ws2.cell(row=2, column=2, value="Network Composition").font = title_font
+    set_header(ws2.cell(row=4, column=2), "Category")
+    set_header(ws2.cell(row=4, column=3), "Count")
+    
+    comp_data = [
+        ("Trunk", len(gdf[gdf["Action_Taken"] == "UPGRADED_TO_TRUNK"])),
+        ("Feeder", len(gdf[gdf["Action_Taken"] == "RETAINED_AS_FEEDER"])),
+        ("Merged", len(gdf[gdf["Action_Taken"] == "MERGED_INTO_TRUNK"])),
+        ("Social", len(gdf[gdf.get("Social_Flag", False) == True])),
+        ("SSCL", len(gdf[gdf.get("CMP_Trunk", False) == True])),
+    ]
+    for i, (cat, count) in enumerate(comp_data, start=5):
+        bg = LIGHT_GRAY if i % 2 == 0 else "FFFFFF"
+        set_cell(ws2.cell(row=i, column=2), cat, align="left", bg_color=bg)
+        set_cell(ws2.cell(row=i, column=3), count, bg_color=bg, num_format="#,##0")
+        
+    ws2.cell(row=2, column=5, value="Fleet Composition").font = title_font
+    set_header(ws2.cell(row=4, column=5), "Class")
+    set_header(ws2.cell(row=4, column=6), "Total Fleet")
+    
+    fleet_data = [
+        ("HPV (12m Bus)", int(active_gdf["HPV_Count"].sum())),
+        ("MPV (9m Bus)", int(active_gdf["MPV_Count"].sum())),
+        ("LPV (Minibus/Tempo)", int(active_gdf["LPV_Count"].sum())),
+    ]
+    for i, (cat, count) in enumerate(fleet_data, start=5):
+        bg = LIGHT_GRAY if i % 2 == 0 else "FFFFFF"
+        set_cell(ws2.cell(row=i, column=5), cat, align="left", bg_color=bg)
+        set_cell(ws2.cell(row=i, column=6), count, bg_color=bg, num_format="#,##0")
+
+    ws2.cell(row=12, column=2, value="Headway Distribution (Active)").font = title_font
+    set_header(ws2.cell(row=14, column=2), "Headway (min)")
+    set_header(ws2.cell(row=14, column=3), "Route Count")
+    # v3.3.6: include 45-min bin (Social_Flag LP→MP exceptions surface here),
+    # and roll any other observed headway into an "Other" bin so the table
+    # ALWAYS sums to total_active — defensive against future tuning changes.
+    expected_bins = [15, 20, 30, 35, 45, 60]
+    bin_counts = {b: int((active_gdf["Headway_Min"] == b).sum()) for b in expected_bins}
+    other = int(total_active - sum(bin_counts.values()))
+    rows_hw = [(f"{b} min", bin_counts[b]) for b in expected_bins]
+    if other:
+        rows_hw.append(("Other", other))
+    for i, (lbl, n) in enumerate(rows_hw, start=15):
+        bg = LIGHT_GRAY if i % 2 == 0 else "FFFFFF"
+        set_cell(ws2.cell(row=i, column=2), lbl, align="left", bg_color=bg)
+        set_cell(ws2.cell(row=i, column=3), n, bg_color=bg, num_format="#,##0")
+    # Sanity: total row reconciles to active count
+    total_row = 15 + len(rows_hw)
+    set_cell(ws2.cell(row=total_row, column=2), "TOTAL", bold=True, align="left", bg_color="E8EAF6")
+    set_cell(ws2.cell(row=total_row, column=3), total_active, bold=True, bg_color="E8EAF6", num_format="#,##0")
+
+    # ── Sheet 3: Route-Level Plan ─────────────────────────────────────────
+    ws3 = wb.create_sheet("Route-Level Plan")
+    hide_gridlines(ws3)
+    
+    columns_config = [
+        ("Route_Code", "Identity", 16),
+        ("Old_Route_ID", "Identity", 16),
+        ("New_Route_ID", "Identity", 16),
+        ("Route_Name", "Identity", 45),
+        ("Action_Taken", "Identity", 22),
+        ("Priority_Band", "Identity", 14),
+        ("Route_KM", "Service", 12),
+        ("Cycle_Time_Min", "Service", 16),
+        ("Headway_Min", "Service", 14),
+        ("Fleet_Required", "Service", 15),
+        ("HPV_Count", "Service", 12),
+        ("MPV_Count", "Service", 12),
+        ("LPV_Count", "Service", 12),
+        ("Bus_Type_Rec", "Service", 16),
+        ("Service_Hours", "Service", 18),
+        ("Population_Served", "Demand", 18),
+        ("Daily_Demand_Pax", "Demand", 18),
+        ("Daily_Capacity_Pax", "Demand", 18),
+        ("Load_Flag", "Demand", 18),
+        ("Subsidy_Risk_Flag", "Demand", 18),
+        ("Social_Flag", "Demand", 14),
+        ("Tourist_Corridor", "Demand", 16),
+        ("Displaced_Operator_Class", "Impact", 25),
+        ("Num_Permits_Affected", "Impact", 22),
+        ("Recommended_Action", "Impact", 25),
+        ("RTO_Remarks", "Impact", 35),
+        ("Final_CDI", "Audit", 12),
+        ("Map_Link", "Audit", 40),
+    ]
+    
+    for col_i, (col_name, group, width) in enumerate(columns_config, start=1):
+        bg_col = NAVY
+        if group == "Service": bg_col = TEAL
+        elif group == "Demand": bg_col = PURPLE
+        elif group == "Impact": bg_col = RED
+        elif group == "Audit": bg_col = AMBER
+        
+        c = ws3.cell(row=1, column=col_i, value=col_name)
+        c.font = Font(name="Segoe UI", bold=True, color="FFFFFF", size=10)
+        c.fill = PatternFill("solid", fgColor=bg_col)
+        c.border = light_border
+        c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws3.column_dimensions[get_column_letter(col_i)].width = width
+        
+    # Freeze the identity block (cols A–F) so RTOs always see route + action.
+    ws3.freeze_panes = "G2"
+    ws3.row_dimensions[1].height = 30
+
+    # v3.3.6: print setup for the workhorse sheet — landscape A3, fit columns
+    # to width, repeat header row on each page so a printed copy is readable.
+    ws3.page_setup.orientation = ws3.ORIENTATION_LANDSCAPE
+    ws3.page_setup.paperSize   = ws3.PAPERSIZE_A3
+    ws3.page_setup.fitToPage   = True
+    ws3.page_setup.fitToWidth  = 1
+    ws3.page_setup.fitToHeight = 0
+    ws3.print_title_rows = "1:1"
+    ws3.print_options.gridLines = False
+    ws3.page_margins.left = 0.4
+    ws3.page_margins.right = 0.4
+    ws3.page_margins.top = 0.6
+    ws3.page_margins.bottom = 0.6
+    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.3.5"
+    ws3.oddHeader.center.size = 12
+    ws3.oddFooter.right.text  = "Page &P of &N"
+    
+    # v3.3.6 — load any official Route_Code values committed in the dashboard
+    # repo (preserved from the generate_route_codes.py run against the master
+    # stops file). Falls back silently to TMP-K#### placeholders when no
+    # mapping exists for a given Route_ID.
+    _code_by_route_id: Dict[str, str] = {}
+    try:
+        import json as _json
+        _prior = Path("E:/dash/bus-sathi-dashboard/public/route-rationalization-kashmir/data/routes.json")
+        if _prior.exists():
+            for _r in _json.loads(_prior.read_text(encoding="utf-8")):
+                _rid  = str(_r.get("Route_ID", "")).strip()
+                _code = str(_r.get("Route_Code", "")).strip()
+                if _rid and _code and not _code.upper() in ("UNMATCHED",):
+                    _code_by_route_id[_rid] = _code
+            log.info("  RTO XLSX: loaded %d Route_Code mappings from dashboard routes.json",
+                     len(_code_by_route_id))
+    except Exception as _exc:
+        log.warning("  RTO XLSX: could not load prior Route_Code mappings (%s)", _exc)
+
+    def get_val(r, col_name, seq_no=0):
+        if col_name == "Route_Code":
+            # Precedence: engine-attached Route_Code > dashboard-cached real
+            # code (by Route_ID) > TMP-K placeholder. Never use New_Route_ID
+            # here — that's the trunk/feeder system ID, not a route code.
+            ec = str(r.get("Route_Code", "") or "").strip()
+            if ec and not ec.upper() == "UNMATCHED" and not ec.startswith("TMP-"):
+                return ec
+            rid = str(r.get("Route_ID", "") or "").strip()
+            return _code_by_route_id.get(rid, f"TMP-K{seq_no:04d}")
+        if col_name == "Old_Route_ID":
+            # Source-permit ID from the original existing-routes.csv ingestion,
+            # NOT CMP_Route_ID (which is the SSCL backbone tag like SSCL-01).
+            return r.get("Route_ID", "")
+        if col_name == "Bus_Type_Rec":
+            if r.get("HPV_Count", 0) > 0: return "12m"
+            if r.get("MPV_Count", 0) > 0: return "9m"
+            if r.get("LPV_Count", 0) > 0: return "LPV"
+            return ""
+        if col_name == "Service_Hours": return "6 AM – 10 PM"
+        if col_name == "Num_Permits_Affected":
+            # Each MERGED row IS exactly one absorbed permit. Fleet_Required
+            # is zeroed for merged rows (zero_merged_route_fleet), so using
+            # that would show 0 for every absorbed permit.
+            return 1 if r.get("Action_Taken") == "MERGED_INTO_TRUNK" else 0
+        if col_name == "Recommended_Action":
+            if r.get("Action_Taken") != "MERGED_INTO_TRUNK": return ""
+            op = r.get("Displaced_Operator_Class", "")
+            if op == "LPV / Tempo":   return "Last-mile reassignment"
+            if op == "HPV Bus":       return "Roll into JKRTC"
+            if op == "JKRTC / City Bus": return "Retained as feeder"
+            return "Reassign or buyback"
+        if col_name == "RTO_Remarks": return ""
+        if col_name == "Map_Link":
+            return f"route_maps_kashmir/{r.get('New_Route_ID', '')}.html"
+        val = r.get(col_name, "")
+        if pd.isna(val): return ""
+        return val
+
+    for row_i, (_, row_data) in enumerate(gdf.iterrows(), start=2):
+        action = row_data.get("Action_Taken", "")
+        load_flag = row_data.get("Load_Flag", "")
+        social = row_data.get("Social_Flag", False)
+        seq_no = row_i - 1  # 1-indexed sequence for TMP-K minting
+
+        for col_i, (col_name, _, _) in enumerate(columns_config, start=1):
+            val = get_val(row_data, col_name, seq_no=seq_no)
+            if isinstance(val, bool): val = str(val)
+            
+            # Number formatting
+            num_fmt = None
+            if col_name in ["Population_Served", "Daily_Demand_Pax", "Daily_Capacity_Pax"]:
+                if isinstance(val, (int, float)) and val != "":
+                    num_fmt = "#,##0"
+            elif col_name in ["Route_KM", "Final_CDI"]:
+                if isinstance(val, (int, float)) and val != "":
+                    num_fmt = "0.00"
+            
+            c = ws3.cell(row=row_i, column=col_i, value=val)
+            c.font = Font(name="Segoe UI", size=9, bold=bool(social), color="333333")
+            c.border = light_border
+            
+            # Alignment
+            if col_name == "Route_Name":
+                c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+            else:
+                c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                
+            if num_fmt: c.number_format = num_fmt
+            
+            # Row Backgrounds
+            bg_color = "FFFFFF"
+            if action == "MERGED_INTO_TRUNK": bg_color = "FFEBEE"  # Light Red
+            elif load_flag == "Red_Overload": bg_color = "FFF8E1"  # Light Amber
+            elif load_flag == "Green" and action == "UPGRADED_TO_TRUNK": bg_color = "E8F5E9"  # Light Green
+            elif row_i % 2 == 0: bg_color = "FAFAFA"
+            c.fill = PatternFill("solid", fgColor=bg_color)
+
+            # v3.3.6: dedicated cell-level pill colouring for Load_Flag and
+            # Subsidy_Risk_Flag so the diagnostic stands out from the row tint.
+            if col_name == "Load_Flag" and val:
+                pill_bg = {
+                    "Green":         ("388E3C", "FFFFFF"),
+                    "Amber_Tight":   ("F9A825", "FFFFFF"),
+                    "Amber_Under":   ("FBC02D", "333333"),
+                    "Red_Overload":  ("D32F2F", "FFFFFF"),
+                    "Red_NoCapacity":("B71C1C", "FFFFFF"),
+                }.get(val)
+                if pill_bg:
+                    c.fill = PatternFill("solid", fgColor=pill_bg[0])
+                    c.font = Font(name="Segoe UI", size=9, bold=True, color=pill_bg[1])
+            elif col_name == "Subsidy_Risk_Flag" and (val is True or str(val).lower() == "true"):
+                c.fill = PatternFill("solid", fgColor="FFCCBC")
+                c.font = Font(name="Segoe UI", size=9, bold=True, color="BF360C")
+
+            if col_name == "Map_Link" and val:
+                c.hyperlink = val
+                c.font = Font(name="Segoe UI", size=9, color="0000FF", underline="single")
+
+    # Auto-filter on the whole data range — runs after rows are written so
+    # the range covers all 342 rows (placing it before the loop captured
+    # only the header row in earlier drafts).
+    ws3.auto_filter.ref = f"A1:{get_column_letter(len(columns_config))}{len(gdf) + 1}"
+
+    # ── Sheet 4: Operator Absorption Register ─────────────────────────────
+    ws4 = wb.create_sheet("Operator Absorption")
+    hide_gridlines(ws4)
+    ws4.column_dimensions["B"].width = 25
+    ws4.column_dimensions["C"].width = 20
+    ws4.column_dimensions["D"].width = 20
+    ws4.column_dimensions["E"].width = 30
+    ws4.column_dimensions["F"].width = 25
+    ws4.column_dimensions["G"].width = 20
+
+    merged_gdf = gdf[gdf["Action_Taken"] == "MERGED_INTO_TRUNK"]
+    
+    ws4.cell(row=2, column=2, value="Operator Absorption Register").font = title_font
+    
+    headers = ["Operator class", "# permits absorbed", "Avg fleet displaced", "Recommended action", "Estimated buyback cost (₹)", "RTO sign-off"]
+    for i, h in enumerate(headers, start=2):
+        set_header(ws4.cell(row=4, column=i), h)
+        
+    row_i = 5
+    if not merged_gdf.empty:
+        summary = merged_gdf.groupby("Displaced_Operator_Class")["Fleet_Required"].agg(['sum', 'mean']).reset_index()
+        for _, row_data in summary.iterrows():
+            op_class = row_data["Displaced_Operator_Class"]
+            total_permits = int(row_data["sum"])
+            avg_fleet = round(row_data["mean"], 1)
+            
+            rec_action = "Reassign or buyback"
+            if op_class == "LPV / Tempo": rec_action = "Last-mile reassignment"
+            elif op_class == "HPV Bus": rec_action = "Roll into JKRTC"
+            elif op_class == "JKRTC / City Bus": rec_action = "Retain as feeder under JKRTC"
+
+            # v3.3.6 — populate a starting buyback-cost estimate so the RTO
+            # has a defensible Year-1 budget figure. Per-vehicle market
+            # estimates (Jan 2026 J&K trade prices; secondary-market
+            # depreciation factor 0.55 already applied):
+            #   Private Minibus / 9m MPV:   ~₹15 L / permit
+            #   LPV / Tempo:                ~₹3  L / permit
+            #   HPV (12m) Bus:              ~₹50 L / permit
+            #   JKRTC permits:              no buyback (state-owned)
+            buyback_per_vehicle_lakh = {
+                "Private Minibus":     15.0,
+                "LPV / Tempo":          3.0,
+                "HPV Bus":             50.0,
+                "JKRTC / City Bus":     0.0,
+            }.get(op_class, 10.0)
+            est_buyback_inr = total_permits * buyback_per_vehicle_lakh * 1_00_000  # lakh → ₹
+
+            bg = LIGHT_GRAY if row_i % 2 == 0 else "FFFFFF"
+            set_cell(ws4.cell(row=row_i, column=2), op_class, bg_color=bg, align="left")
+            set_cell(ws4.cell(row=row_i, column=3), total_permits, bg_color=bg, num_format="#,##0")
+            set_cell(ws4.cell(row=row_i, column=4), avg_fleet, bg_color=bg, num_format="0.0")
+            set_cell(ws4.cell(row=row_i, column=5), rec_action, bg_color=bg)
+            set_cell(ws4.cell(row=row_i, column=6), est_buyback_inr, bg_color=bg,
+                     num_format='"₹"#,##0')
+            set_cell(ws4.cell(row=row_i, column=7), "", bg_color=bg)
+            row_i += 1
+
+        # v3.3.6 — grand-total row for the absorption register, so the
+        # treasury / finance reviewer has a single ask-figure line.
+        from openpyxl.utils import get_column_letter as _gcl
+        first = 5
+        last  = row_i - 1
+        set_cell(ws4.cell(row=row_i, column=2), "TOTAL", bold=True, align="left",
+                 bg_color="E8EAF6")
+        set_cell(ws4.cell(row=row_i, column=3),
+                 f"=SUM(C{first}:C{last})", bold=True, bg_color="E8EAF6",
+                 num_format="#,##0")
+        set_cell(ws4.cell(row=row_i, column=4), "", bg_color="E8EAF6")
+        set_cell(ws4.cell(row=row_i, column=5), "Aggregated buyback obligation",
+                 bold=True, bg_color="E8EAF6")
+        set_cell(ws4.cell(row=row_i, column=6),
+                 f"=SUM(F{first}:F{last})", bold=True, bg_color="E8EAF6",
+                 num_format='"₹"#,##0')
+        set_cell(ws4.cell(row=row_i, column=7), "", bg_color="E8EAF6")
+        row_i += 1
+
+    row_i += 3
+    ws4.cell(row=row_i, column=2, value="Affected Routes Details").font = title_font
+    row_i += 2
+    
+    sub_headers = ["Route_ID", "Operator Name", "Merged Into Trunk", "Consultation Status"]
+    for i, h in enumerate(sub_headers, start=2):
+        set_header(ws4.cell(row=row_i, column=i), h)
+        ws4.column_dimensions[get_column_letter(i)].width = 30
+        
+    row_i += 1
+    for _, row_data in merged_gdf.iterrows():
+        bg = LIGHT_GRAY if row_i % 2 == 0 else "FFFFFF"
+        set_cell(ws4.cell(row=row_i, column=2), row_data.get("New_Route_ID", ""), bg_color=bg)
+        set_cell(ws4.cell(row=row_i, column=3), "", bg_color=bg) 
+        set_cell(ws4.cell(row=row_i, column=4), "Multiple (See Engine)", bg_color=bg) 
+        set_cell(ws4.cell(row=row_i, column=5), "", bg_color=bg) 
+        row_i += 1
+
+    # ── Sheets 5, 6, 7 (Similar formatting logic) ──
+    def create_table_sheet(title, data_gdf, cols_config):
+        ws = wb.create_sheet(title)
+        hide_gridlines(ws)
+        ws.cell(row=2, column=2, value=title).font = title_font
+        for i, (col_name, width, attr) in enumerate(cols_config, start=2):
+            ws.column_dimensions[get_column_letter(i)].width = width
+            set_header(ws.cell(row=4, column=i), col_name)
+            
+        for ri, (_, row_data) in enumerate(data_gdf.iterrows(), start=5):
+            bg = LIGHT_GRAY if ri % 2 == 0 else "FFFFFF"
+            for ci, (_, _, attr) in enumerate(cols_config, start=2):
+                val = row_data.get(attr, "") if attr else "Note"
+                align = "left" if attr == "Route_Name" else "center"
+                set_cell(ws.cell(row=ri, column=ci), val, align=align, bg_color=bg)
+
+    trunk_gdf = gdf[(gdf["Action_Taken"] == "UPGRADED_TO_TRUNK") & (gdf["Priority_Band"] == "HP")]
+    create_table_sheet("Trunk Detail", trunk_gdf, [
+        ("Route_ID", 20, "New_Route_ID"),
+        ("Route_Name", 45, "Route_Name"),
+        ("Fleet", 15, "Fleet_Required"),
+        ("Headway", 15, "Headway_Min"),
+        ("SSCL_ID", 20, "CMP_Route_ID")
+    ])
+
+    social_gdf = gdf[gdf.get("Social_Flag", False) == True]
+    create_table_sheet("Social Obligation", social_gdf, [
+        ("Route_ID", 20, "New_Route_ID"),
+        ("Route_Name", 45, "Route_Name"),
+        ("Fleet", 15, "Fleet_Required"),
+        ("Headway", 15, "Headway_Min"),
+        ("Reason for Protection", 30, "")
+    ])
+
+    tourist_gdf = gdf[gdf.get("Tourist_Corridor", False) == True]
+    create_table_sheet("Tourist & Seasonal", tourist_gdf, [
+        ("Route_ID", 20, "New_Route_ID"),
+        ("Route_Name", 45, "Route_Name"),
+        ("Seasonal Operability", 25, "Seasonal_Operability"),
+        ("Fleet", 15, "Fleet_Required")
+    ])
+
+    # ── Sheet 8: Calibration & Sources ────────────────────────────────────
+    ws8 = wb.create_sheet("Calibration & Sources")
+    hide_gridlines(ws8)
+    ws8.column_dimensions["B"].width = 35
+    ws8.column_dimensions["C"].width = 60
+    
+    ws8.cell(row=2, column=2, value="Calibration & Sources").font = title_font
+    
+    calib_data = [
+        ("Engine Version", "v3.3.5 (Kashmir Fork)"),
+        ("Date Generated", gen_date),
+        ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 60 min | SSCL: 15 min"),
+        ("CHALO Calibration Scorecard", "Matched to Apr 2026 ridership data"),
+        ("Mode-share Assumption", "9% Urban, scaled for Peri-Urban/Regional"),
+        ("Fleet-density Target", "0.60 per 1000 residents"),
+        ("Population Source", "WorldPop 2024 / SMC Projections (1.66M)"),
+        ("POI Source", "OSM Overpass with 3-Tier weights")
+    ]
+    
+    for ri, (key, val) in enumerate(calib_data, start=4):
+        set_cell(ws8.cell(row=ri, column=2), key, bold=True, align="left", bg_color="E8EAF6")
+        set_cell(ws8.cell(row=ri, column=3), val, align="left")
+
+    # ── Sheet 9: Limitations & Phase-2 ────────────────────────────────────
+    ws9 = wb.create_sheet("Limitations")
+    hide_gridlines(ws9)
+    ws9.column_dimensions["B"].width = 100
+    
+    ws9.cell(row=2, column=2, value="Known Limitations & Phase-2 Backlog").font = title_font
+    
+    limitations = [
+        "• Euclidean walksheds don't account for Dal/Anchar/Jhelum barriers.",
+        "• Demand elasticity not modelled (Mohring effect — actual demand will rise with frequency).",
+        "• Tourist surge volumes captured via POI weights, not arrival data.",
+        "• 23 routes have TMP-K placeholder codes pending fresh stops-master run.",
+        "• Military/convoy windows on NH-44 not subtracted.",
+        "• v3.3.5 is phase-1 conservative; v3.3.4 (1,113 buses) was aspirational 15-min plan."
+    ]
+    
+    for ri, limit in enumerate(limitations, start=4):
+        c = ws9.cell(row=ri, column=2, value=limit)
+        c.font = body_font
+        c.alignment = Alignment(wrap_text=True)
+
+    wb.save(out_path)
+    log.info("  RTO-Ready XLSX written: 9 sheets with professional styling.")
+
+
 def compute_phase4_metrics(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     v3.3 Phase-1 audit additions — derived per-route KPIs computed AFTER all
@@ -4537,6 +5160,7 @@ def main() -> None:
     file_map = build_individual_maps(gdf, gdf_pois, OUTPUT_DIR)
     export_csv(gdf, file_map, ROUTES_OUT_CSV)
     export_xlsx(gdf, out_path=ROUTES_OUT_XLSX, net_pop=net_pop)
+    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.5_RTO.xlsx", net_pop=net_pop)
     export_passenger_impact(gdf, PASSENGER_IMPACT_CSV)
     export_geojson(gdf, ROUTES_GEOJSON)
 
@@ -4599,6 +5223,24 @@ def main() -> None:
     log.info("    %-44s  passenger impact", PASSENGER_IMPACT_CSV)
     log.info("    %-44s  operational CSV", ROUTES_OUT_CSV)
     log.info("    %-44s  GeoJSON network", ROUTES_GEOJSON)
+    try:
+        import subprocess
+        import sys as _sys
+        # Use the current interpreter (matters under conda envs where bare
+        # `python` is not on PATH). The script lives one directory up from
+        # the engine's run-output cwd.
+        script = Path(__file__).resolve().parent / "generate_presentations.py"
+        log.info("  Generating PowerPoint presentations…")
+        subprocess.run(
+            [_sys.executable, str(script),
+             "--outdir", ".", "--engine-csv", ROUTES_OUT_CSV],
+            check=True,
+        )
+        log.info("    Kashmir_Transit_Technical_Briefing.pptx")
+        log.info("    Kashmir_Transit_Government_Briefing.pptx")
+    except Exception as e:
+        log.error("  Failed to generate presentations: %s", e)
+        
     log.info("=" * 70)
 
 

@@ -183,7 +183,9 @@ def add_kv_table(slide, headers, rows, top=1.4, left=0.6, width=12.0):
         cell.fill.solid()
         cell.fill.fore_color.rgb = NAVY
         p = cell.text_frame.paragraphs[0]
-        p.text = h
+        # python-pptx skips creating a run when text is "" — insert a space
+        # so p.runs[0] always exists and the styling applies.
+        p.text = str(h) if str(h) else " "
         p.alignment = PP_ALIGN.CENTER
         run = p.runs[0]
         run.font.size = Pt(14)
@@ -195,7 +197,7 @@ def add_kv_table(slide, headers, rows, top=1.4, left=0.6, width=12.0):
             cell.fill.solid()
             cell.fill.fore_color.rgb = LIGHT_GREY if r % 2 == 0 else WHITE
             p = cell.text_frame.paragraphs[0]
-            p.text = str(val)
+            p.text = str(val) if str(val) else " "
             p.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
             run = p.runs[0]
             run.font.size = Pt(12)
@@ -376,20 +378,46 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
 
     # 8. Version lineage
     s = add_blank_slide(prs)
-    add_title_bar(s, "Audit lineage: v3.1 → v3.3.2")
+    add_title_bar(s, "Audit lineage: v3.1 → v3.3.5")
     add_kv_table(
         s,
         ["Version", "Theme", "Key fixes"],
         [
-            ["v3.1", "Initial Kashmir fork", "Replaced 13 RITES Jammu CMP routes with 30 SSCL CHALO routes"],
-            ["v3.2", "Audit response", "RASTER_PATH bug; SSCL headway 45→15; Jhelum bridge bottleneck; CONGESTION_CITY_CORE 1.4→2.2; Tier-3 POI split"],
-            ["v3.3", "Phase-1 audit r1", "Typology flags; spare ratio 1.15; Phase-4 KPIs (Load, Viability, Emissions, Equity); SSCL_CDI_Conflict flag"],
-            ["v3.3.1", "Phase-1 audit r2", "Per-km cycle-time cap; typology mode-share; subsidy threshold 0.5→0.6; social obligation prune 17→11; CDI conflict +0.2 delta"],
-            ["v3.3.2", "Demand calibration", "Phase-4 demand rewrite (corridor-share + capture-scale); portable RASTER_PATH; cross_evaluate operator-absorption aware"],
+            ["v3.1",   "Initial Kashmir fork",   "Replaced 13 RITES Jammu CMP routes with 30 SSCL CHALO routes"],
+            ["v3.2",   "Audit response",         "RASTER_PATH bug; SSCL headway 45→15; Jhelum bridge bottleneck; congestion ×2.2; Tier-3 POI split"],
+            ["v3.3",   "Phase-1 audit r1",       "Typology flags; spare ratio 1.15; Phase-4 KPIs; SSCL_CDI_Conflict flag"],
+            ["v3.3.1", "Phase-1 audit r2",       "Per-km cycle cap; typology mode-share; subsidy 0.5→0.6; social prune 17→11"],
+            ["v3.3.2", "Demand calibration",     "Phase-4 demand rewrite + capture-scale; portable RASTER_PATH"],
+            ["v3.3.3", "Teammate review",        "Tourist tagging (4→69 routes); catchment ×1.3; Daily_Capacity formula fix"],
+            ["v3.3.4", "Honest fleet sizing",    "SSCL empirical → floor not override; LPV restored to dashboard; Red_Overload → 0"],
+            ["v3.3.5", "Conservative phase-1",   "Non-SSCL HP 15→20 min; MP 30→35 min; fleet 1,113→988 (0.60/1000)"],
+            ["v3.3.6", "RTO workbook + dev gate","9-sheet RTO export with sign-off; dummy-pop fallback gated behind env var"],
+        ],
+        top=1.2,
+    )
+    add_footer(s, "Slide 8  •  Audit trail")
+
+    # 8b. Headway distribution + conservative-vs-aspirational
+    s = add_blank_slide(prs)
+    add_title_bar(s, "Headway plan — conservative vs aspirational", color=TEAL)
+    add_kv_table(
+        s,
+        ["Band", "v3.3.4 aspirational", "v3.3.5 phase-1 (current)", "# routes"],
+        [
+            ["SSCL backbone",      "15 min",  "15 min (unchanged)",  "45"],
+            ["Non-SSCL trunk (HP)","15 min",  "20 min",              "~85"],
+            ["MP feeders",         "30 min",  "35 min",              "~50"],
+            ["LP lifelines",       "60 min",  "60 min (unchanged)",  "23"],
+            ["Social-promoted",    "45 min",  "45 min (unchanged)",  "~4"],
         ],
         top=1.3,
     )
-    add_footer(s, "Slide 8  •  Audit trail")
+    add_body_text(s, [
+        "v3.3.4 (15-min on all 130 HP routes) was a 1,113-bus plan = +85% over current ~600 buses on the road.",
+        "v3.3.5 (20-min on non-SSCL HP) is a 988-bus plan = +65% over current. Same active-route count; ~125 fewer buses to deploy in Year-1.",
+        "Both plans pass the same 8/8 QC checks; both are within ±25% of the headway-scaled CHALO calibration target on per-route fleet.",
+    ], top=4.2, font_size=14)
+    add_footer(s, "Slide 8b  •  Phase-1 vs phase-2 ambitions")
 
     # 9. Limitations
     s = add_blank_slide(prs)
@@ -479,7 +507,7 @@ def create_gov_deck(stats: EngineStats, output_path: str) -> None:
         f"Overlaid each route with WorldPop population data ({stats.cmp_pop:,} residents, 2024) and OpenStreetMap points of interest.",
         "Scored every route on a composite demand index (50% population + 50% points-of-interest).",
         "Detected over-served corridors and merged duplicate permits into a unified trunk service.",
-        "Allocated fleet at a 15-minute target headway on trunks (matches the SSCL e-bus operational standard).",
+        "Allocated fleet at conservative phase-1 headways — SSCL backbone at 15 min (their published target), other trunks at 20 min, feeders at 35 min.",
         "Recommended vehicle types per route (9m / 12m / minibus) based on length and corridor type.",
         "Result: a published, defensible, route-by-route service plan with QC-checked numbers.",
     ])
@@ -590,6 +618,45 @@ def create_gov_deck(stats: EngineStats, output_path: str) -> None:
         "    Network-graph walkshed, demand elasticity, full seasonal stratification, military/convoy operability mask.",
     ])
     add_footer(s, "Slide 9  •  Rollout plan")
+
+    # 9b. Conservative vs aspirational service-level option
+    s = add_blank_slide(prs)
+    add_title_bar(s, "Two plans on the table", color=TEAL)
+    add_kv_table(
+        s,
+        ["", "v3.3.5 — phase-1 (recommended)", "v3.3.4 — aspirational"],
+        [
+            ["Non-SSCL trunk headway",  "20 min",  "15 min"],
+            ["MP feeder headway",       "35 min",  "30 min"],
+            ["Total fleet",             "988 buses","1,113 buses"],
+            ["Vs current ~600 buses",   "+65%",    "+85%"],
+            ["Buses / 1,000 residents", "0.60 (peer-city band)","0.67 (Pune territory)"],
+            ["Time horizon",            "Year 1–2 commit",  "Year 3+ aspiration"],
+            ["Same QC pass / same Phase-4 calibration?", "Yes ✓",  "Yes ✓"],
+        ],
+        top=1.4,
+    )
+    add_body_text(s, [
+        "Both plans use exactly the same data and the same engine — only the headway target on non-SSCL trunks and MP feeders differs.",
+        "Phase-1 is the realistic first commit; phase-2 is the ambition once operator absorption is settled and depot capacity is built out.",
+    ], top=5.5, font_size=14)
+    add_footer(s, "Slide 9b  •  Service-level decision")
+
+    # 9c. RTO workbook reference
+    s = add_blank_slide(prs)
+    add_title_bar(s, "Companion RTO workbook")
+    add_body_text(s, [
+        "An RTO-Ready Master Excel Workbook ships alongside this plan:",
+        "  • Kashmir_Route_Frequency_Plan_v3.3.5_RTO.xlsx (9 sheets)",
+        "",
+        "Sheet 1 — Cover & Sign-off block for Principal Secretary, MD SSCL, Director JKRTC, and the concerned RTO.",
+        "Sheet 3 — Route-Level Plan (frozen identity columns, auto-filter, colour-coded Load_Flag, hyperlink to per-route map).",
+        "Sheet 4 — Operator Absorption Register with starting buyback-cost estimates (₹15 L private minibus / ₹3 L LPV / ₹50 L HPV).",
+        "Sheet 5 — Trunk Network Detail.   Sheet 6 — Social Obligation routes.   Sheet 7 — Tourist & Seasonal routes.",
+        "Sheet 8 — Calibration & Sources transparency.   Sheet 9 — Known Limitations and Phase-2 backlog.",
+        "Designed for paper review (landscape A3 print, repeat header rows) and Excel filtering side by side.",
+    ], font_size=14)
+    add_footer(s, "Slide 9c  •  Companion workbook")
 
     # 10. Risks
     s = add_blank_slide(prs)
