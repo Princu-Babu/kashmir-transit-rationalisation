@@ -99,20 +99,76 @@ def _load_prior_codes() -> Dict[str, str]:
     return out
 
 
+def _load_fresh_codes() -> Dict[str, str]:
+    """
+    Read Routes_with_Codes.xlsx (output of generate_route_codes.py).
+    Returns a Route_ID -> Route_Code map by joining the freshly-generated
+    codes against the engine CSV on row position (both files are 342 rows
+    in identical order — same source DataFrame).
+    """
+    out: Dict[str, str] = {}
+    codes_xlsx = ENGINE_OUT / "Routes_with_Codes.xlsx"
+    engine_csv = ENGINE_OUT / "Rationalised_Routes_Kashmir_v3.csv"
+    if not codes_xlsx.exists():
+        print(f"  ! no fresh Routes_with_Codes.xlsx — skipping fresh-code lookup",
+                 file=sys.stderr)
+        return out
+    if not engine_csv.exists():
+        return out
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(codes_xlsx, data_only=True)
+        ws = wb.active
+        headers = [c.value for c in ws[1]]
+        code_col = headers.index("Route_Code") + 1 if "Route_Code" in headers else None
+        if code_col is None:
+            return out
+        # Codes in order:
+        fresh_codes = []
+        for r in range(2, ws.max_row + 1):
+            v = ws.cell(row=r, column=code_col).value
+            fresh_codes.append(str(v) if v is not None else "")
+        # Engine CSV row order:
+        with engine_csv.open("r", encoding="utf-8-sig", newline="") as fh:
+            reader = csv.DictReader(fh)
+            rids = [str(row.get("Route_ID", "")).strip() for row in reader]
+        # Pair by index. UNMATCHED stays UNMATCHED so the fallback layer
+        # promotes it to a TMP-K placeholder.
+        for rid, code in zip(rids, fresh_codes):
+            if (rid and code
+                    and code.upper() != "UNMATCHED"
+                    and not code.startswith("TMP-")):
+                out[rid] = code
+        print(f"  Fresh codes loaded: {len(out)} from {codes_xlsx.name} "
+                f"({sum(1 for c in fresh_codes if c.upper()=='UNMATCHED')} UNMATCHED)")
+    except Exception as exc:
+        print(f"  ! could not load fresh Route_Codes ({exc})", file=sys.stderr)
+    return out
+
+
 def _add_codes(rows: List[Dict[str, str]],
+               fresh: Dict[str, str],
                prior: Dict[str, str]) -> List[Dict[str, str]]:
-    out, preserved, minted = [], 0, 0
+    """
+    Precedence per route:
+      1. Embedded Route_Code in the CSV row (if present and not UNMATCHED).
+      2. Freshly-generated code from generate_route_codes.py (this run).
+      3. Carried-forward official code from the last commit on the dashboard.
+      4. TMP-K#### placeholder.
+    """
+    out, embedded, fresh_n, prior_n, minted = [], 0, 0, 0, 0
     seq = 0
     for r in rows:
         seq += 1
         existing = (r.get("Route_Code") or "").strip()
         rid      = (r.get("Route_ID") or "").strip()
-        # A literal "UNMATCHED" from generate_route_codes.py is not a real code.
         is_unmatched = existing.upper() == "UNMATCHED"
         if existing and not existing.startswith("TMP-") and not is_unmatched:
-            code = existing
+            code = existing; embedded += 1
+        elif rid in fresh:
+            code = fresh[rid]; fresh_n += 1
         elif rid in prior:
-            code = prior[rid]; preserved += 1
+            code = prior[rid]; prior_n += 1
         else:
             code = _temp_route_code(seq); minted += 1
         new = {"Route_Code": code}
@@ -121,13 +177,18 @@ def _add_codes(rows: List[Dict[str, str]],
                 continue
             new[k] = v
         out.append(new)
-    print(f"  Route_Code: {preserved} preserved, {minted} fresh TMP-K codes minted")
+    print(f"  Route_Code:  embedded {embedded}  fresh {fresh_n}  "
+          f"prior {prior_n}  TMP minted {minted}")
     return out
 
 
 def _build_jsons():
+    fresh = _load_fresh_codes()
     prior = _load_prior_codes()
-    routes_rows = _add_codes(_read_csv_rows(ENGINE_OUT / "Rationalised_Routes_Kashmir_v3.csv"), prior)
+    routes_rows = _add_codes(
+        _read_csv_rows(ENGINE_OUT / "Rationalised_Routes_Kashmir_v3.csv"),
+        fresh, prior,
+    )
     code_by_id = {r["Route_ID"]: r["Route_Code"] for r in routes_rows if r.get("Route_ID")}
 
     def _backfill(rows):
