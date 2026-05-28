@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.5
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.6
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -363,7 +363,18 @@ SOCIAL_FLAG_BUFFER_M        = 250
 # in step9 ensures the formula can still raise SSCL fleet when needed.
 HEADWAY_HP_MIN              = 20   # was 15
 HEADWAY_MP_MIN              = 35   # was 30
-HEADWAY_LP_MIN              = 60   # unchanged
+HEADWAY_LP_MIN              = 35   # v3.3.6 (RTO ask): was 60 — '1 hour is
+                                    #         too long' for lifeline routes;
+                                    #         peer-city inter-district routes
+                                    #         typically run 30–40 min, so 35
+                                    #         splits the difference.
+
+# v3.3.6 (RTO ask): per-route HPV cap for SSCL-table-matched trunks. CHALO's
+# empirical 12m count is what they run today; the RTO wants the engine's
+# recommendation to give MPVs more share on long routes ("dominated by HPV").
+# 60% keeps HPV the dominant class while opening a 40% slot for MPVs that
+# matches the actual depot inventory + narrower-road reality.
+SSCL_HPV_SHARE_CAP          = 0.60
 
 # ─── v3.3 Phase-1 audit response: post-cycle spare ratio ────────────────────
 # The fleet computed by ceil(Cycle_Time / Headway) is the *operating* fleet.
@@ -2748,20 +2759,22 @@ def step8_compute_fleet_required(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 def _route_km_hpv_share(km: float) -> float:
     """
     v3.2: Route-length-based HPV (12m bus) share for non-SSCL trunks.
+    v3.3.6 (RTO Kashmir ask): the long-haul bracket moves from 85%→60% HPV.
+    The RTO's reasoning: even on inter-district highways the actual depot
+    inventory, road-shoulder widths through old Srinagar feeder segments,
+    and operator preference all push more 9m buses onto these corridors
+    than the original 85% assumed. 60% HPV / 40% MPV stays HPV-led but
+    matches the on-the-ground vehicle mix more realistically.
 
-    Audit finding: a blanket 85% HPV on every trunk contradicts SSCL's actual
-    fleet, which deploys 9m buses on short urban loops (≤12 km) and reserves
-    12m buses for longer inter-district corridors. This function reproduces
-    the empirical pattern observed in CMP_TRUNK_ROUTES:
         <  12 km  → 100% MPV (9m)         e.g. SSCL-09 Parimpora–Naseem Bagh
-        12-22 km  → 50% HPV / 50% MPV     mixed urban–peri-urban
-        ≥  22 km  → 85% HPV / 15% MPV     highway-grade long-haul
+        12-22 km  → 50% HPV / 50% MPV     mixed urban–peri-urban (unchanged)
+        ≥  22 km  → 60% HPV / 40% MPV     long-haul (was 85/15 in v3.3.5)
     """
     if km < 12.0:
         return 0.00
     if km < 22.0:
         return 0.50
-    return 0.85
+    return 0.60   # v3.3.6 (RTO ask): was 0.85
 
 
 def _sscl_bus_split(cmp_route_id: str) -> Optional[Tuple[int, int]]:
@@ -2833,6 +2846,16 @@ def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                     else:
                         scale = effective / empirical
                         hpv_eff = int(round(bus_12m * scale))
+                        mpv_eff = effective - hpv_eff
+                    # v3.3.6 (RTO Kashmir ask): cap HPV at SSCL_HPV_SHARE_CAP
+                    # so the recommendation gives MPVs more share even on
+                    # routes that CHALO currently runs as 100% 12-metre.
+                    # CHALO empirical is what is — the engine output is what
+                    # the RTO wants going forward. 60% keeps it HPV-led but
+                    # leaves room for MPVs.
+                    max_hpv = int(effective * SSCL_HPV_SHARE_CAP)
+                    if hpv_eff > max_hpv:
+                        hpv_eff = max_hpv
                         mpv_eff = effective - hpv_eff
                     return pd.Series({
                         "HPV_Count":      hpv_eff,
