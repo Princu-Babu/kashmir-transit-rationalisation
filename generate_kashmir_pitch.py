@@ -162,10 +162,10 @@ def build(prs, stats):
     add_text(s, "KASHMIR PUBLIC TRANSPORT",
              0.7, 0.7, 12, 0.6,
              size=20, bold=True, color=TEAL_LIGHT, font="Calibri")
-    add_text(s, "Route Rationalisation Plan — v3.3.5",
+    add_text(s, "Route Rationalisation Plan — v3.3.7",
              0.7, 1.3, 12, 0.9,
              size=38, bold=True, color=WHITE, font="Calibri")
-    add_text(s, "Phase-1 Conservative · Engine v3.3.5 ·"
+    add_text(s, "Phase-1 Conservative · Engine v3.3.7 ·"
              " SSCL Backbone + CHALO Calibration",
              0.7, 2.2, 12, 0.5,
              size=14, color=TEAL_LIGHT, italic=True)

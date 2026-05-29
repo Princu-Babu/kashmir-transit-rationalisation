@@ -27,14 +27,14 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 
-SRC = Path("E:/kash/outputs_v3.3.6/Kashmir_Route_Frequency_Plan_v3.3.5_RTO.xlsx")
-DST = Path("E:/kash/outputs_v3.3.6/Kashmir_Route_Frequency_Plan_v3.3.6_RTO_Pretty.xlsx")
+SRC = Path("E:/kash/outputs_v3.3.7/Kashmir_Route_Frequency_Plan_v3.3.7_RTO.xlsx")
+DST = Path("E:/kash/outputs_v3.3.7/Kashmir_Route_Frequency_Plan_v3.3.7_RTO_Pretty.xlsx")
 # Full CSV — has CMP_Trunk, Route_Type, Displaced_Operator_Class etc. that
 # the source XLSX strips out for the RTO-facing column subset.
-SRC_CSV = Path("E:/kash/outputs_v3.3.6/Rationalised_Routes_Kashmir_v3.csv")
+SRC_CSV = Path("E:/kash/outputs_v3.3.7/Rationalised_Routes_Kashmir_v3.csv")
 
 # Also write a copy to a convenient location for the meeting
-ALSO  = Path("C:/Users/Prash/Music/Kashmir_Route_Frequency_Plan_v3.3.6_RTO_Pretty.xlsx")
+ALSO  = Path("C:/Users/Prash/Music/Kashmir_Route_Frequency_Plan_v3.3.7_RTO_Pretty.xlsx")
 
 
 # ─── Theme (matches the other pretty workbook) ───────────────────────────────
@@ -221,9 +221,9 @@ def main():
 
     ws1.merge_cells("B4:G4")
     sub = ws1.cell(row=4, column=2,
-                    value=(f"Engine v3.3.5  ·  Generated "
+                    value=(f"Engine v3.3.7  ·  Generated "
                             f"{datetime.datetime.now():%d %b %Y}  ·  "
-                            f"Phase-1 Conservative plan"))
+                            f"Phase-1 Conservative plan  ·  35-min headway ceiling"))
     sub.font = Font(name="Segoe UI", italic=True, color=GREY, size=12)
     sub.alignment = Alignment(horizontal="left", vertical="center")
 
@@ -618,12 +618,12 @@ def main():
 
     ws4.merge_cells("B2:F3")
     t = ws4.cell(row=2, column=2,
-                  value="Stage-1 Sign-off — Kashmir Route Rationalisation v3.3.5")
+                  value="Stage-1 Sign-off — Kashmir Route Rationalisation v3.3.7")
     t.font = Font(name="Segoe UI", bold=True, color=NAVY, size=20)
     t.alignment = Alignment(horizontal="left", vertical="center")
     ws4.merge_cells("B4:F4")
     s = ws4.cell(row=4, column=2,
-                  value=(f"Document version: v3.3.5  ·  Generated "
+                  value=(f"Document version: v3.3.7  ·  Generated "
                           f"{datetime.datetime.now():%d %b %Y}  ·  "
                           f"Companion file: Route Plan (Sheet 2) + "
                           f"Operator Absorption (Sheet 3)"))

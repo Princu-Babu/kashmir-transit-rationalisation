@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.3.5-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.5"/>
+  <img src="https://img.shields.io/badge/Engine-v3.3.7-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.3.7"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-May_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/In--Scope_Routes-342-6A1B9A?style=for-the-badge" alt="Routes"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.5
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.7
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -123,7 +123,7 @@ This is a **clean fork** from the Jammu Transit Engine v3 — every Jammu-specif
 7. **POI Gravity** — Weighted POI count within 250m buffer, normalised by route-km
 8. **Cycle Times** — Congestion-adjusted (2.0× Downtown, 1.5× peri-urban) + stop dwell + junction penalties
 9. **Route Classification** — Union-Find clustering → CDI → Jenks breaks → HP/MP/LP bands
-10. **Fleet Allocation** — `⌈Cycle_Time / Headway⌉` with 85/15 HPV-MPV split for trunks
+10. **Fleet Allocation** — `⌈Cycle_Time / Headway⌉` with a balanced 50/50 HPV-MPV split for trunks (v3.3.7 — neither class a majority)
 11. **QC Checks** — 8 automated checks must pass before any export
 12. **Export** — XLSX workbook, Folium maps, GeoJSON, CSV logs
 
@@ -347,9 +347,11 @@ All tunable parameters live at the top of `transit_kashmir_v3.py` (lines 120–5
 | `SSCL_TRUNK_HEADWAY_MIN` | `15` | Hardcoded headway for all 30 SSCL backbone routes (was wrongly `45` in v3.1) |
 | `JHELUM_BRIDGE_BOTTLENECK_MIN` | `8.0` | New in v3.2 — additive bridge-queue minutes for Jhelum crossings (applied even when OSRM succeeds) |
 | `STOP_PENALTY_MIN` | `0.5` | Stop dwell time penalty (calibrated to 30s) |
-| `HEADWAY_HP_MIN` | `15` | HP band headway for urban/peri-urban routes |
-| `HEADWAY_MP_MIN` | `30` | MP band headway |
-| `HEADWAY_LP_MIN` | `60` | LP band headway |
+| `HEADWAY_HP_MIN` | `20` | HP band headway for urban/peri-urban routes (v3.3.5: was 15) |
+| `HEADWAY_MP_MIN` | `35` | MP band headway (v3.3.5: was 30) |
+| `HEADWAY_LP_MIN` | `35` | LP band headway (v3.3.6: was 60 — RTO ask) |
+| `HEADWAY_MAX_MIN` | `35` | **v3.3.7** — hard network-wide ceiling; every headway is clamped to this, so no route waits longer than 35 min |
+| `SSCL_HPV_SHARE_CAP` | `0.50` | **v3.3.7** — per-route HPV cap on SSCL trunks (was 0.60); keeps neither vehicle class a majority |
 | `MIN_FLEET_URBAN` | `2` | Fleet floor for Urban / Peri_Urban routes |
 | `MIN_FLEET_REGIONAL` | `1` | Fleet floor for Regional_District lifelines (was a blanket 2 in v3.1) |
 | `POI_TIER3_WEIGHT_SUMMER` | `0.6` | Tier-3 POI weight in summer (tourist-only AND residential-anchor) |
@@ -382,15 +384,15 @@ All **30 SSCL (Srinagar Smart City Limited) e-bus routes** from CHALO ridership 
 
 ### Fleet context: SSCL deployed vs engine-recommended
 
-The engine's total fleet recommendation of **~1,059 buses** covers the entire 342-route rationalised network — not just the SSCL e-bus pilot. These are not comparable numbers:
+The engine's total fleet recommendation of **~1,009 buses** covers the entire 342-route rationalised network — not just the SSCL e-bus pilot. These are not comparable numbers:
 
 | Segment | Currently deployed | Engine-recommended |
 |---|---|---|
-| SSCL e-buses (30 routes / 45 matched permits) | **98** (CHALO data, Apr 2026) | **132** (demand-justified at 15-min headway) |
-| Private minibuses + JKRTC + MPS (~190 active routes) | ~500–800 permits (existing) | **~884** (rationalised) |
-| **Total in-scope network** | ~600–900 | **1,016** |
+| SSCL e-buses (30 routes / 45 matched permits) | **98** (CHALO data, Apr 2026) | **362** (demand-justified at 15-min headway) |
+| Private minibuses + JKRTC + MPS (~190 active routes) | ~500–800 permits (existing) | **~647** (rationalised) |
+| **Total in-scope network** | ~600–900 | **1,009** |
 
-The SSCL-only fleet comparison (v3.3.5, conservative phase-1 headways): engine recommends **362 buses across the 45 matched permits** at the **SSCL design target of 15-min headway** (unchanged from v3.3.4). Non-SSCL trunks are now sized at a more realistic 20-min target headway. The +269% raw fleet delta vs CHALO's 98 buses is *not* a calibration error — it absorbs (a) the 15 duplicate private/JKRTC permits upgraded into trunk service alongside the SSCL e-bus and (b) the headway upgrade from CHALO's ~34-min effective service to the 15-min target. On the apples-to-apples basis — engine fleet/route vs **headway-scaled CHALO** (220 buses at 15-min) — the engine recommends **8.04 buses/route vs scaled CHALO 7.33 = +9.7%, within the ±25% calibration band**. See `cross_evaluate.py`.
+The SSCL-only fleet comparison (v3.3.7, 35-min headway ceiling + 50/50 trunk split): engine recommends **362 buses across the 45 matched permits** at the **SSCL design target of 15-min headway** (unchanged from v3.3.4). Non-SSCL trunks are now sized at a more realistic 20-min target headway. The +269% raw fleet delta vs CHALO's 98 buses is *not* a calibration error — it absorbs (a) the 15 duplicate private/JKRTC permits upgraded into trunk service alongside the SSCL e-bus and (b) the headway upgrade from CHALO's ~34-min effective service to the 15-min target. On the apples-to-apples basis — engine fleet/route vs **headway-scaled CHALO** (220 buses at 15-min) — the engine recommends **8.04 buses/route vs scaled CHALO 7.33 = +9.7%, within the ±25% calibration band**. See `cross_evaluate.py`.
 
 ---
 
@@ -601,6 +603,45 @@ This is the **recommended phase-1 plan**. A future "phase-2 aspirational" run ca
 
 ---
 
+## 🛠 Changes in v3.3.6 (First RTO Kashmir review)
+
+The RTO Kashmir reviewed the plan in person. Two asks, both applied:
+
+| Ask | Change |
+|---|---|
+| "Lifeline routes at 60 min — 1 hour is too long." | `HEADWAY_LP_MIN` cut **60 → 35 min**. |
+| "Trunks are dominated by 12 m buses; give MPVs more share." | New per-route `SSCL_HPV_SHARE_CAP = 0.60` on SSCL-matched trunks + long-haul non-SSCL bracket cut 85% → 60% HPV. |
+
+Also integrated `generate_route_codes.py` (deterministic 12-char route codes from the master stops file) into the standard build, and wired the dashboard to carry official codes forward across runs.
+
+---
+
+## 🛠 Changes in v3.3.7 (Second RTO Kashmir review — current)
+
+The RTO came back with two sharper asks plus a dashboard request. All applied:
+
+| Ask | Change |
+|---|---|
+| **"Eliminate the 60-minute headways entirely — 35 minutes maximum, everywhere."** | The rural-lifeline bands (`HEADWAY_REGIONAL_HP_MIN` 60, `HEADWAY_REGIONAL_MP_MIN` 90), the 45-min MPS floor, and the 60-min "regular"-category bucket are all gone. A new hard ceiling `HEADWAY_MAX_MIN = 35` clamps every assigned headway. **Headways in the published plan are now only 15 / 20 / 35 min — 0 routes above 35.** |
+| **"On a trunk route, neither HPV nor MPV should be the majority — balance them."** | `SSCL_HPV_SHARE_CAP` 0.60 → **0.50** and the long-haul non-SSCL bracket 0.60 → **0.50**. With integer rounding MPV ends at most one bus ahead of HPV. **0 trunk routes have an HPV majority.** Road-width data (a pending P2 RTO data ask) would let us bias narrow corridors toward MPV per-segment later. |
+| **"Clean up the dashboard downloads — the RTO needs one-click access to the pretty bus-schedule Excel."** | Dashboard Kashmir section reworked: the pretty bus-schedule workbook is now the single hero download; the 9-sheet master workbook + map sit beside it; every other artefact is tucked into a collapsed "Technical files" expander. Stale per-version workbooks are auto-purged on sync. |
+
+### Outcome (vs v3.3.6)
+
+| Metric | v3.3.6 | v3.3.7 | Δ |
+|---|---|---|---|
+| Total fleet | 1,003 | **1,009** | +6 (35-min ceiling raised a few rural/operator routes) |
+| HPV / MPV / LPV | 84 / 797 / 122 | **80 / 807 / 122** | 0.50 cap shifted ~4 HPV → MPV |
+| Max headway anywhere | 60 min | **35 min** | the directive |
+| Headway values present | 15 / 20 / 35 / 60 / 90 | **15 / 20 / 35** | 60- and 90-min bands eliminated |
+| Trunk routes with HPV majority | some | **0** | neither class dominant |
+| Buses per 1000 residents | 0.60 | **0.61** | still in the Chandigarh CTU peer band |
+| Active routes / structure | 207 / 50T 157F | 207 / 50T 157F | unchanged |
+| Per-route SSCL fleet vs scaled CHALO | +9.7% | **+9.7%** | calibration unchanged, within ±25% |
+| QC checks / Red_Overload | 8/8 · 0 | **8/8 · 0** | ✓ |
+
+---
+
 ## 🔑 Key CHALO/SSCL Data Points
 
 | Metric | Value | Source |
@@ -622,5 +663,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.3.5 — May 2026 (honest fleet sizing)</i>
+  <i>Engine v3.3.7 — May 2026 (35-min headway ceiling · balanced 50/50 trunk fleet)</i>
 </p>

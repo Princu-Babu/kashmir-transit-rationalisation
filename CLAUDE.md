@@ -115,45 +115,56 @@ version bumps. (These are `_`-prefixed helper scripts, committed to the engine r
 | v3.3.3 | Teammate review | Tourist tagging 4→69 routes (geometry-proximity + endpoint tests); catchment ×1.3 tourist boost; Daily_Capacity formula fix (cycle-time based) |
 | v3.3.4 | Honest fleet sizing | SSCL empirical fleet = FLOOR not override (eliminated 12 false Red_Overload); LPV restored to dashboard breakdown; cross_evaluate headway-scaled objective |
 | v3.3.5 | Conservative phase-1 | Non-SSCL HP headway 15→20, MP 30→35; fleet 1,113→988 |
-| **v3.3.6** | **RTO Kashmir asks (CURRENT)** | **SSCL_HPV_SHARE_CAP=0.60 (more MPV on HPV-dominated trunks); LP headway 60→35 min; route-code generator integrated** |
+| v3.3.6 | RTO Kashmir asks r1 | SSCL_HPV_SHARE_CAP=0.60 (more MPV on HPV-dominated trunks); LP headway 60→35 min; route-code generator integrated |
+| **v3.3.7** | **RTO Kashmir asks r2 (CURRENT)** | **35-min headway CEILING (HEADWAY_MAX_MIN=35 — regional 60/90, MPS 45, "regular" 60 all eliminated → headways now only 15/20/35); SSCL_HPV_SHARE_CAP 0.60→0.50 + long-haul bracket 0.60→0.50 (neither class a trunk majority); dashboard download cleanup (hero pretty-workbook + collapsed technical files); _sync_dashboard auto-copies RTO+Pretty workbooks and purges stale ones** |
 
 ---
 
-## 5. Current key constants (v3.3.6)
+## 5. Current key constants (v3.3.7)
 
 ```
 HEADWAY_HP_MIN              = 20        # non-SSCL trunks
 HEADWAY_MP_MIN             = 35        # feeders
-HEADWAY_LP_MIN             = 35        # lifelines (was 60 — RTO ask)
-SSCL_TRUNK_HEADWAY_MIN     = 15        # SSCL backbone (their design target)
-SSCL_HPV_SHARE_CAP         = 0.60      # cap HPV per SSCL route (RTO ask)
+HEADWAY_LP_MIN              = 35        # lifelines (was 60 — RTO ask r1)
+HEADWAY_REGIONAL_HP_MIN    = 35        # rural lifeline (was 60 — RTO ask r2)
+HEADWAY_REGIONAL_MP_MIN    = 35        # rural lifeline (was 90 — RTO ask r2)
+HEADWAY_MAX_MIN            = 35        # v3.3.7 HARD CEILING — clamp applied at
+                                       #   end of step6; the "mps" 45 floor and
+                                       #   "regular" 60 bucket also dropped to 35.
+                                       #   Verified: 0 routes >35; values are 15/20/35.
+SSCL_TRUNK_HEADWAY_MIN     = 15        # SSCL backbone (their design target; below ceiling)
+SSCL_HPV_SHARE_CAP         = 0.50      # v3.3.7: was 0.60 — neither class a trunk majority
 FLEET_SPARE_RATIO          = 1.15      # maintenance/breakdown buffer
 PHASE4_CORRIDOR_CAPTURE_SCALE = 0.18   # empirical CHALO demand anchor
 CONGESTION_CITY_CORE       = 2.2       # downtown peak multiplier
 JHELUM_BRIDGE_BOTTLENECK_MIN = 8.0
 TOURIST_POPULATION_MULTIPLIER = 1.3    # tourist-corridor catchment boost
-SSCL_HPV cap binding → SSCL HPV share 34% → 19%
+_route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
+0.50 cap binding → verified 0 trunk routes with HPV majority (>50%, fleet≥4)
 ```
 
 ---
 
-## 6. Current numbers (v3.3.6, the live plan)
+## 6. Current numbers (v3.3.7, the live plan)
 
 - 342 in-scope permits → **207 active** (Trunk 50 / Feeder 157 / Merged 135)
-- **Total fleet 1,003** = HPV 84 / MPV 797 / LPV 122
+- **Total fleet 1,009** = HPV 80 / MPV 807 / LPV 122
 - 45 SSCL permits matched to 30 CHALO routes
 - 69 tourist corridors, 87 social-obligation routes (53 active)
-- LP-band mean headway 38 min, LP fleet 91
-- Network coverage 69.78% of 1.66M (deduplicated 1,158,399 residents)
-- **0.60 buses / 1000 residents** (peer band: BMTC 0.51, Chandigarh CTU 0.65, Pune 0.75)
+- **Headways present: ONLY 15 / 20 / 35 min** (45 routes @15, 145 @20, 152 @35);
+  max headway = 35, **0 routes above** (the 60/90-min bands are gone — RTO ask r2)
+- **Trunk vehicle mix balanced 50/50**; verified **0 trunk routes with an HPV majority**
+- Network coverage 69.78% of 1.66M (deduplicated 1,158,399 residents) — unchanged
+  from v3.3.6 (headway/mix changes don't alter the active route set or geometry)
+- **0.61 buses / 1000 residents** (peer band: BMTC 0.51, Chandigarh CTU 0.65, Pune 0.75)
 - **QC 8/8 passing, 0 Red_Overload**
 - Calibration vs CHALO Apr 2026: per-route SSCL fleet **+9.7%** vs headway-scaled
-  CHALO (within ±25% band) — this is THE calibration signal. Raw total-fleet
-  +269% is NOT an error (operator absorption + 34→15 min headway upgrade).
+  CHALO (within ±25% band) — unchanged. Raw total-fleet +269% is NOT an error
+  (operator absorption + 34→15 min headway upgrade).
 
 ### Two service-level plans on the table
-- **v3.3.6 (recommended phase-1)**: ~1,003 buses, +65% over current ~600,
-  conservative headways. This is the deployable Year-1 plan.
+- **v3.3.7 (recommended phase-1)**: ~1,009 buses, +68% over current ~600,
+  35-min headway ceiling, balanced 50/50 trunk fleet. Deployable Year-1 plan.
 - **v3.3.4 (aspirational)**: 1,113 buses, +85%, 15-min everywhere. Year-3 ambition.
 
 ---
@@ -231,14 +242,28 @@ generators already guard this.
 
 ## 11. RTO meeting context
 
-The RTO Kashmir reviewed the plan in person and asked for two changes
-(both applied in v3.3.6):
+**Review r1 (→ v3.3.6):**
 1. More MPVs on HPV-dominated trunks → `SSCL_HPV_SHARE_CAP = 0.60`.
 2. LP-band headway 60 min too long → cut to 35 min.
 
-Talking points + the beautified Formatted_Kashmir_Routes_Pretty.xlsx live in
-`C:\Users\Prash\Music\`. Desktop has 8 `Kashmir Transit — *.lnk` shortcuts to
-the latest decks/workbooks/PDFs.
+**Review r2 (→ v3.3.7, CURRENT):**
+1. *Completely* eliminate 60-min headways — 35 min max everywhere →
+   `HEADWAY_MAX_MIN = 35` ceiling; regional 60/90, MPS 45, "regular" 60 all gone.
+2. On a trunk, neither HPV nor MPV should be the majority → cap 0.60→**0.50**
+   (both the SSCL cap and the long-haul non-SSCL bracket). Road-width data was
+   raised as a "nice to have" — we don't have it (pending P2 ask), so the split
+   is a flat balanced 50/50 for now, not road-width-aware.
+3. Dashboard download clutter — RTO must reach the pretty bus-schedule Excel in
+   one click → Kashmir section reworked to a hero pretty-workbook CTA + collapsed
+   "Technical files" expander; `_sync_dashboard.py` now auto-copies the RTO +
+   Pretty workbooks into `public/` and purges stale per-version files.
+
+The pretty bus-schedule workbook is `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO_Pretty.xlsx`
+(via `_beautify_rto_master.py`; also written to `C:\Users\Prash\Music\`). The old
+hand-made `Formatted_Kashmir_Routes_Pretty.xlsx` is **retired** — it was a manual
+Music-folder file that went stale; the dashboard now serves the engine-generated
+pretty workbook directly. Desktop has `Kashmir Transit — *.lnk` shortcuts to the
+latest decks/workbooks/PDFs (regenerated per build — see the shortcut script).
 
 Data we asked the RTO for (to sharpen v3.4): P0 = master stops register, live
 operator permit registry, GPS traces; P1 = Census 2021 ward pop, per-route AFC

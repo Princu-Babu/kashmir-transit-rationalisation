@@ -22,21 +22,39 @@ try:
 except Exception:
     pass
 
-ENGINE_OUT = Path("E:/kash/outputs_v3.3.6")
-ENGINE_LOG = Path("E:/kash/engine_run_v3.3.6.log")
+ENGINE_OUT = Path("E:/kash/outputs_v3.3.7")
+ENGINE_LOG = Path("E:/kash/engine_run_v3.3.7.log")
 
 DASH_PUBLIC = Path("E:/dash/bus-sathi-dashboard/public/route-rationalization-kashmir")
 DASH_DATA   = DASH_PUBLIC / "data"
 
+# v3.3.7: also push the RTO master workbook, the pretty bus-schedule workbook,
+# and the route-code workbook so the dashboard always serves the LIVE engine
+# artefacts (previously the pretty workbook was hand-copied → went stale).
 COPY_FILES = [
     "Rationalised_Routes_Kashmir_v3.csv",
     "Rationalised_Routes_Kashmir_v3.geojson",
     "Passenger_Impact_Kashmir_v3.csv",
     "Rationalisation_Log_Kashmir_v3.csv",
     "Kashmir_Route_Frequency_Plan_v3.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.3.7_RTO.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.3.7_RTO_Pretty.xlsx",
+    "Routes_with_Codes.xlsx",
     "Master_Transit_Map_Kashmir_v3.html",
 ]
 COPY_DIRS = ["route_maps_kashmir"]
+
+# v3.3.7: stale per-version downloads to purge from the dashboard public folder
+# so the RTO can never grab an out-of-date workbook. The cleanup keeps exactly
+# one RTO master + one pretty bus-schedule file (the v3.3.7 pair above).
+STALE_FILES = [
+    "Kashmir_Route_Frequency_Plan_v3.3.5_RTO.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.3.6_RTO.xlsx",
+    "Formatted_Kashmir_Routes_Pretty.xlsx",
+    "Formatted_Kashmir_Routes.xlsx",
+    "generate_route_codes (1).py",
+    "kashmir_routes_geocoded.csv",
+]
 
 
 def _temp_route_code(seq: int) -> str:
@@ -228,10 +246,19 @@ def _build_jsons():
         print(f"  wrote data/Rationalised_Routes_Kashmir_v3.csv ({len(routes_rows)} rows)")
 
 
+def _purge_stale():
+    for fname in STALE_FILES:
+        p = DASH_PUBLIC / fname
+        if p.exists():
+            p.unlink()
+            print(f"  purged stale {fname}")
+
+
 def main():
     print(f"Sync {ENGINE_OUT.name} engine outputs -> dashboard...")
     DASH_DATA.mkdir(parents=True, exist_ok=True)
     _copy_assets()
+    _purge_stale()
     _build_jsons()
     print("Done.")
 

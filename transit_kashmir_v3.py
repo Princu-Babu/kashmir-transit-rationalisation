@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.6
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.7
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -172,8 +172,11 @@ URBAN_KM_THRESHOLD          = 15.0   # < 15km = Urban
 PERIURBAN_KM_THRESHOLD      = 40.0   # 15–40km = Peri-Urban, > 40km = Regional_District
 
 # ─── Directive 1: Headways for Regional_District routes ──────────────────────
-HEADWAY_REGIONAL_HP_MIN     = 60     # Rural lifeline HP: 60 min
-HEADWAY_REGIONAL_MP_MIN     = 90     # Rural lifeline MP: 90 min
+# v3.3.7 (RTO ask): rural lifelines were 60/90 min — '1 hour+ is unacceptable
+# even on inter-district routes'. Brought down to the network-wide 35-min cap
+# (HEADWAY_MAX_MIN) so NO route in the plan waits longer than 35 minutes.
+HEADWAY_REGIONAL_HP_MIN     = 35     # Rural lifeline HP: was 60 (RTO ask)
+HEADWAY_REGIONAL_MP_MIN     = 35     # Rural lifeline MP: was 90 (RTO ask)
 
 # ─── Directive 5: Population normalisation cap ────────────────────────────────
 POP_CAP_PERCENTILE          = 95     # Cap at 95th percentile before normalising
@@ -369,12 +372,22 @@ HEADWAY_LP_MIN              = 35   # v3.3.6 (RTO ask): was 60 — '1 hour is
                                     #         typically run 30–40 min, so 35
                                     #         splits the difference.
 
+# v3.3.7 (RTO ask): a hard network-wide headway ceiling. After step6 assigns
+# headways by band / route-type / operator-category, ANY value above this is
+# clamped down to it. Guarantees the published plan contains no headway > 35
+# min — the legacy 60-min and 90-min rural/operator buckets are eliminated
+# entirely. The SSCL 15-min backbone and 20-min HP trunks sit below the ceiling.
+HEADWAY_MAX_MIN             = 35
+
 # v3.3.6 (RTO ask): per-route HPV cap for SSCL-table-matched trunks. CHALO's
 # empirical 12m count is what they run today; the RTO wants the engine's
 # recommendation to give MPVs more share on long routes ("dominated by HPV").
-# 60% keeps HPV the dominant class while opening a 40% slot for MPVs that
-# matches the actual depot inventory + narrower-road reality.
-SSCL_HPV_SHARE_CAP          = 0.60
+# v3.3.7 (RTO ask): tightened 0.60 → 0.50 so that on a trunk route NEITHER
+# vehicle class is the majority — the recommendation lands a balanced 50/50
+# HPV/MPV mix (integer rounding leaves MPV at most one bus ahead), matching the
+# depot inventory + narrower-road reality the RTO described. Road-width data
+# (a pending P2 RTO data ask) would let us refine this per-corridor later.
+SSCL_HPV_SHARE_CAP          = 0.50
 
 # ─── v3.3 Phase-1 audit response: post-cycle spare ratio ────────────────────
 # The fleet computed by ceil(Cycle_Time / Headway) is the *operating* fleet.
@@ -2660,8 +2673,12 @@ def step6_assign_headways(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     Headway rules:
       SSCL Trunk routes                  → 15 min (hardcoded)
-      Urban / Peri_Urban routes          → HP=15  MP=30  LP=60
-      Regional_District routes           → HP=60  MP=90       (rural lifeline)
+      Urban / Peri_Urban routes          → HP=20  MP=35  LP=35
+      Regional_District routes           → HP=35  MP=35       (rural lifeline)
+
+    v3.3.7 (RTO ask): every assigned headway is finally clamped to
+    HEADWAY_MAX_MIN (35 min). No route in the published plan waits longer than
+    35 minutes — the old 45/60/90-min operator and rural buckets are gone.
     """
     log.info("Step 6: Assigning headways by Priority Band + Route_Type…")
     log.info("  SSCL Trunk routes: hardcoded %d min (SSCL operational target)",
@@ -2681,12 +2698,14 @@ def step6_assign_headways(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         cat        = str(row.get("Vehicle_Category", "")).strip().lower()
 
         # Operator-specific overrides
+        # v3.3.7 (RTO ask): the legacy 45-min MPS floor and 60-min "regular"
+        # bucket are pulled down to the 35-min ceiling — nothing waits an hour.
         if "city bus" in cat:
             return max(20, HEADWAY_HP_MIN if band == "HP" else HEADWAY_MP_MIN)
         if "mps" in cat:
-            return max(45, HEADWAY_HP_MIN if band == "HP" else HEADWAY_MP_MIN)
+            return max(35, HEADWAY_HP_MIN if band == "HP" else HEADWAY_MP_MIN)
         if "regular" in cat:
-            return 60
+            return 35
 
         if route_type == "Regional_District":
             if band == "HP": return HEADWAY_REGIONAL_HP_MIN
@@ -2698,10 +2717,21 @@ def step6_assign_headways(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     gdf["Headway_Min"] = gdf.apply(_headway, axis=1).astype(int)
 
+    # v3.3.7 (RTO ask): hard network-wide ceiling. Belt-and-suspenders clamp so
+    # that even if any future branch returns a value above HEADWAY_MAX_MIN, the
+    # published plan still contains no headway longer than 35 minutes.
+    over = int((gdf["Headway_Min"] > HEADWAY_MAX_MIN).sum())
+    gdf["Headway_Min"] = gdf["Headway_Min"].clip(upper=HEADWAY_MAX_MIN).astype(int)
+    if over:
+        log.info("  v3.3.7 clamp: %d routes capped down to the %d-min ceiling.",
+                 over, HEADWAY_MAX_MIN)
+
     cmp_n      = gdf.get("CMP_Trunk", pd.Series(False, index=gdf.index)).sum()
     regional_n = (gdf.get("Route_Type", pd.Series()) == "Regional_District").sum()
     log.info("  %d SSCL Trunk routes → hardcoded %d-min headway.", cmp_n, CMP_TRUNK_HEADWAY_MIN)
     log.info("  %d Regional_District routes assigned relaxed headways.", regional_n)
+    log.info("  Max headway in plan: %d min (ceiling %d).",
+             int(gdf["Headway_Min"].max()), HEADWAY_MAX_MIN)
     return gdf
 
 
@@ -2759,22 +2789,25 @@ def step8_compute_fleet_required(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 def _route_km_hpv_share(km: float) -> float:
     """
     v3.2: Route-length-based HPV (12m bus) share for non-SSCL trunks.
-    v3.3.6 (RTO Kashmir ask): the long-haul bracket moves from 85%→60% HPV.
-    The RTO's reasoning: even on inter-district highways the actual depot
-    inventory, road-shoulder widths through old Srinagar feeder segments,
-    and operator preference all push more 9m buses onto these corridors
-    than the original 85% assumed. 60% HPV / 40% MPV stays HPV-led but
-    matches the on-the-ground vehicle mix more realistically.
+    v3.3.6 (RTO Kashmir ask): the long-haul bracket moved 85%→60% HPV.
+    v3.3.7 (RTO ask): long-haul bracket tightened again to 50% so NEITHER
+    vehicle class is the majority on a trunk route — a balanced 50/50 HPV/MPV
+    mix on every corridor 12 km and longer. The RTO's reasoning holds: depot
+    inventory, road-shoulder widths through old Srinagar feeder segments, and
+    operator preference all push 9m buses onto these corridors, so a 50/50
+    split (rather than an HPV-led one) best matches the on-the-ground reality.
+    Per-corridor road-width data (a pending P2 RTO data ask) would let us bias
+    this toward MPV on narrow segments later.
 
-        <  12 km  → 100% MPV (9m)         e.g. SSCL-09 Parimpora–Naseem Bagh
+        <  12 km  → 100% MPV (9m)         short urban — big buses not viable
         12-22 km  → 50% HPV / 50% MPV     mixed urban–peri-urban (unchanged)
-        ≥  22 km  → 60% HPV / 40% MPV     long-haul (was 85/15 in v3.3.5)
+        ≥  22 km  → 50% HPV / 50% MPV     long-haul (was 60/40 in v3.3.6)
     """
     if km < 12.0:
         return 0.00
     if km < 22.0:
         return 0.50
-    return 0.60   # v3.3.6 (RTO ask): was 0.85
+    return 0.50   # v3.3.7 (RTO ask): was 0.60 — neither class a majority
 
 
 def _sscl_bus_split(cmp_route_id: str) -> Optional[Tuple[int, int]]:
@@ -2799,7 +2832,8 @@ def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
       • Non-SSCL trunks (UPGRADED_TO_TRUNK / MERGED_INTO_TRUNK without
         CMP_Route_ID): Route_KM-bracketed share via _route_km_hpv_share()
-        — 0% / 50% / 85% HPV in 0-12 / 12-22 / 22+ km brackets.
+        — 0% / 50% / 50% HPV in 0-12 / 12-22 / 22+ km brackets (v3.3.7:
+        long-haul bracket balanced to 50/50 so neither class is a majority).
 
       • RETAINED_AS_FEEDER (unchanged from v3.1):
           - LPV category → 100% LPV
@@ -2851,8 +2885,9 @@ def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                     # so the recommendation gives MPVs more share even on
                     # routes that CHALO currently runs as 100% 12-metre.
                     # CHALO empirical is what is — the engine output is what
-                    # the RTO wants going forward. 60% keeps it HPV-led but
-                    # leaves room for MPVs.
+                    # the RTO wants going forward. v3.3.7: 50% cap means neither
+                    # class is the majority — a balanced trunk fleet (int()
+                    # floor leaves MPV at most one bus ahead of HPV).
                     max_hpv = int(effective * SSCL_HPV_SHARE_CAP)
                     if hpv_eff > max_hpv:
                         hpv_eff = max_hpv
@@ -4234,7 +4269,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws1.cell(row=7, column=2, value="Srinagar / Kashmir Valley").font = Font(name="Segoe UI", bold=True, color=TEAL, size=14)
     
     gen_date = datetime.datetime.now().strftime("%d %b %Y")
-    ws1.cell(row=9, column=2, value=f"Version: v3.3.5  |  Generated: {gen_date}").font = subtitle_font
+    ws1.cell(row=9, column=2, value=f"Version: v3.3.7  |  Generated: {gen_date}").font = subtitle_font
     ws1.cell(row=10, column=2, value="Engine: SSCL/CHALO Backbone Injection | Kashmir Geographic Recentre").font = subtitle_font
     
     summary_text = (f"This plan details the rationalised public transport network for Srinagar and the Kashmir Valley. "
@@ -4434,7 +4469,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws3.page_margins.right = 0.4
     ws3.page_margins.top = 0.6
     ws3.page_margins.bottom = 0.6
-    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.3.5"
+    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.3.7"
     ws3.oddHeader.center.size = 12
     ws3.oddFooter.right.text  = "Page &P of &N"
     
@@ -4706,7 +4741,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws8.cell(row=2, column=2, value="Calibration & Sources").font = title_font
     
     calib_data = [
-        ("Engine Version", "v3.3.5 (Kashmir Fork)"),
+        ("Engine Version", "v3.3.7 (Kashmir Fork)"),
         ("Date Generated", gen_date),
         ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 60 min | SSCL: 15 min"),
         ("CHALO Calibration Scorecard", "Matched to Apr 2026 ridership data"),
@@ -5183,7 +5218,7 @@ def main() -> None:
     file_map = build_individual_maps(gdf, gdf_pois, OUTPUT_DIR)
     export_csv(gdf, file_map, ROUTES_OUT_CSV)
     export_xlsx(gdf, out_path=ROUTES_OUT_XLSX, net_pop=net_pop)
-    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.5_RTO.xlsx", net_pop=net_pop)
+    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.7_RTO.xlsx", net_pop=net_pop)
     export_passenger_impact(gdf, PASSENGER_IMPACT_CSV)
     export_geojson(gdf, ROUTES_GEOJSON)
 
@@ -5228,8 +5263,8 @@ def main() -> None:
         log.info("  NOTE: Operator absorption or buyback recommendations needed "
                  "before plan submission. See Displaced_Operator_Class column.")
     log.info("  Trunk vehicle split     : Route_KM-bracketed "
-             "(<12km: 100%% MPV | 12-22km: 50/50 | 22+km: 85%% HPV)  "
-             "+ SSCL empirical table for backbone routes (v3.2)")
+             "(<12km: 100%% MPV | 12-22km: 50/50 | 22+km: 50/50)  "
+             "+ SSCL empirical table capped at 50%% HPV (v3.3.7 — neither class a majority)")
     log.info("  Feeder vehicle split    : 100%% MPV (city bus / unknown), "
              "30/70 HPV/MPV (regular/MPS), 100%% LPV (LPV category)")
     log.info("  Network pop.            : %s residents  (%.2f%% of CMP %d total: %s)",

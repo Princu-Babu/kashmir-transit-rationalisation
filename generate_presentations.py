@@ -253,7 +253,7 @@ def add_title_slide(prs: Presentation, title: str, subtitle: str, tag: str,
     foot = slide.shapes.add_textbox(Inches(5.0), Inches(6.7),
                                     Inches(8.0), Inches(0.5))
     p = foot.text_frame.paragraphs[0]
-    p.text = "Engine v3.3.5  •  May 2026  •  Conservative phase-1 headways (SSCL 15 / non-SSCL HP 20 / MP 35)"
+    p.text = "Engine v3.3.7  •  May 2026  •  35-min headway ceiling (SSCL 15 / HP trunks 20 / all others ≤ 35) · trunk fleet 50/50 HPV-MPV"
     run = p.runs[0]
     run.font.size = Pt(11)
     run.font.italic = True
