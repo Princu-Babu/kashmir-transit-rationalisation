@@ -156,7 +156,7 @@ The engine produces 6 output files per run:
 
 ## 🗺️ Route Code Methodology
 
-*(This logic is implemented in the `generate_route_codes.py` script)*
+*(As of v3.3.7 this logic is baked into the engine — `assign_route_codes()` in `transit_kashmir_v3.py` populates a `Route_Code` column in the operational CSV during the run, so the workbooks and the pretty bus-schedule file carry codes natively. Endpoints absent from the stops master are backfilled from the official codes already published in the dashboard. The standalone `generate_route_codes.py` script remains available and uses the same matching cascade described below.)*
 
 Every route in the network is assigned a deterministic 12-character `Route_Code` derived from its origin and destination stops. The code is a compact, human-inspectable identifier that encodes administrative location, network sector, and stop position — allowing engineers reading the code to infer roughly where the route runs without consulting a lookup table.
 

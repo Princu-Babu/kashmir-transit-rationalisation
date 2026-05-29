@@ -85,21 +85,27 @@ version bumps. (These are `_`-prefixed helper scripts, committed to the engine r
 
 ---
 
-## 3. Route_Code generation (NEW — integrated v3.3.6)
+## 3. Route_Code generation (baked into the engine — v3.3.7)
 
-- `generate_route_codes.py` + `Kashmir_Stops_Sectored_V2.csv` (the master stops
-  file, 187 stops, columns: Master_Stop_Code, Stop_Name, Sector_ID, Latitude,
-  Longitude, Stop_No, Tehsil_Code).
-- Produces a deterministic 12-char code: `<TehsilO><TehsilD><SectorO><SectorD><StopO><StopD>`
+- **v3.3.7: route codes are now computed INSIDE the engine** (`assign_route_codes`
+  in transit_kashmir_v3.py, called in main() before export). The operational CSV
+  carries a `Route_Code` column (right after Route_Name), so the RTO workbook AND
+  the pretty bus-schedule workbook show codes natively. This fixed the blank
+  Route Code column in the pretty workbook (the engine CSV never used to carry
+  codes — they were bolted on later by the dashboard sync).
+- Source: `Kashmir_Stops_Sectored_V2.csv` (master stops, 187 stops: Master_Stop_Code,
+  Stop_Name, Sector_ID, Latitude, Longitude, Stop_No, Tehsil_Code). Lives in
+  `E:\kash` (engine resolves it via cwd → script-dir).
+- Deterministic 12-char code: `<TehsilO><TehsilD><SectorO><SectorD><StopO><StopD>`
   e.g. `PWSP08091215` = Pulwama→Shopian, sector 08→09, stop 12→15.
 - Match cascade: exact → compact → suffix-stripped → substring → fuzzy 0.85.
-- Latest run: **313/342 matched (91.5%)**, 29 UNMATCHED (small stops not yet in
-  master: PANZINARA, BATWARA, BONE JOINT HOSPITAL BARZALLA, JAWAHAIRNAGAR…).
-- `_sync_dashboard.py` code precedence: embedded CSV code → fresh
-  Routes_with_Codes.xlsx → prior dashboard commit → TMP-K#### placeholder.
-  Current dashboard state: **342/342 real codes, 0 TMP, 0 UNMATCHED.**
-- When the RTO ships an updated stops master, drop it in, re-run
-  `generate_route_codes.py` then `_sync_dashboard.py` — dashboard auto-updates.
+- Engine result: **313/342 matched from the stops master, 29 backfilled from the
+  dashboard routes.json (by Route_ID), 0 remaining UNMATCHED.** So every export is
+  fully coded. `_sync_dashboard.py` then sees **embedded 342 / TMP 0**.
+- `generate_route_codes.py` is kept as a standalone tool (produces
+  `Routes_with_Codes.xlsx`); the engine ported its matching cascade.
+- When the RTO ships an updated stops master, drop it in `E:\kash`, re-run the
+  engine → codes regenerate natively → `_sync_dashboard.py` propagates them.
 
 ---
 
@@ -193,7 +199,7 @@ Known structural caveats (don't "fix" without intent):
 | `Rationalised_Routes_Kashmir_v3.csv` | Full operational CSV (50+ cols). NOTE: drops LPV_Count — derive as Fleet−HPV−MPV |
 | `Kashmir_Route_Frequency_Plan_v3.xlsx` | Legacy 4-sheet workbook (engineering) |
 | `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO.xlsx` | 9-sheet RTO-ready workbook (export_xlsx_rto in engine) |
-| `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO_Pretty.xlsx` | 4-sheet cut-down (Summary/Route Plan/Operator Absorption/Sign-off), via `_beautify_rto_master.py` |
+| `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO_Pretty.xlsx` | **2-sheet** bus schedule (Summary + Route Plan), via `_beautify_rto_master.py`. v3.3.7: Operator Absorption + Sign-off sheets removed (RTO ask) — that detail stays in the 9-sheet RTO master. Route Plan carries Route_Code per route. **This is the dashboard's hero download.** |
 | `Routes_with_Codes.xlsx` | Route plan + generated 12-char codes |
 | `Master_Transit_Map_Kashmir_v3.html` | Interactive Folium map |
 | `route_maps_kashmir/*.html` | 192 per-route maps |
@@ -257,6 +263,15 @@ generators already guard this.
    one click → Kashmir section reworked to a hero pretty-workbook CTA + collapsed
    "Technical files" expander; `_sync_dashboard.py` now auto-copies the RTO +
    Pretty workbooks into `public/` and purges stale per-version files.
+
+**Review r2 follow-ups (same v3.3.7 build, re-run in place):**
+4. Route codes baked into the engine (see §3) — pretty workbook's Route Code
+   column was blank; now fully populated (0 UNMATCHED in the published plan).
+5. Pretty workbook trimmed to 2 sheets — Operator Absorption + Sign-off removed
+   (see §8). The bus schedule is the focus.
+6. Dashboard Phase-1 vs Phase-2 comparison removed — `KashmirServicePlans`
+   now shows only Phase-1 (the recommended plan). Phase-2 data retained in
+   `lib/kashmirServicePlans.ts` for reference but not rendered.
 
 The pretty bus-schedule workbook is `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO_Pretty.xlsx`
 (via `_beautify_rto_master.py`; also written to `C:\Users\Prash\Music\`). The old

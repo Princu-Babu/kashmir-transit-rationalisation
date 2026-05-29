@@ -751,6 +751,8 @@ FG = {
 # ──────────────────────────────────────────────────────────────────────────────
 import json
 import math
+import re
+import difflib
 import sys
 import time
 import logging
@@ -3182,10 +3184,153 @@ def generate_log(gdf: gpd.GeoDataFrame, out_path: str) -> pd.DataFrame:
     return df_log
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  ROUTE CODES  ─  v3.3.7: baked into the pipeline so every export carries codes
+# ══════════════════════════════════════════════════════════════════════════════
+# Deterministic 12-char Route_Code from the master stops file
+# (Kashmir_Stops_Sectored_V2.csv): <TehsilO TehsilD><SectorO SectorD><StopO StopD>.
+# Logic ported from generate_route_codes.py so the operational CSV, the 9-sheet
+# RTO workbook AND the pretty bus-schedule workbook all show codes natively — no
+# separate post-step required. Endpoints that aren't in the stops master are
+# backfilled from the official codes already committed in the dashboard
+# routes.json, so the published plan is fully coded (was: blank Route_Code
+# column in the pretty workbook because the engine CSV never carried codes).
+
+_RC_NOISE_SUFFIXES = [
+    "BUS STAND", "BUS STATION", "RAILWAY STATION", "CROSSING",
+    "CHOWK", "CHOK", "HOSPITAL", "COLLEGE", "STOP", "STAND",
+]
+_DASHBOARD_ROUTES_JSON = Path(
+    "E:/dash/bus-sathi-dashboard/public/route-rationalization-kashmir/data/routes.json")
+
+
+def _rc_compact(s) -> str:
+    return re.sub(r"[^A-Z0-9]", "", str(s).upper())
+
+
+def _rc_strip_noise(name: str) -> str:
+    n = name
+    for w in _RC_NOISE_SUFFIXES:
+        n = re.sub(rf"\b{w}\b", "", n)
+    return re.sub(r"\s+", " ", n).strip()
+
+
+def _rc_extract_origin_dest(route_name: str) -> Tuple[Optional[str], Optional[str]]:
+    route_name = str(route_name).upper().strip()
+    if " ↔ " in route_name:
+        a, b = route_name.split(" ↔ ", 1)
+        return a.strip(), b.strip()
+    if " TO " in route_name:
+        origin, rest = route_name.split(" TO ", 1)
+        dest = rest.split(" VIA ")[0] if " VIA " in rest else rest
+        return origin.strip(), dest.strip()
+    return None, None
+
+
+def _resolve_stops_master() -> Optional[Path]:
+    """Stops master lives next to the engine script; the engine usually runs
+    with cwd = the output dir, so check both."""
+    for c in (Path.cwd() / "Kashmir_Stops_Sectored_V2.csv",
+              Path(__file__).resolve().parent / "Kashmir_Stops_Sectored_V2.csv"):
+        if c.exists():
+            return c
+    return None
+
+
+def _load_dashboard_route_codes() -> Dict[str, str]:
+    """Route_ID -> official Route_Code map from the committed dashboard JSON."""
+    out: Dict[str, str] = {}
+    try:
+        if _DASHBOARD_ROUTES_JSON.exists():
+            for r in json.loads(_DASHBOARD_ROUTES_JSON.read_text(encoding="utf-8")):
+                rid  = str(r.get("Route_ID", "")).strip()
+                code = str(r.get("Route_Code", "")).strip()
+                if rid and code and code.upper() != "UNMATCHED" and not code.startswith("TMP-"):
+                    out[rid] = code
+    except Exception as exc:
+        log.warning("  Route_Code: could not read dashboard routes.json (%s)", exc)
+    return out
+
+
+def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """v3.3.7: compute a deterministic Route_Code for every route from the
+    master stops file and attach it to the GeoDataFrame so all downstream
+    exports carry codes. Endpoints not in the master are backfilled from the
+    official codes already published in the dashboard routes.json."""
+    log.info("Assigning Route_Code from master stops file…")
+    gdf = gdf.copy()
+    stops_path = _resolve_stops_master()
+    if stops_path is None:
+        log.warning("  Kashmir_Stops_Sectored_V2.csv not found — Route_Code left blank.")
+        gdf["Route_Code"] = ""
+        return gdf
+
+    stops = pd.read_csv(stops_path)
+    stops["Sector_ID"] = pd.to_numeric(stops["Sector_ID"], errors="coerce").fillna(0).astype(int)
+    stops["Stop_No"]   = pd.to_numeric(stops["Stop_No"], errors="coerce").fillna(0).astype(int)
+    stops["_clean"]    = stops["Stop_Name"].astype(str).str.upper().str.strip()
+    stops["_compact"]  = stops["_clean"].apply(_rc_compact)
+
+    def _stop_info(stop_name):
+        if not stop_name:
+            return None
+        name = stop_name.strip()
+        name_compact = _rc_compact(name)
+        name_sc = _rc_compact(_rc_strip_noise(name))
+        m = stops[stops["_clean"] == name]
+        if m.empty and name_compact:
+            m = stops[stops["_compact"] == name_compact]
+        if m.empty and name_sc:
+            m = stops[stops["_compact"] == name_sc]
+        if m.empty and name_sc:
+            m = stops[stops["_compact"].str.contains(name_sc, regex=False, na=False)]
+        if m.empty and name_sc:
+            m = stops[stops["_compact"].apply(lambda s: s in name_sc and len(s) >= 4)]
+        if m.empty and name_sc:
+            close = difflib.get_close_matches(name_sc, stops["_compact"].tolist(), n=1, cutoff=0.85)
+            if close:
+                m = stops[stops["_compact"] == close[0]]
+        if m.empty:
+            return None
+        row = m.iloc[0]
+        return (str(row["Tehsil_Code"]).strip()[:2].upper(),
+                f"{int(row['Sector_ID']):02d}", f"{int(row['Stop_No']):02d}")
+
+    codes: List[str] = []
+    for _, r in gdf.iterrows():
+        o, d = _rc_extract_origin_dest(r.get("Route_Name", ""))
+        oi, di = _stop_info(o), _stop_info(d)
+        if oi and di:
+            codes.append(f"{oi[0]}{di[0]}{oi[1]}{di[1]}{oi[2]}{di[2]}")
+        else:
+            codes.append("UNMATCHED")
+    matched = sum(1 for c in codes if c != "UNMATCHED")
+
+    # Backfill UNMATCHED from the official dashboard codes (by Route_ID).
+    prior = _load_dashboard_route_codes()
+    backfilled = 0
+    rids = gdf["Route_ID"].astype(str) if "Route_ID" in gdf.columns else pd.Series([""] * len(gdf))
+    final_codes: List[str] = []
+    for code, rid in zip(codes, rids):
+        if code == "UNMATCHED":
+            p = prior.get(str(rid).strip(), "")
+            if p:
+                backfilled += 1
+                final_codes.append(p)
+                continue
+        final_codes.append(code)
+    gdf["Route_Code"] = final_codes
+    remaining = sum(1 for c in final_codes if c == "UNMATCHED")
+    log.info("  Route_Code: %d/%d matched from stops master · %d backfilled from "
+             "dashboard · %d remaining UNMATCHED.",
+             matched, len(codes), backfilled, remaining)
+    return gdf
+
+
 def export_csv(gdf: gpd.GeoDataFrame, file_map: dict, out_path: str) -> None:
     log.info("Exporting CSV → %s", out_path)
     export_cols = [c for c in [
-        "Route_ID", "Route_Name", "Action_Taken", "New_Route_ID",
+        "Route_ID", "Route_Name", "Route_Code", "Action_Taken", "New_Route_ID",
         "Displaced_Operator_Class",
         "Route_KM", "Route_Type", "OSRM_Duration_S", "Cycle_Time_Min",
         "Congestion_Zone", "N_Stops_Estimated", "Stop_Penalty_Min",
@@ -5216,6 +5361,7 @@ def main() -> None:
     build_master_map(gdf, gdf_pois, RASTER_PATH, MASTER_MAP_HTML,
                      net_pop, network_score)
     file_map = build_individual_maps(gdf, gdf_pois, OUTPUT_DIR)
+    gdf = assign_route_codes(gdf)   # v3.3.7: bake Route_Code into every export
     export_csv(gdf, file_map, ROUTES_OUT_CSV)
     export_xlsx(gdf, out_path=ROUTES_OUT_XLSX, net_pop=net_pop)
     export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.7_RTO.xlsx", net_pop=net_pop)
