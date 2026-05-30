@@ -171,7 +171,7 @@ def _coerce_bool(v) -> bool:
 def main():
     df = _read_route_plan()
     # Coerce numeric cols
-    for col in ["Route_KM", "Cycle_Time_Min", "Population_Served"]:
+    for col in ["Route_KM", "Cycle_Time_Min", "Population_Served", "Population_Served_Raw"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
     for col in ["Headway_Min", "Fleet_Required",
@@ -384,7 +384,7 @@ def main():
         ("HPV_Count",          "HPV",              7,  "center"),
         ("MPV_Count",          "MPV",              7,  "center"),
         ("LPV_Count",          "LPV",              7,  "center"),
-        ("Population_Served",  "Pop. served",     14,  "center"),
+        ("Population_Served_Raw", "Pop. served",  14,  "center"),
     ]
 
     ws2.row_dimensions[1].height = 30
@@ -439,7 +439,7 @@ def main():
                 cell.number_format = "0.0"
             elif key in ("Headway_Min", "Fleet_Required",
                          "HPV_Count", "MPV_Count", "LPV_Count",
-                         "Population_Served"):
+                         "Population_Served", "Population_Served_Raw"):
                 cell.number_format = "#,##0"
 
             # Action pill

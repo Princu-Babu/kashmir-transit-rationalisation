@@ -3368,7 +3368,8 @@ def export_geojson(gdf: gpd.GeoDataFrame, out_path: str) -> None:
         "New_Route_ID", "Route_Name", "Action_Taken", "Route_KM",
         "Route_Type", "Priority_Band", "Headway_Min", "Fleet_Required",
         "HPV_Count", "MPV_Count",
-        "Social_Flag", "Population_Served", "Final_CDI",
+        "Route_Code",
+        "Social_Flag", "Population_Served", "Population_Served_Raw", "Final_CDI",
         "CMP_Trunk", "CMP_Route_ID",
         "Congestion_Zone",
         # v3.3 Phase-1 audit additions
