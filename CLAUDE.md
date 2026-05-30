@@ -272,6 +272,18 @@ generators already guard this.
 6. Dashboard Phase-1 vs Phase-2 comparison removed — `KashmirServicePlans`
    now shows only Phase-1 (the recommended plan). Phase-2 data retained in
    `lib/kashmirServicePlans.ts` for reference but not rendered.
+7. Pretty workbook "Pop. served" now uses `Population_Served_Raw` (the ~70k
+   400m-walkshed count), not the apportioned `Population_Served` (~262 median)
+   which read as absurdly small. Same fix applied to the dashboard map popup
+   (geojson now carries `Population_Served_Raw` + `Route_Code`) and the table
+   sort. NOTE: the walkshed figure overlaps between routes — don't sum it; the
+   honest network total is the 1,158,399 deduplicated coverage figure.
+8. Pretty workbook Route Plan trimmed further — Load flag / Social / Tourist
+   columns removed (13 cols, ending at Pop. served).
+9. Route names normalised in the engine (`_clean_route_name`, applied before
+   Phase-4 so maps + CSV + workbook + dashboard all match): consistent Title
+   Case with acronyms (LD/TRC/GBS…) preserved, the bidirectional "↔" separator
+   unified to "to", and the SSCL "via …" detail kept. 0 ALL-CAPS / 0 "↔" remain.
 
 The pretty bus-schedule workbook is `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO_Pretty.xlsx`
 (via `_beautify_rto_master.py`; also written to `C:\Users\Prash\Music\`). The old

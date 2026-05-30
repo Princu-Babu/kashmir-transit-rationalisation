@@ -3327,6 +3327,50 @@ def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
+# Acronyms / station codes that must stay uppercase when we title-case names.
+_RNAME_ACRONYMS = {
+    "LD", "TRC", "JVC", "GBS", "BPR", "HMT", "SGR", "SMHS", "SKIMS", "NH",
+    "SMC", "JKRTC", "RTO", "KP", "BSF", "CRPF", "DPS",
+}
+_RNAME_CONNECTORS = {"to", "via", "and", "near", "opp"}
+
+
+def _clean_route_name(name: str) -> str:
+    """v3.3.7: normalise route names to a consistent, readable Title Case.
+
+    The imported permits arrive ALL-CAPS while the SSCL backbone names are
+    Title Case, so the route column looked inconsistent. This harmonises every
+    name: connectors (to / via) lower-cased, known acronyms / 3-letter station
+    codes kept upper-cased, alphanumeric tokens (e.g. '90ft') left as-is, and
+    everything else proper-cased. The 'via …' detail is preserved (RTO ask)."""
+    s = str(name).strip()
+    if not s or s.lower() in ("nan", "none"):
+        return s
+    # Unify the bidirectional "↔" separator to "to" so every name reads
+    # consistently as "Origin to Destination [via …]" (matches the SSCL
+    # official names; the routes are bidirectional regardless of wording).
+    s = s.replace(" ↔ ", " to ").replace("↔", " to ")
+    out = []
+    for tok in s.split():
+        low  = tok.lower()
+        bare = re.sub(r"[^A-Za-z0-9]", "", tok)
+        if low in _RNAME_CONNECTORS:
+            out.append(low)
+        elif bare.upper() in _RNAME_ACRONYMS:
+            out.append(tok.upper())
+        elif bare.isalpha() and bare.isupper() and len(bare) == 3:
+            out.append(tok.upper())          # 3-letter station codes (GBS, TRC…)
+        elif any(c.isdigit() for c in tok):
+            out.append(tok)                  # leave '90ft', 'NH1A' etc. untouched
+        else:
+            out.append(re.sub(r"[A-Za-z]+",
+                              lambda m: m.group(0)[0].upper() + m.group(0)[1:].lower(),
+                              tok))
+    if out and out[0] in _RNAME_CONNECTORS:   # never start on a lower-case connector
+        out[0] = out[0].capitalize()
+    return " ".join(out)
+
+
 def export_csv(gdf: gpd.GeoDataFrame, file_map: dict, out_path: str) -> None:
     log.info("Exporting CSV → %s", out_path)
     export_cols = [c for c in [
@@ -5359,6 +5403,10 @@ def main() -> None:
 
     # ── PHASE 4: Export ───────────────────────────────────────────────────
     log.info("\n── PHASE 4: Cartography & Export ────────────────────────────────────")
+    # v3.3.7: normalise route-name casing (consistent Title Case, acronyms + via
+    # preserved) so the workbook, maps and dashboard all read uniformly.
+    gdf["Route_Name"] = gdf["Route_Name"].astype(str).map(_clean_route_name)
+    log.info("  Route names normalised to consistent Title Case (via preserved).")
     build_master_map(gdf, gdf_pois, RASTER_PATH, MASTER_MAP_HTML,
                      net_pop, network_score)
     file_map = build_individual_maps(gdf, gdf_pois, OUTPUT_DIR)
