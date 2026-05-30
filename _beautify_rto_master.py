@@ -365,7 +365,8 @@ def main():
     nt.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
     # ═══════════════════════════════════════════════════════════════════════
-    # SHEET 2 — Route Plan  (compact 13 cols)
+    # SHEET 2 — Route Plan  (compact bus schedule — v3.3.7: Load flag / Social /
+    #           Tourist columns removed at RTO request)
     # ═══════════════════════════════════════════════════════════════════════
     ws2 = wb.create_sheet("Route Plan")
     hide_gridlines(ws2)
@@ -384,9 +385,6 @@ def main():
         ("MPV_Count",          "MPV",              7,  "center"),
         ("LPV_Count",          "LPV",              7,  "center"),
         ("Population_Served",  "Pop. served",     14,  "center"),
-        ("Load_Flag",          "Load flag",       15,  "center"),
-        ("Social_Flag",        "Social",          9,  "center"),
-        ("Tourist_Corridor",   "Tourist",         9,  "center"),
     ]
 
     ws2.row_dimensions[1].height = 30
