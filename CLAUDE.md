@@ -284,6 +284,18 @@ generators already guard this.
    Phase-4 so maps + CSV + workbook + dashboard all match): consistent Title
    Case with acronyms (LD/TRC/GBS…) preserved, the bidirectional "↔" separator
    unified to "to", and the SSCL "via …" detail kept. 0 ALL-CAPS / 0 "↔" remain.
+10. Decks rewritten (`generate_presentations.py`) — both the Technical and
+    Government briefings are now **diagram-led** (KPI cards, a 4-phase flow
+    diagram, native doughnut/bar charts, formula+citation cards) with a full
+    **references slide** (Vuchic, Ceder, TCQSM/TRB, Hansen, Ortúzar & Willumsen,
+    Jenks, WorldPop/Tatem, OSRM/Luxen-Vetter, El-Geneidy). Phase-1 is the ONLY
+    plan (the Phase-1-vs-Phase-2 comparison slides are gone). Demand is framed
+    as an **automatic open-data model** (WorldPop+OSM+OSRM) — "no proprietary
+    GPS/AFC feed required"; CHALO is cited only as a one-time published-aggregate
+    calibration anchor (the prof flagged CHALO GPS as unobtainable — we never
+    used GPS, only published totals). QA via PowerPoint COM→PNG (see §10): both
+    12-slide decks render clean, no overflow. Desktop shortcuts already point at
+    the outputs_v3.3.7 decks.
 
 The pretty bus-schedule workbook is `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO_Pretty.xlsx`
 (via `_beautify_rto_master.py`; also written to `C:\Users\Prash\Music\`). The old
