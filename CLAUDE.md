@@ -284,6 +284,14 @@ generators already guard this.
    Phase-4 so maps + CSV + workbook + dashboard all match): consistent Title
    Case with acronyms (LD/TRC/GBS…) preserved, the bidirectional "↔" separator
    unified to "to", and the SSCL "via …" detail kept. 0 ALL-CAPS / 0 "↔" remain.
+11. Diagrammatic pitch (`generate_kashmir_pitch.py`) — the meeting deck —
+    rewritten to be serious & defensible: formulas written out in full + a
+    sources/references slide; all live v3.3.7 numbers; the version-lineage
+    slide, the Phase-1-vs-Phase-2 plan comparison, all version labels and the
+    "how do we know" Q&A slide REMOVED; short-forms/jargon expanded to full
+    words in the narrative; demand framed as automatic open-data. QA'd via
+    COM→PNG (14 slides, clean). The anticipated reviewer questions that used to
+    be the Q&A slide were handed to the user in chat rather than in the deck.
 10. Decks rewritten (`generate_presentations.py`) — both the Technical and
     Government briefings are now **diagram-led** (KPI cards, a 4-phase flow
     diagram, native doughnut/bar charts, formula+citation cards) with a full
