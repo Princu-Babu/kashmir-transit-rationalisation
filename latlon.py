@@ -6,6 +6,12 @@ import re
 import os
 import json
 
+# Hardened geocoding shared with geocode_other_routes.py (audit Findings 1,2,5).
+import geocode_common
+
+# Accumulates every name that could not be placed, so drops are auditable.
+GEO_FAILURES = []
+
 # ==========================================
 # CONFIGURATION & FILE PATHS
 # ==========================================
@@ -87,24 +93,19 @@ def extract_unique_locations(df):
     return list(unique_locations)
 
 def fetch_coordinates(location_name, is_retry=False):
-    """Uses ArcGIS to fetch coordinates with Srinagar/Kashmir context."""
-    # Aggressively adding context. Added 'Srinagar' for tighter precision.
-    search_query = f"{location_name}, Srinagar, Kashmir, India"
-    
-    try:
-        results = geocode(search_query)
-        if results:
-            best_match = results[0]['location']
-            status = "[RETRY SUCCESS]" if is_retry else "[SUCCESS]"
-            print(f"  {status} {location_name} -> {best_match['y']:.5f}, {best_match['x']:.5f}")
-            return best_match['y'], best_match['x']
-        else:
-            status = "[RETRY FAILED]" if is_retry else "[FAILED]"
-            print(f"  {status} Could not locate: {search_query}")
-            return None, None
-    except Exception as e:
-        print(f"  [ERROR] API Exception for {search_query}: {e}")
-        return None, None
+    """Geocode a location with district-aware context + Srinagar-centroid
+    rejection (audit Finding 1). Delegates to geocode_common.geocode_one so the
+    two geocoders behave identically. Returns (lat, lon) or (None, None) and
+    records any failure (incl. a rejected centroid collision) in GEO_FAILURES.
+    """
+    lat, lon = geocode_common.geocode_one(location_name, geocode,
+                                          failures=GEO_FAILURES)
+    status = "[RETRY OK]" if is_retry else "[OK]"
+    if lat is not None and lon is not None:
+        print(f"  {status} {location_name} -> {lat:.5f}, {lon:.5f}")
+    else:
+        print(f"  [FAILED] Could not place '{location_name}' (see geocode_failures.csv)")
+    return lat, lon
 
 # ==========================================
 # MAIN EXECUTION
@@ -175,24 +176,36 @@ def main():
     print("="*50)
     
     final_routes = []
-    
+    dropped_rows = []   # audit trail: every permit that did NOT make the CSV
+
     for index, row in df_minibus.iterrows():
         origin = clean_location(row.get('From Location'))
         destination = clean_location(row.get('To Location'))
         via_raw = clean_location(row.get('Via Location'))
-        
+
         if not origin and not destination:
+            dropped_rows.append({"row": index, "from": row.get('From Location'),
+                                 "to": row.get('To Location'),
+                                 "vehicle": row.get('Vehicle Category'),
+                                 "reason": "blank_origin_and_destination"})
             continue
-            
+
         origin_lat = coord_cache.get(origin, {}).get('lat') if origin else None
         origin_lon = coord_cache.get(origin, {}).get('lon') if origin else None
         dest_lat = coord_cache.get(destination, {}).get('lat') if destination else None
         dest_lon = coord_cache.get(destination, {}).get('lon') if destination else None
-        
+
         # Only include route if BOTH origin and destination were successfully geocoded
         if not (origin_lat and origin_lon and dest_lat and dest_lon):
+            miss = []
+            if not (origin_lat and origin_lon): miss.append(f"origin '{origin}'")
+            if not (dest_lat and dest_lon):     miss.append(f"destination '{destination}'")
+            dropped_rows.append({"row": index, "from": row.get('From Location'),
+                                 "to": row.get('To Location'),
+                                 "vehicle": row.get('Vehicle Category'),
+                                 "reason": "ungeocoded: " + ", ".join(miss)})
             continue
-            
+
         route_data = {
             'Route_Name': row.get('Route Covered', f"Route_{index}"),
             'Origin': origin,
@@ -217,6 +230,13 @@ def main():
     print(f"[INFO] Processing Complete!")
     print(f"[INFO] Exported {geocoded_count} routes where BOTH origin and destination were successfully geocoded.")
     print(f"[INFO] Output saved to {OUTPUT_FILE}")
+
+    # ── Audit trail (Finding 2): make every drop loud, never silent ──
+    geocode_common.write_failures(GEO_FAILURES, "geocode_failures.csv")
+    if dropped_rows:
+        pd.DataFrame(dropped_rows).to_csv("existing_routes_dropped.csv", index=False)
+        print(f"[AUDIT] {len(dropped_rows)} of {len(df_minibus)} Srinagar-RTO permits "
+              f"dropped (no usable O/D geocode) → existing_routes_dropped.csv")
 
 if __name__ == "__main__":
     main()

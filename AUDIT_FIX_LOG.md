@@ -38,7 +38,7 @@ item not marked ✅ DONE.
 | B1 | Finding 3 / Bug 1 | A | `parse_via()` accept `"lat,lon;lat,lon"` producer format + warn on parse-fail | ✅ DONE | (batch1) |
 | B2 | Output #4 | A | Add `LPV_Count` to main CSV export so HPV+MPV+LPV = Fleet | ✅ DONE | (batch1) |
 | B3 | Code comment drift / §3 | A | Fix stale comments: 85/15 split, headway tables (README), Calibration sheet LP=60→35, Limitations version refs + synthetic-SSCL note, CLAUDE.md LPV note | ✅ DONE | (batch1) |
-| B4 | Findings 1,2,5 / Rec 1,3,7 | A(code) | Harden geocoders: drop over-narrow ", Srinagar" context, valley viewbox, reject Srinagar-centroid snaps, gazetteer for known towns, write reject + disposition files | ☐ TODO | |
+| B4 | Findings 1,2,5 / Rec 1 | A(code) | New `geocode_common.py`: district-aware query, valley extent, Srinagar-centroid rejection, outside-valley rejection, reject + drop files. Wired into latlon.py + geocode_other_routes.py. Unit-tested. Re-run (R1) needs arcgis+network. | ✅ DONE | (batch2) |
 | B9 | Bug 2 / Rec 8 | A | Per-input-row disposition log (kept/merged/dropped+reason) covering all inputs | ☐ TODO | |
 | B7 | §3 QC gap / Rec 8 | A | New QC checks: route-code uniqueness, geocode-collision plausibility, duplicate-corridor over-fleet, load-ratio sanity band | ☐ TODO | |
 | B8 | Rec 2 | A | Pre-engine endpoint QA gate: haversine(O,D) ≥ 1 km, OSRM/haversine ratio sane, centroid-collision flag | ☐ TODO | |

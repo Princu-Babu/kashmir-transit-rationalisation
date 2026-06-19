@@ -19,6 +19,11 @@ import pandas as pd
 from arcgis.geocoding import geocode
 from arcgis.gis import GIS
 
+# Hardened geocoding shared with latlon.py (audit Findings 1,2,5).
+import geocode_common
+
+GEO_FAILURES = []   # auditable record of names that could not be placed
+
 # ── CONFIG ──
 OTHER_ROUTES_FILE = "Other-routes.csv"
 EXISTING_ROUTES_FILE = "existing-routes.csv"
@@ -98,28 +103,22 @@ def clean_location(loc):
 
 
 def fetch_coordinates(location_name, cache, is_retry=False):
-    """Geocode a location using ArcGIS with Kashmir context."""
+    """Geocode with district-aware context + Srinagar-centroid rejection
+    (audit Finding 1). Delegates to geocode_common.geocode_one so both
+    geocoders behave identically; caches and records failures."""
     if location_name in cache:
         return cache[location_name].get("lat"), cache[location_name].get("lon")
 
-    search_query = f"{location_name}, Srinagar, Kashmir, India"
-    try:
-        results = geocode(search_query)
-        if results:
-            best = results[0]["location"]
-            lat, lon = best["y"], best["x"]
-            status = "[RETRY OK]" if is_retry else "[OK]"
-            print(f"  {status} {location_name} -> {lat:.5f}, {lon:.5f}")
-            cache[location_name] = {"lat": lat, "lon": lon}
-            save_cache(cache)
-            return lat, lon
-        else:
-            status = "[RETRY FAIL]" if is_retry else "[FAIL]"
-            print(f"  {status} Could not locate: {search_query}")
-            return None, None
-    except Exception as e:
-        print(f"  [ERROR] {location_name}: {e}")
-        return None, None
+    lat, lon = geocode_common.geocode_one(location_name, geocode,
+                                          failures=GEO_FAILURES)
+    if lat is not None and lon is not None:
+        status = "[RETRY OK]" if is_retry else "[OK]"
+        print(f"  {status} {location_name} -> {lat:.5f}, {lon:.5f}")
+        cache[location_name] = {"lat": lat, "lon": lon}
+        save_cache(cache)
+        return lat, lon
+    print(f"  [FAIL] Could not place '{location_name}' (see geocode_failures.csv)")
+    return None, None
 
 
 def geocode_via_string(via_str, cache):
@@ -204,6 +203,7 @@ def main():
     print("=" * 60)
 
     new_routes = []
+    dropped_rows = []   # audit trail: every JKRTC row that did NOT make the CSV
     for _, row in df.iterrows():
         origin = clean_location(row.get("From"))
         destination = clean_location(row.get("To"))
@@ -216,6 +216,12 @@ def main():
 
         # Only include if both origin and destination are geocoded
         if not (origin_lat and origin_lon and dest_lat and dest_lon):
+            miss = []
+            if not (origin_lat and origin_lon): miss.append(f"origin '{origin}'")
+            if not (dest_lat and dest_lon):     miss.append(f"destination '{destination}'")
+            dropped_rows.append({"from": row.get("From"), "to": row.get("To"),
+                                 "vehicle": row.get("Vehicle_Category"),
+                                 "reason": "ungeocoded: " + ", ".join(miss)})
             continue
 
         route_name = f"{origin} to {destination}"
@@ -268,6 +274,13 @@ def main():
     for cat, count in vc_counts.items():
         print(f"    {cat}: {count}")
     print(f"[DONE] Merged output saved to {EXISTING_ROUTES_FILE}")
+
+    # ── Audit trail (Finding 2): make every drop loud, never silent ──
+    geocode_common.write_failures(GEO_FAILURES, "geocode_failures_other.csv")
+    if dropped_rows:
+        pd.DataFrame(dropped_rows).to_csv("other_routes_dropped.csv", index=False)
+        print(f"[AUDIT] {len(dropped_rows)} JKRTC/Other rows dropped "
+              f"(no usable O/D geocode) → other_routes_dropped.csv")
 
 
 if __name__ == "__main__":
