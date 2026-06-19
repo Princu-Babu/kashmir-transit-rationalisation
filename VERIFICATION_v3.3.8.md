@@ -22,8 +22,8 @@ one reads this and continues from the first ☐ step.
 | V3 | MINI → existing-routes.csv derivation (v3.3.8 re-geocode): permit→route counts, geocode correctness spot-check, drop accounting | ✅ DONE | PASS, 1 accuracy fix (F-V3) |
 | V4 | JKRTC timetable → Other-routes.csv transcription fidelity (counts + sample content) | ✅ DONE | PASS on counts; 2 minor data issues (F-V4a/b) |
 | V5 | SMART CITY BUS LIST — is it Jammu data, unused in Kashmir pipeline? | ✅ DONE | audit correction (F-V5) |
-| V6 | Methodology re-check of the v3.3.8 fixes (parse_via, dedup, apportionment, geocoder) — sound? regressions? | ☐ TODO | |
-| V7 | v3.3.8 output sanity — fleet sums, route-code uniqueness, coverage claim, headways, load/QC | ☐ TODO | |
+| V6 | Methodology re-check of the v3.3.8 fixes (parse_via, dedup, apportionment, geocoder) — sound? regressions? | ✅ DONE | mostly sound; F-V6 apportionment residual |
+| V7 | v3.3.8 output sanity — fleet sums, route-code uniqueness, coverage claim, headways, load/QC | ✅ DONE | PASS (integrity); demand-model observation |
 
 ## Findings (log as discovered)
 
@@ -106,7 +106,54 @@ Recomputed from the re-supplied `SSCL Data Updated.xlsx` and matched to the engi
   intra-city snapshot vs the fuller 98-bus deployment in SSCL Data Updated; the
   engine uses 98 (the more comprehensive/recent figure) — correct.
 
+### F-V6 — fixes are sound; one residual on apportionment ⚠ (FIX)
+Sound / no regression:
+- parse_via: vias populated (257/400) and routed; bbox truncation 0 spurious (0 truncated, 11 dropped started-outside).
+- Route lengths all plausible (median 16.5 km; longest Srinagar→Qazigund 71 km, Srinagar→Kulgam 66 km — real distances). **No geocode-error artifacts** like v3.3.7's 1.5 km "Bandipora–Baramulla" trunk. Shortest are legit downtown loops (Old City 1.17 km).
+- Dedup: 52 corridors, 265 consolidated, largest 38 — plausible on real geocodes.
+- F-V4b real-world impact small: 0 Pahalgam routes survive into the active plan.
+- **F-V6 (FIX): apportionment residual of Finding 9.** B6 normalised the *all-419-row*
+  Population_Served to the union (Σ=1,572,610 ≈ 1.57M, 1.00×), but **972,802 of that
+  is stranded on the 283 merged/consolidated rows** (fleet-zeroed, not population-
+  zeroed). So the **active 136-route plan sums to 599,808 = 0.38× the cover**
+  (1,572,627). Cover-vs-detail still doesn't reconcile in the published plan
+  (milder than v3.3.7's 0.06×, but present). FIX: credit a merged route's
+  population to its absorbing trunk, or re-normalise Population_Served over the
+  ACTIVE set after clustering. → R-V.
+
+### F-V7 — output integrity PASS, one demand observation
+- CSV 419/136 active; HPV+MPV+LPV=Fleet (0 mismatch); LPV present; headways
+  15/20/35; route codes 133 real, all unique (0 dupes); QC all pass; 0 Red_Overload.
+- Cross-artefact consistent: geojson 136 = impact.json 136; routes.json 419.
+- OBSERVATION (not a bug): **134/136 active routes are Amber_Under** — the static
+  demand model (no Mohring elasticity) + the wider geographic spread means modelled
+  demand < capacity almost everywhere. Pre-existing limitation (audit Finding 10);
+  relates to F-V6. The economics/load-ratio story is the weakest part of the plan
+  and should be framed as a forward service-level plan, not demand-matched.
+
+---
+
+## OVERALL VERDICT
+Source fidelity and the SSCL backbone are **faithful** (V1, V2, V5). The v3.3.8
+geocode remediation **holds** — no centroid collapse, plausible route lengths, no
+fake trunks (V3, V6). Two prior-audit claims were **overstated/wrong** and are
+corrected here (F-V1: 806/1259 permits have no source route data, not a geocode
+loss; F-V5: SMART CITY list is Kashmir e-bus data, not Jammu). Remaining real
+issues are **minor-to-medium and fixable** (below). The plan is materially sound;
+the weakest area is demand/load (static model).
+
+## Remediation plan R-V (open)
+| ID | Fix | Value | Status |
+|---|---|---|---|
+| R-V1 | F-V6: re-normalise Population_Served over the ACTIVE set after clustering (or credit merged routes' pop to their trunk) so the plan's column sums to the cover figure. Fully closes audit Finding 9 / Output #2. | HIGH (credibility) | ☐ TODO |
+| R-V2 | F-V3: pin "Parimpora" (and verify other top hubs) in geocode_common gazetteer to its true bus-stand coord (~34.111, 74.748) — fixes 98 routes' origin. | MED-HIGH | ☐ TODO |
+| R-V3 | F-V4a: special-case TRC→Airport so the in-valley airport link is kept despite the MTS skip. | LOW (1 route) | ☐ TODO |
+| R-V4 | F-V4b: parse depot "A - B" route pairs so local depot routes get their true origin (Anantnag→X) instead of Srinagar→X. | LOW-MED (~dozen) | ☐ TODO |
+
 ## Change journal (newest first)
+- 2026-06-19: V7 done + overall verdict + R-V remediation plan. VERIFICATION COMPLETE.
+- 2026-06-19: V6 done. Fixes sound, route lengths plausible; F-V6 apportionment
+  active-sum residual (active Pop_Served 0.38× cover).
 - 2026-06-19: V5 done. SMART CITY is Kashmir e-bus data (audit Finding 6 corrected),
   not engine-ingested, corroborates SSCL.
 - 2026-06-19: V4 done. Counts faithful; F-V4a (airport dropped via MTS skip),
