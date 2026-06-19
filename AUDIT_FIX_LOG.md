@@ -12,7 +12,14 @@ to branch `audit-remediation-v3.3.8`. The corrected v3.3.8 plan is in
 `outputs_v3.3.8/`. CHALO calibration re-checked: per-route fleet +24.9% vs
 headway-scaled CHALO — within ±25% ("Calibration OK").
 
-### Decisions left for the user (NOT done unilaterally — outward-facing)
+### ADOPTED — v3.3.8 is now the official plan (2026-06-19)
+User approved adoption. Done: version labels bumped v3.3.7→v3.3.8 (engine header,
+workbook cells, RTO filename, _beautify_rto_master.py, _sync_dashboard.py);
+regenerated outputs_v3.3.8/ (engine + 3 decks + pretty workbook); README + CLAUDE.md
+updated to v3.3.8 numbers; dashboard synced (419 routes, stale v3.3.7 files purged);
+both repos pushed.
+
+### Original decision points (now resolved by adoption)
 1. **Adopt v3.3.8 as the plan?** Headline numbers changed materially (the audit
    predicted this): active routes 207→136, fleet 1009→855, coverage 69.8%→94.7%,
    median route 8.7→16.5 km. v3.3.8 is more defensible but different from what was
