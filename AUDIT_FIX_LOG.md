@@ -44,7 +44,8 @@ item not marked ✅ DONE.
 | B8 | Rec 2 | A | `audit_input_quality()` pre-engine gate: per-row haversine(O,D), Srinagar-centroid + zero-length flags → `input_qa_report.csv` + loud summary. | ✅ DONE | (batch3) |
 | B5 | Finding 8 / Rec 4 | B | `consolidate_duplicate_permits()`: identical (O,D,class) feeders → one representative (Permit_Count=N), rest MERGED_INTO_TRUNK (Merged_Reason='duplicate_permit'). VALIDATED: fleet 1009→743, 314 redundant permits consolidated. | ✅ DONE | (batch4) |
 | B6 | Finding 9 / Rec 6 | B | Apportionment frequency-weighted + normalised to dedup union. VALIDATED: Pop_Served Σ 99,999→1,206,139 ≈ union 1,206,152. | ✅ DONE | (batch4) |
-| R1 | Rec 10 | C | Re-geocode (needs `arcgis`) + re-run → real v3.3.8; diff vs v3.3.7. Code-test (OSRM up, OLD geocodes) PASSED — fixes run & behave correctly. Still BLOCKED on `arcgis` for the actual re-geocode. | ⏳ BLOCKED on arcgis |
+| R1 | Rec 10 | C | RE-GEOCODE + real v3.3.8 DONE. 400 routes (0 collapse). Fleet 1009→855, coverage 69.8%→94.7%, all QC pass. Diff table below. | ✅ DONE |
+| M4 | (new) | — | Route-code scheme collides on stop-pair (63/136 share 28 codes even with good geocodes) — needs per-route suffix. | ☐ TODO |
 
 ## Batch 5 — R1 unblocked
 `arcgis` made optional; added a requests/Nominatim backend in geocode_common.py
@@ -90,7 +91,44 @@ QC (warn mode): QC-GEOCODE 68 centroid survivors · QC-DUPCORR 22 (worst 9/66, a
 centroid O==D trunk artifacts) · QC-LOAD mean 0.107 · QC-CODES 55 share 21 codes.
 All are correct signals about the still-broken input — they clear after R1.
 
+## REAL v3.3.8 run (2026-06-19, OSRM up, re-geocoded input) — the deliverable
+Input: `existing-routes.csv` re-geocoded via Nominatim (400 routes, 0 collapse).
+Output: `outputs_v3.3.8/`. **All 8 QC checks PASS; QC-Geocode clean.**
+
+| Metric | v3.3.7 | v3.3.8 | Meaning |
+|---|---|---|---|
+| Active routes | 207 | 136 | dedup + no bogus zero-length |
+| Fleet total | 1,009 | **855** | Finding 8 over-fleeting removed |
+| Pop. coverage (dedup union) | 1.16M (69.8%) | **1.57M (94.7%)** | routes now reach the real valley |
+| Pop_Served Σ | 99,999 | 599,808 (≈ union) | Finding 9 reconciled |
+| Centroid endpoints | 391/416 | **0** | Finding 1 fixed |
+| Zero-length routes | 290 | **5** | Finding 1 fixed |
+| Median route km | 8.7 | **16.5** | no longer a Srinagar-city plan (Output #5) |
+| Urban/Peri/Regional | 173/25/9 | 62/59/15 | genuine inter-district reach |
+
+Re-geocode: 1259 SRINAGAR-RTO permits → 335 routes (correct coords);
+JKRTC/Other merged → 400 total. Reject files: `geocode_failures*.csv` (≈21+ unique
+unresolved, incl. junk tokens + a few hubs covered by SSCL injection),
+`*_dropped.csv` (ungeocodable permits — auditable, no longer silent).
+
+Residual non-blocking QC warnings (correct signals, not regressions):
+- QC-DUPCORR 26 corridors (worst 8/56): now REAL same-corridor *different-vehicle-
+  class* permits — dedup is class-specific per Rec 4, so cross-class is left for
+  RTO judgement. Defensible.
+- QC-LOAD mean 0.083: the static-demand caveat (Finding 10) — pre-existing model
+  limitation (no Mohring), unchanged by these fixes; flagged honestly now.
+- QC-CODES 63 active share 28 codes → see M4 below (route-code scheme, not geocode).
+
+## Additional methodology flaw found during R1
+- **M4 (route-code uniqueness scheme):** even with correct geocodes, 63/136 active
+  routes share 28 codes. The 12-char code `<TehsilO><TehsilD><SectorO><SectorD>
+  <StopO><StopD>` identifies a *corridor (stop-pair)*, not a route, so multiple
+  services between the same two master stops collide. Needs a per-route
+  disambiguator suffix. NOT yet fixed (flagged; the QC-CODES check surfaces it).
+
 ## Change journal (newest first)
+- 2026-06-19: **R1 DONE** — re-geocoded via Nominatim + real v3.3.8 engine pass.
+  Fleet 1009→855, coverage 69.8%→94.7%, collapse eliminated, all QC pass.
 - 2026-06-19: Batch 4 — B5 dedup + B6 apportionment, validated by full OSRM run.
 - 2026-06-19: Batch 3 — B7/B8/B9 (input QA, disposition trail, new QC checks).
 - 2026-06-19: Batch 2 — B4 geocoder hardening (geocode_common.py).

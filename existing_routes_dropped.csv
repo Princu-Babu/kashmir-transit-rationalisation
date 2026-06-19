@@ -1,0 +1,925 @@
+row,from,to,vehicle,reason
+12367,,,MPV,blank_origin_and_destination
+12374,Lawaypora,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12377,SOURA,GADOORA,MPV,ungeocoded: destination 'GADOORA'
+12381,,,MPV,blank_origin_and_destination
+12382,Jehangir Chowk,Soura,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12383,,,MPV,blank_origin_and_destination
+12388,,,HPV,blank_origin_and_destination
+12389,,,HPV,blank_origin_and_destination
+12390,,,HPV,blank_origin_and_destination
+12391,,,HPV,blank_origin_and_destination
+12392,,,LPV,blank_origin_and_destination
+12394,,,HPV,blank_origin_and_destination
+12395,,,HPV,blank_origin_and_destination
+12396,,,HPV,blank_origin_and_destination
+12398,,,HPV,blank_origin_and_destination
+12401,,,LPV,blank_origin_and_destination
+12402,,,HPV,blank_origin_and_destination
+12403,,,MPV,blank_origin_and_destination
+12404,Jehangir Chowk,JVC,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12405,,,HPV,blank_origin_and_destination
+12406,,,MPV,blank_origin_and_destination
+12407,Jehangir Chowk,JVC,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12408,,,MPV,blank_origin_and_destination
+12409,,,HPV,blank_origin_and_destination
+12413,,,HPV,blank_origin_and_destination
+12414,,,HPV,blank_origin_and_destination
+12415,,,MPV,blank_origin_and_destination
+12416,,,HPV,blank_origin_and_destination
+12417,,,HPV,blank_origin_and_destination
+12418,,,MPV,blank_origin_and_destination
+12419,,,MPV,blank_origin_and_destination
+12420,,,HPV,blank_origin_and_destination
+12421,,,MPV,blank_origin_and_destination
+12422,,,HPV,blank_origin_and_destination
+12423,,,MPV,blank_origin_and_destination
+12424,,,MPV,blank_origin_and_destination
+12425,,,HPV,blank_origin_and_destination
+12426,Jehangir Chowk,JVC,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12427,Jehangir Chowk,JVC,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12428,,,MPV,blank_origin_and_destination
+12429,,,HPV,blank_origin_and_destination
+12430,,,HPV,blank_origin_and_destination
+12431,Jehangir Chowk,Budgam,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12433,,,HPV,blank_origin_and_destination
+12434,Jehangir Chowk,JVC,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12435,,,HPV,blank_origin_and_destination
+12436,,,HPV,blank_origin_and_destination
+12438,,,HPV,blank_origin_and_destination
+12439,,,HPV,blank_origin_and_destination
+12440,Jehangir Chowk,HMT,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12441,,,MPV,blank_origin_and_destination
+12442,,,MPV,blank_origin_and_destination
+12443,,,MPV,blank_origin_and_destination
+12444,,,MPV,blank_origin_and_destination
+12445,,,MPV,blank_origin_and_destination
+12446,,,MPV,blank_origin_and_destination
+12447,scraped,,MPV,"ungeocoded: origin 'SCRAPED', destination 'None'"
+12448,scraped,,MPV,"ungeocoded: origin 'SCRAPED', destination 'None'"
+12449,scraped,,MPV,"ungeocoded: origin 'SCRAPED', destination 'None'"
+12450,,,HPV,blank_origin_and_destination
+12451,,,HPV,blank_origin_and_destination
+12452,,,HPV,blank_origin_and_destination
+12453,,,HPV,blank_origin_and_destination
+12461,Baghat Shora,Lalchowk,LPV,ungeocoded: origin 'BAGHAT SHORA'
+12462,,,MPV,blank_origin_and_destination
+12463,Jehangir Chowk,JVC,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12464,,,LPV,blank_origin_and_destination
+12465,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12466,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12467,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12468,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12469,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12470,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12471,Scrapped ,,HPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12472,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12473,,,HPV,blank_origin_and_destination
+12474,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12475,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12476,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12477,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12478,,,HPV,blank_origin_and_destination
+12479,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12480,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12481,,,HPV,blank_origin_and_destination
+12482,,,HPV,blank_origin_and_destination
+12483,,,HPV,blank_origin_and_destination
+12484,,,HPV,blank_origin_and_destination
+12485,,,HPV,blank_origin_and_destination
+12486,,,HPV,blank_origin_and_destination
+12487,,,HPV,blank_origin_and_destination
+12488,,,HPV,blank_origin_and_destination
+12489,,,HPV,blank_origin_and_destination
+12490,,,HPV,blank_origin_and_destination
+12491,,,HPV,blank_origin_and_destination
+12492,,,HPV,blank_origin_and_destination
+12493,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12494,,,HPV,blank_origin_and_destination
+12495,,,HPV,blank_origin_and_destination
+12496,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12497,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12498,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12499,,,HPV,blank_origin_and_destination
+12500,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12501,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12502,,,HPV,blank_origin_and_destination
+12503,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12504,,,HPV,blank_origin_and_destination
+12505,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12506,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12507,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12508,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12509,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12510,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12511,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12512,,,MPV,blank_origin_and_destination
+12513,,,HPV,blank_origin_and_destination
+12514,,,HPV,blank_origin_and_destination
+12515,,,HPV,blank_origin_and_destination
+12516,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12517,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12518,,,HPV,blank_origin_and_destination
+12519,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12520,,,HPV,blank_origin_and_destination
+12521,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12522,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12523,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12524,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12525,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12526,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12527,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12528,,,HPV,blank_origin_and_destination
+12529,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12530,,,HPV,blank_origin_and_destination
+12531,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12532,,,HPV,blank_origin_and_destination
+12533,,,HPV,blank_origin_and_destination
+12534,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12535,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12536,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12537,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12538,Scrapped ,,HPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12539,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12540,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12541,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12542,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12543,,,HPV,blank_origin_and_destination
+12544,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12545,,,HPV,blank_origin_and_destination
+12546,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12547,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12548,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12549,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12550,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12551,,,HPV,blank_origin_and_destination
+12552,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12553,Scrapped ,,HPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12554,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12555,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12556,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12557,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12558,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12559,,,HPV,blank_origin_and_destination
+12560,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12561,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12562,,,HPV,blank_origin_and_destination
+12563,,,HPV,blank_origin_and_destination
+12564,,,HPV,blank_origin_and_destination
+12565,,,HPV,blank_origin_and_destination
+12566,,,HPV,blank_origin_and_destination
+12567,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12568,,,HPV,blank_origin_and_destination
+12569,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12570,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12571,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12572,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12573,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12574,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12575,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12576,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12577,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12578,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12579,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12580,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12581,,,HPV,blank_origin_and_destination
+12582,Scrapped ,,HPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12583,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12584,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12585,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12586,,,LPV,blank_origin_and_destination
+12587,,,HPV,blank_origin_and_destination
+12588,,,HPV,blank_origin_and_destination
+12589,,,HPV,blank_origin_and_destination
+12590,,,HPV,blank_origin_and_destination
+12591,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12592,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12593,,,HPV,blank_origin_and_destination
+12594,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12595,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12596,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12597,,,LPV,blank_origin_and_destination
+12598,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12599,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12600,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12601,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12602,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12603,,,HPV,blank_origin_and_destination
+12604,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12605,,,HPV,blank_origin_and_destination
+12606,,,HPV,blank_origin_and_destination
+12607,,,HPV,blank_origin_and_destination
+12608,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12609,,,MPV,blank_origin_and_destination
+12610,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12611,,,HPV,blank_origin_and_destination
+12612,,,HPV,blank_origin_and_destination
+12613,,,HPV,blank_origin_and_destination
+12614,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12615,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12616,,,HPV,blank_origin_and_destination
+12617,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12618,,,HPV,blank_origin_and_destination
+12619,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12620,,,HPV,blank_origin_and_destination
+12621,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12622,,,HPV,blank_origin_and_destination
+12623,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12624,Scrapped ,,HPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12625,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12626,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12627,,,HPV,blank_origin_and_destination
+12628,,,HPV,blank_origin_and_destination
+12629,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12630,,,HPV,blank_origin_and_destination
+12631,,,HPV,blank_origin_and_destination
+12632,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12633,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12634,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12635,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12636,Scrapped ,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12637,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12638,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12639,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12640,Scrapped ,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+12643,,,HPV,blank_origin_and_destination
+12645,,,MPV,blank_origin_and_destination
+12646,,,HPV,blank_origin_and_destination
+12649,,,HPV,blank_origin_and_destination
+12650,,,HPV,blank_origin_and_destination
+12652,Narbal,Jehangir Chowk,LPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12657,,,HPV,blank_origin_and_destination
+12659,,,HPV,blank_origin_and_destination
+12660,,,HPV,blank_origin_and_destination
+12661,,,HPV,blank_origin_and_destination
+12662,,,HPV,blank_origin_and_destination
+12663,,,HPV,blank_origin_and_destination
+12664,,,HPV,blank_origin_and_destination
+12665,,,HPV,blank_origin_and_destination
+12666,,,HPV,blank_origin_and_destination
+12668,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12669,SafaKadal ,Jehangir Chowk,LPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12671,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12672,,,HPV,blank_origin_and_destination
+12673,,,HPV,blank_origin_and_destination
+12675,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12677,,,HPV,blank_origin_and_destination
+12682,,,HPV,blank_origin_and_destination
+12683,,,HPV,blank_origin_and_destination
+12684,,,HPV,blank_origin_and_destination
+12689,,,HPV,blank_origin_and_destination
+12692,,,HPV,blank_origin_and_destination
+12695,Jehangir Chowk,HMT,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12703,Soura,Jehangir Chowk,LPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12705,HMT,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12708,,,HPV,blank_origin_and_destination
+12711,,,MPV,blank_origin_and_destination
+12712,HMT,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12713,Jehangir Chowk,HMT,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12714,Jehangir Chowk,HMT,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12717,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12718,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12719,Jehangir Chowk,HMT,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12720,Jehangir Chowk,Panzinara,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12721,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12722,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12724,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12725,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12727,,,HPV,blank_origin_and_destination
+12730,Jehangir Chowk,JVC,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12734,Jehangir Chowk,HMT,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12737,Jehangir Chowk,Budgam,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12739,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12742,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12745,Qamarwari,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12746,Narbal,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12751,Parimpora ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12754,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12759,Narbal,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12764,SafaKadal ,Jehangir Chowk,LPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12768,,,HPV,blank_origin_and_destination
+12770,"Hazratbal, Lalbazar",Parimpora,MPV,ungeocoded: origin 'HAZRATBAL LALBAZAR'
+12772,HAZRATBAL,BONE JOINT HOSPITAL BARZALLA,MPV,ungeocoded: destination 'BONE JOINT HOSPITAL BARZALLA'
+12773,,,HPV,blank_origin_and_destination
+12774,,,HPV,blank_origin_and_destination
+12776,,,MPV,blank_origin_and_destination
+12777,,,HPV,blank_origin_and_destination
+12780,,,HPV,blank_origin_and_destination
+12786,GBS,LAL CHOWK,MPV,ungeocoded: origin 'GBS'
+12787,,,HPV,blank_origin_and_destination
+12790,,,HPV,blank_origin_and_destination
+12797,,,HPV,blank_origin_and_destination
+12799,Jehangir Chowk,Bemina,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12801,,,LPV,blank_origin_and_destination
+12807,Jehangir Chowk,Bemina,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12809,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12810,,,HPV,blank_origin_and_destination
+12818,,,HPV,blank_origin_and_destination
+12819,,,HPV,blank_origin_and_destination
+12820,,,HPV,blank_origin_and_destination
+12821,Jehangir Chowk,HMT,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12823,,,HPV,blank_origin_and_destination
+12825,,,HPV,blank_origin_and_destination
+12826,,,HPV,blank_origin_and_destination
+12827,,,HPV,blank_origin_and_destination
+12831,,,HPV,blank_origin_and_destination
+12833,,,HPV,blank_origin_and_destination
+12834,,,HPV,blank_origin_and_destination
+12836,,,HPV,blank_origin_and_destination
+12837,"Hazratbal, Lalbazar",Parimpora,MPV,ungeocoded: origin 'HAZRATBAL LALBAZAR'
+12839,,,HPV,blank_origin_and_destination
+12841,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12842,,,HPV,blank_origin_and_destination
+12843,,,HPV,blank_origin_and_destination
+12845,Jehangir Chowk,Budgam,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12846,Jehangir Chowk,HMT,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12847,Jehangir Chowk,Budgam,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12848,,,HPV,blank_origin_and_destination
+12849,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12853,,,HPV,blank_origin_and_destination
+12854,,,HPV,blank_origin_and_destination
+12855,,,HPV,blank_origin_and_destination
+12856,,,HPV,blank_origin_and_destination
+12857,,,HPV,blank_origin_and_destination
+12858,"Hazratbal, Lalbazar",Parimpora,MPV,ungeocoded: origin 'HAZRATBAL LALBAZAR'
+12861,"Hazratbal, Lalbazar",Parimpora,MPV,ungeocoded: origin 'HAZRATBAL LALBAZAR'
+12863,,,HPV,blank_origin_and_destination
+12864,,,HPV,blank_origin_and_destination
+12866,,,HPV,blank_origin_and_destination
+12867,,,HPV,blank_origin_and_destination
+12868,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12869,Jehangir Chowk,Budgam,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12871,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12873,,,HPV,blank_origin_and_destination
+12874,HMT,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12875,Narbal,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12880,,,HPV,blank_origin_and_destination
+12881,Jehangir Chowk,JVC,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12882,,,HPV,blank_origin_and_destination
+12883,,,HPV,blank_origin_and_destination
+12884,,,HPV,blank_origin_and_destination
+12885,,,HPV,blank_origin_and_destination
+12886,Jehangir Chowk,Bemina,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12888,"Hazratbal, Lalbazar",Parimpora,MPV,ungeocoded: origin 'HAZRATBAL LALBAZAR'
+12891,,,MPV,blank_origin_and_destination
+12894,Jehangir Chowk,Bemina,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12900,,,HPV,blank_origin_and_destination
+12902,,,MPV,blank_origin_and_destination
+12904,,,MPV,blank_origin_and_destination
+12905,,,MPV,blank_origin_and_destination
+12908,Jehangir Chowk,Bemina,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12910,,,LPV,blank_origin_and_destination
+12912,Soura,Jehangir Chowk,LPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12913,Jehangir Chowk,HMT,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12915,,,LPV,blank_origin_and_destination
+12917,,,LPV,blank_origin_and_destination
+12920,,,HPV,blank_origin_and_destination
+12921,Soura,Jehangir Chowk,LPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12922,Jehangir Chowk,Bemina,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12923,SOURA,CHUNTWALIWAR,MPV,ungeocoded: destination 'CHUNTWALIWAR'
+12924,Jehangir Chowk,HMT,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12925,Jehangir Chowk,JVC,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12926,,,MPV,blank_origin_and_destination
+12927,"Hazratbal, Lalbazar",Parimpora,MPV,ungeocoded: origin 'HAZRATBAL LALBAZAR'
+12928,HMT,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12930,,,MPV,blank_origin_and_destination
+12932,,,MPV,blank_origin_and_destination
+12933,Jehangir Chowk,Bemina,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12935,,,MPV,blank_origin_and_destination
+12941,,,HPV,blank_origin_and_destination
+12942,,,HPV,blank_origin_and_destination
+12943,,,HPV,blank_origin_and_destination
+12944,,,HPV,blank_origin_and_destination
+12945,,,HPV,blank_origin_and_destination
+12946,,,LPV,blank_origin_and_destination
+12949,Jehangir Chowk,Panzinara,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12953,,,HPV,blank_origin_and_destination
+12955,Jehangir Chowk,Budgam,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12956,Narbal,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12957,Jehangir Chowk,Budgam,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12960,Jehangir Chowk,HMT,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12964,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12967,,,MPV,blank_origin_and_destination
+12969,,,MPV,blank_origin_and_destination
+12972,Jehangir Chowk,Bemina,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12975,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12979,,,LPV,blank_origin_and_destination
+12980,Jehangir Chowk,Bemina,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+12984,,,MPV,blank_origin_and_destination
+12985,,,MPV,blank_origin_and_destination
+12986,Narbal,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12987,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12988,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12990,Narbal,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+12993,,,MPV,blank_origin_and_destination
+12997,,,HPV,blank_origin_and_destination
+12998,,,HPV,blank_origin_and_destination
+12999,,,HPV,blank_origin_and_destination
+13000,,,HPV,blank_origin_and_destination
+13001,,,HPV,blank_origin_and_destination
+13004,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13007,,,HPV,blank_origin_and_destination
+13008,,,MPV,blank_origin_and_destination
+13009,Jehangir Chowk,Budgam,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13012,Narbal,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13016,,,HPV,blank_origin_and_destination
+13017,,,MPV,blank_origin_and_destination
+13018,,,HPV,blank_origin_and_destination
+13019,,,LPV,blank_origin_and_destination
+13021,,,MPV,blank_origin_and_destination
+13023,Lawaypora,Jehangir Chowk,LPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13024,Jehangir Chowk,Bemina,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13027,"Hazratbal, Lalbazar",Parimpora,MPV,ungeocoded: origin 'HAZRATBAL LALBAZAR'
+13031,,,HPV,blank_origin_and_destination
+13032,Jehangir Chowk,Bemina,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13033,,,HPV,blank_origin_and_destination
+13034,,,HPV,blank_origin_and_destination
+13035,,,LPV,blank_origin_and_destination
+13036,,,LPV,blank_origin_and_destination
+13037,,,LPV,blank_origin_and_destination
+13038,,,LPV,blank_origin_and_destination
+13041,,,MPV,blank_origin_and_destination
+13048,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13049,,,HPV,blank_origin_and_destination
+13051,,,HPV,blank_origin_and_destination
+13056,,,MPV,blank_origin_and_destination
+13058,,,HPV,blank_origin_and_destination
+13059,Jehangir Chowk,Bemina,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13062,Jehangir Chowk,Budgam,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13063,,,HPV,blank_origin_and_destination
+13064,,,HPV,blank_origin_and_destination
+13068,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13070,,,MPV,blank_origin_and_destination
+13073,Jehangir Chowk,Panzinara,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13077,,,HPV,blank_origin_and_destination
+13081,,,HPV,blank_origin_and_destination
+13084,,,HPV,blank_origin_and_destination
+13087,,,MPV,blank_origin_and_destination
+13089,,,LPV,blank_origin_and_destination
+13090,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13091,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13093,,,HPV,blank_origin_and_destination
+13095,Narbal,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13097,,,MPV,blank_origin_and_destination
+13098,,,MPV,blank_origin_and_destination
+13100,,,MPV,blank_origin_and_destination
+13101,,,LPV,blank_origin_and_destination
+13102,,,MPV,blank_origin_and_destination
+13103,,,MPV,blank_origin_and_destination
+13106,,,MPV,blank_origin_and_destination
+13107,Soura,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13108,,,MPV,blank_origin_and_destination
+13110,,,LPV,blank_origin_and_destination
+13113,,,MPV,blank_origin_and_destination
+13114,,,HPV,blank_origin_and_destination
+13115,,,HPV,blank_origin_and_destination
+13116,,,HPV,blank_origin_and_destination
+13117,,,HPV,blank_origin_and_destination
+13120,,,MPV,blank_origin_and_destination
+13121,,,HPV,blank_origin_and_destination
+13122,,,HPV,blank_origin_and_destination
+13130,,,MPV,blank_origin_and_destination
+13131,,,MPV,blank_origin_and_destination
+13143,,,HPV,blank_origin_and_destination
+13144,,,MPV,blank_origin_and_destination
+13147,,,HPV,blank_origin_and_destination
+13148,,,LPV,blank_origin_and_destination
+13149,Baghat Shora,Lalchowk,LPV,ungeocoded: origin 'BAGHAT SHORA'
+13150,,,HPV,blank_origin_and_destination
+13157,,,MPV,blank_origin_and_destination
+13158,,,MPV,blank_origin_and_destination
+13159,Soura,Jehangir Chowk,LPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13160,,,MPV,blank_origin_and_destination
+13161,,,HPV,blank_origin_and_destination
+13163,Baghat Shora,Lalchowk,MPV,ungeocoded: origin 'BAGHAT SHORA'
+13166,,,MPV,blank_origin_and_destination
+13167,Baghat Shora,Lalchowk,LPV,ungeocoded: origin 'BAGHAT SHORA'
+13168,"Hazratbal, Lalbazar",Parimpora,MPV,ungeocoded: origin 'HAZRATBAL LALBAZAR'
+13169,,,MPV,blank_origin_and_destination
+13171,Lawaypora,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13174,,,MPV,blank_origin_and_destination
+13175,,,MPV,blank_origin_and_destination
+13176,,,MPV,blank_origin_and_destination
+13177,,,HPV,blank_origin_and_destination
+13178,,,MPV,blank_origin_and_destination
+13179,,,MPV,blank_origin_and_destination
+13183,,,HPV,blank_origin_and_destination
+13184,,,MPV,blank_origin_and_destination
+13187,Jehangir Chowk,HMT,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13189,Jehangir Chowk,JVC,MPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13190,,,MPV,blank_origin_and_destination
+13191,,,HPV,blank_origin_and_destination
+13192,,,HPV,blank_origin_and_destination
+13193,,,HPV,blank_origin_and_destination
+13199,,,HPV,blank_origin_and_destination
+13200,,,MPV,blank_origin_and_destination
+13201,,,MPV,blank_origin_and_destination
+13202,,,MPV,blank_origin_and_destination
+13203,,,MPV,blank_origin_and_destination
+13204,,,MPV,blank_origin_and_destination
+13205,,,MPV,blank_origin_and_destination
+13206,,,MPV,blank_origin_and_destination
+13207,,,MPV,blank_origin_and_destination
+13208,,,MPV,blank_origin_and_destination
+13209,,,MPV,blank_origin_and_destination
+13210,,,MPV,blank_origin_and_destination
+13211,,,MPV,blank_origin_and_destination
+13212,,,MPV,blank_origin_and_destination
+13213,,,MPV,blank_origin_and_destination
+13214,,,MPV,blank_origin_and_destination
+13215,,,MPV,blank_origin_and_destination
+13216,,,MPV,blank_origin_and_destination
+13217,,,HPV,blank_origin_and_destination
+13218,,,HPV,blank_origin_and_destination
+13219,,,HPV,blank_origin_and_destination
+13220,,,HPV,blank_origin_and_destination
+13221,,,HPV,blank_origin_and_destination
+13222,,,MPV,blank_origin_and_destination
+13223,,,HPV,blank_origin_and_destination
+13224,,,HPV,blank_origin_and_destination
+13225,,,HPV,blank_origin_and_destination
+13226,,,HPV,blank_origin_and_destination
+13227,,,HPV,blank_origin_and_destination
+13228,,,,blank_origin_and_destination
+13229,,,,blank_origin_and_destination
+13230,,,HPV,blank_origin_and_destination
+13231,,,LPV,blank_origin_and_destination
+13232,,,HPV,blank_origin_and_destination
+13233,,,,blank_origin_and_destination
+13234,,,LPV,blank_origin_and_destination
+13235,,,LPV,blank_origin_and_destination
+13236,,,HPV,blank_origin_and_destination
+13237,,,HPV,blank_origin_and_destination
+13238,,,LPV,blank_origin_and_destination
+13239,,,LPV,blank_origin_and_destination
+13240,,,HPV,blank_origin_and_destination
+13241,,,HPV,blank_origin_and_destination
+13242,,,HPV,blank_origin_and_destination
+13243,,,HPV,blank_origin_and_destination
+13244,,,HPV,blank_origin_and_destination
+13245,,,LPV,blank_origin_and_destination
+13246,,,,blank_origin_and_destination
+13247,,,HPV,blank_origin_and_destination
+13248,,,LPV,blank_origin_and_destination
+13249,,,HPV,blank_origin_and_destination
+13250,,,,blank_origin_and_destination
+13251,,,LPV,blank_origin_and_destination
+13252,,,HPV,blank_origin_and_destination
+13253,,,,blank_origin_and_destination
+13254,,,,blank_origin_and_destination
+13255,,,HPV,blank_origin_and_destination
+13256,,,HPV,blank_origin_and_destination
+13257,,,,blank_origin_and_destination
+13258,,,HPV,blank_origin_and_destination
+13259,,,HPV,blank_origin_and_destination
+13260,,,HPV,blank_origin_and_destination
+13261,,,HPV,blank_origin_and_destination
+13262,,,LPV,blank_origin_and_destination
+13263,,,HPV,blank_origin_and_destination
+13264,,,HPV,blank_origin_and_destination
+13265,,,,blank_origin_and_destination
+13266,,,LPV,blank_origin_and_destination
+13267,,,HPV,blank_origin_and_destination
+13268,,,HPV,blank_origin_and_destination
+13269,,,HPV,blank_origin_and_destination
+13270,,,LPV,blank_origin_and_destination
+13271,,,HPV,blank_origin_and_destination
+13272,,,HPV,blank_origin_and_destination
+13273,,,HPV,blank_origin_and_destination
+13274,,,LPV,blank_origin_and_destination
+13275,,,HPV,blank_origin_and_destination
+13276,,,HPV,blank_origin_and_destination
+13277,,,HPV,blank_origin_and_destination
+13278,,,HPV,blank_origin_and_destination
+13279,,,LPV,blank_origin_and_destination
+13280,,,LPV,blank_origin_and_destination
+13281,,,HPV,blank_origin_and_destination
+13282,,,,blank_origin_and_destination
+13283,,,,blank_origin_and_destination
+13284,,,,blank_origin_and_destination
+13285,,,LPV,blank_origin_and_destination
+13286,,,LPV,blank_origin_and_destination
+13287,,,LPV,blank_origin_and_destination
+13288,,,,blank_origin_and_destination
+13289,,,LPV,blank_origin_and_destination
+13290,,,LPV,blank_origin_and_destination
+13291,,,HPV,blank_origin_and_destination
+13292,,,LPV,blank_origin_and_destination
+13293,,,HPV,blank_origin_and_destination
+13294,,,HPV,blank_origin_and_destination
+13295,,,HPV,blank_origin_and_destination
+13296,,,LPV,blank_origin_and_destination
+13297,,,HPV,blank_origin_and_destination
+13298,,,HPV,blank_origin_and_destination
+13299,,,HPV,blank_origin_and_destination
+13300,,,HPV,blank_origin_and_destination
+13301,,,HPV,blank_origin_and_destination
+13302,,,HPV,blank_origin_and_destination
+13303,,,HPV,blank_origin_and_destination
+13304,,,HPV,blank_origin_and_destination
+13305,,,HPV,blank_origin_and_destination
+13306,,,HPV,blank_origin_and_destination
+13307,,,HPV,blank_origin_and_destination
+13308,,,HPV,blank_origin_and_destination
+13309,,,HPV,blank_origin_and_destination
+13310,,,HPV,blank_origin_and_destination
+13311,,,HPV,blank_origin_and_destination
+13312,,,HPV,blank_origin_and_destination
+13313,,,HPV,blank_origin_and_destination
+13314,,,HPV,blank_origin_and_destination
+13315,,,HPV,blank_origin_and_destination
+13316,,,HPV,blank_origin_and_destination
+13317,,,HPV,blank_origin_and_destination
+13318,,,HPV,blank_origin_and_destination
+13319,,,HPV,blank_origin_and_destination
+13320,,,HPV,blank_origin_and_destination
+13321,,,HPV,blank_origin_and_destination
+13322,,,HPV,blank_origin_and_destination
+13323,,,HPV,blank_origin_and_destination
+13324,,,HPV,blank_origin_and_destination
+13325,,,HPV,blank_origin_and_destination
+13326,,,HPV,blank_origin_and_destination
+13327,,,HPV,blank_origin_and_destination
+13328,,,HPV,blank_origin_and_destination
+13329,,,HPV,blank_origin_and_destination
+13330,,,HPV,blank_origin_and_destination
+13331,,,HPV,blank_origin_and_destination
+13332,,,HPV,blank_origin_and_destination
+13333,,,HPV,blank_origin_and_destination
+13334,,,HPV,blank_origin_and_destination
+13335,,,HPV,blank_origin_and_destination
+13336,,,HPV,blank_origin_and_destination
+13337,,,HPV,blank_origin_and_destination
+13338,,,HPV,blank_origin_and_destination
+13339,,,HPV,blank_origin_and_destination
+13340,,,HPV,blank_origin_and_destination
+13341,,,HPV,blank_origin_and_destination
+13342,,,HPV,blank_origin_and_destination
+13343,,,HPV,blank_origin_and_destination
+13344,,,HPV,blank_origin_and_destination
+13345,,,HPV,blank_origin_and_destination
+13346,,,HPV,blank_origin_and_destination
+13347,,,HPV,blank_origin_and_destination
+13348,,,HPV,blank_origin_and_destination
+13349,,,HPV,blank_origin_and_destination
+13350,,,HPV,blank_origin_and_destination
+13351,,,HPV,blank_origin_and_destination
+13352,,,HPV,blank_origin_and_destination
+13353,,,HPV,blank_origin_and_destination
+13354,,,HPV,blank_origin_and_destination
+13355,,,HPV,blank_origin_and_destination
+13356,,,HPV,blank_origin_and_destination
+13357,,,HPV,blank_origin_and_destination
+13358,,,HPV,blank_origin_and_destination
+13359,,,HPV,blank_origin_and_destination
+13360,,,HPV,blank_origin_and_destination
+13361,,,HPV,blank_origin_and_destination
+13362,,,HPV,blank_origin_and_destination
+13363,,,HPV,blank_origin_and_destination
+13364,,,HPV,blank_origin_and_destination
+13365,,,HPV,blank_origin_and_destination
+13366,,,HPV,blank_origin_and_destination
+13367,,,HPV,blank_origin_and_destination
+13368,,,HPV,blank_origin_and_destination
+13369,,,HPV,blank_origin_and_destination
+13370,,,HPV,blank_origin_and_destination
+13371,,,HPV,blank_origin_and_destination
+13372,,,HPV,blank_origin_and_destination
+13373,,,HPV,blank_origin_and_destination
+13374,,,HPV,blank_origin_and_destination
+13375,,,HPV,blank_origin_and_destination
+13376,,,HPV,blank_origin_and_destination
+13377,,,HPV,blank_origin_and_destination
+13378,,,HPV,blank_origin_and_destination
+13379,,,HPV,blank_origin_and_destination
+13380,,,HPV,blank_origin_and_destination
+13381,,,HPV,blank_origin_and_destination
+13382,,,HPV,blank_origin_and_destination
+13383,,,HPV,blank_origin_and_destination
+13384,,,HPV,blank_origin_and_destination
+13385,,,HPV,blank_origin_and_destination
+13386,,,HPV,blank_origin_and_destination
+13387,,,HPV,blank_origin_and_destination
+13388,,,HPV,blank_origin_and_destination
+13389,,,HPV,blank_origin_and_destination
+13390,,,HPV,blank_origin_and_destination
+13391,,,HPV,blank_origin_and_destination
+13392,,,HPV,blank_origin_and_destination
+13393,,,HPV,blank_origin_and_destination
+13394,,,HPV,blank_origin_and_destination
+13395,,,HPV,blank_origin_and_destination
+13396,,,HPV,blank_origin_and_destination
+13397,,,HPV,blank_origin_and_destination
+13398,,,HPV,blank_origin_and_destination
+13399,,,HPV,blank_origin_and_destination
+13400,,,HPV,blank_origin_and_destination
+13401,,,HPV,blank_origin_and_destination
+13402,,,HPV,blank_origin_and_destination
+13403,,,HPV,blank_origin_and_destination
+13404,,,HPV,blank_origin_and_destination
+13405,,,HPV,blank_origin_and_destination
+13406,,,HPV,blank_origin_and_destination
+13407,,,HPV,blank_origin_and_destination
+13408,,,HPV,blank_origin_and_destination
+13409,,,HPV,blank_origin_and_destination
+13410,,,HPV,blank_origin_and_destination
+13411,,,HPV,blank_origin_and_destination
+13412,,,HPV,blank_origin_and_destination
+13413,,,HPV,blank_origin_and_destination
+13414,,,HPV,blank_origin_and_destination
+13415,,,HPV,blank_origin_and_destination
+13416,,,HPV,blank_origin_and_destination
+13417,,,HPV,blank_origin_and_destination
+13418,,,HPV,blank_origin_and_destination
+13419,,,HPV,blank_origin_and_destination
+13420,,,HPV,blank_origin_and_destination
+13421,,,HPV,blank_origin_and_destination
+13422,,,HPV,blank_origin_and_destination
+13423,,,HPV,blank_origin_and_destination
+13424,,,HPV,blank_origin_and_destination
+13425,,,HPV,blank_origin_and_destination
+13426,,,HPV,blank_origin_and_destination
+13427,,,HPV,blank_origin_and_destination
+13428,,,HPV,blank_origin_and_destination
+13429,,,HPV,blank_origin_and_destination
+13430,,,HPV,blank_origin_and_destination
+13431,,,HPV,blank_origin_and_destination
+13432,,,HPV,blank_origin_and_destination
+13433,,,HPV,blank_origin_and_destination
+13434,,,HPV,blank_origin_and_destination
+13435,,,HPV,blank_origin_and_destination
+13436,,,HPV,blank_origin_and_destination
+13437,,,HPV,blank_origin_and_destination
+13438,,,HPV,blank_origin_and_destination
+13439,,,HPV,blank_origin_and_destination
+13440,,,HPV,blank_origin_and_destination
+13441,,,HPV,blank_origin_and_destination
+13442,,,HPV,blank_origin_and_destination
+13443,,,HPV,blank_origin_and_destination
+13444,,,HPV,blank_origin_and_destination
+13445,,,HPV,blank_origin_and_destination
+13446,,,HPV,blank_origin_and_destination
+13447,,,HPV,blank_origin_and_destination
+13448,,,HPV,blank_origin_and_destination
+13449,,,HPV,blank_origin_and_destination
+13450,,,HPV,blank_origin_and_destination
+13451,,,HPV,blank_origin_and_destination
+13452,,,HPV,blank_origin_and_destination
+13453,,,HPV,blank_origin_and_destination
+13454,,,HPV,blank_origin_and_destination
+13455,,,HPV,blank_origin_and_destination
+13456,,,HPV,blank_origin_and_destination
+13457,,,HPV,blank_origin_and_destination
+13458,,,HPV,blank_origin_and_destination
+13459,,,HPV,blank_origin_and_destination
+13460,,,HPV,blank_origin_and_destination
+13461,,,HPV,blank_origin_and_destination
+13462,,,HPV,blank_origin_and_destination
+13463,,,HPV,blank_origin_and_destination
+13464,,,HPV,blank_origin_and_destination
+13465,,,HPV,blank_origin_and_destination
+13466,,,HPV,blank_origin_and_destination
+13467,,,HPV,blank_origin_and_destination
+13468,,,HPV,blank_origin_and_destination
+13469,,,HPV,blank_origin_and_destination
+13470,,,HPV,blank_origin_and_destination
+13471,,,HPV,blank_origin_and_destination
+13472,,,HPV,blank_origin_and_destination
+13473,,,HPV,blank_origin_and_destination
+13474,,,HPV,blank_origin_and_destination
+13475,,,HPV,blank_origin_and_destination
+13476,,,HPV,blank_origin_and_destination
+13477,,,HPV,blank_origin_and_destination
+13478,,,HPV,blank_origin_and_destination
+13479,,,HPV,blank_origin_and_destination
+13480,,,HPV,blank_origin_and_destination
+13481,,,HPV,blank_origin_and_destination
+13482,,,HPV,blank_origin_and_destination
+13483,,,HPV,blank_origin_and_destination
+13484,,,HPV,blank_origin_and_destination
+13485,,,HPV,blank_origin_and_destination
+13486,,,HPV,blank_origin_and_destination
+13487,,,HPV,blank_origin_and_destination
+13488,,,HPV,blank_origin_and_destination
+13489,,,HPV,blank_origin_and_destination
+13490,,,HPV,blank_origin_and_destination
+13491,,,HPV,blank_origin_and_destination
+13492,,,HPV,blank_origin_and_destination
+13493,,,HPV,blank_origin_and_destination
+13494,,,HPV,blank_origin_and_destination
+13495,,,HPV,blank_origin_and_destination
+13496,,,HPV,blank_origin_and_destination
+13497,,,HPV,blank_origin_and_destination
+13498,,,HPV,blank_origin_and_destination
+13499,,,HPV,blank_origin_and_destination
+13500,,,HPV,blank_origin_and_destination
+13501,,,HPV,blank_origin_and_destination
+13502,,,HPV,blank_origin_and_destination
+13503,,,HPV,blank_origin_and_destination
+13504,,,HPV,blank_origin_and_destination
+13505,,,HPV,blank_origin_and_destination
+13506,,,HPV,blank_origin_and_destination
+13507,,,HPV,blank_origin_and_destination
+13508,,,HPV,blank_origin_and_destination
+13509,,,HPV,blank_origin_and_destination
+13510,,,HPV,blank_origin_and_destination
+13511,,,HPV,blank_origin_and_destination
+13512,,,HPV,blank_origin_and_destination
+13513,,,HPV,blank_origin_and_destination
+13514,,,HPV,blank_origin_and_destination
+13515,,,HPV,blank_origin_and_destination
+13516,,,HPV,blank_origin_and_destination
+13517,,,HPV,blank_origin_and_destination
+13518,,,HPV,blank_origin_and_destination
+13519,,,HPV,blank_origin_and_destination
+13520,,,HPV,blank_origin_and_destination
+13521,,,HPV,blank_origin_and_destination
+13522,,,HPV,blank_origin_and_destination
+13523,,,HPV,blank_origin_and_destination
+13524,,,HPV,blank_origin_and_destination
+13525,,,HPV,blank_origin_and_destination
+13526,,,HPV,blank_origin_and_destination
+13527,,,HPV,blank_origin_and_destination
+13528,,,HPV,blank_origin_and_destination
+13529,,,HPV,blank_origin_and_destination
+13530,,,HPV,blank_origin_and_destination
+13531,,,HPV,blank_origin_and_destination
+13532,,,HPV,blank_origin_and_destination
+13533,,,HPV,blank_origin_and_destination
+13534,,,HPV,blank_origin_and_destination
+13535,Scrapped,,HPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13536,,,HPV,blank_origin_and_destination
+13537,,,HPV,blank_origin_and_destination
+13538,,,HPV,blank_origin_and_destination
+13539,,,HPV,blank_origin_and_destination
+13540,,,HPV,blank_origin_and_destination
+13541,,,HPV,blank_origin_and_destination
+13542,,,HPV,blank_origin_and_destination
+13543,,,HPV,blank_origin_and_destination
+13544,,,HPV,blank_origin_and_destination
+13545,,,HPV,blank_origin_and_destination
+13546,,,HPV,blank_origin_and_destination
+13547,,,HPV,blank_origin_and_destination
+13548,,,HPV,blank_origin_and_destination
+13549,,,HPV,blank_origin_and_destination
+13550,,,HPV,blank_origin_and_destination
+13551,,,HPV,blank_origin_and_destination
+13552,,,HPV,blank_origin_and_destination
+13553,,,HPV,blank_origin_and_destination
+13554,,,HPV,blank_origin_and_destination
+13555,,,HPV,blank_origin_and_destination
+13556,,,HPV,blank_origin_and_destination
+13557,,,HPV,blank_origin_and_destination
+13558,,,HPV,blank_origin_and_destination
+13560,,,HPV,blank_origin_and_destination
+13562,,,HPV,blank_origin_and_destination
+13563,,,HPV,blank_origin_and_destination
+13564,,,HPV,blank_origin_and_destination
+13565,,,HPV,blank_origin_and_destination
+13566,,,HPV,blank_origin_and_destination
+13567,,,HPV,blank_origin_and_destination
+13568,,,HPV,blank_origin_and_destination
+13569,Scrapped,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13570,Scrapped,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13571,Scrapped,,MPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13572,Scrapped,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13573,Scrapped,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13574,Scrapped,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13575,Scrapped,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13576,,,HPV,blank_origin_and_destination
+13577,,,HPV,blank_origin_and_destination
+13578,,,HPV,blank_origin_and_destination
+13579,Scrapped,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13580,Scrapped,,LPV,"ungeocoded: origin 'SCRAPPED', destination 'None'"
+13581,,,HPV,blank_origin_and_destination
+13588,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13590,Jehangir Chowk,HMT,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13593,Jehangir Chowk,JVC,LPV,ungeocoded: origin 'JEHANGIR CHOWK'
+13594,,,HPV,blank_origin_and_destination
+13595,,,HPV,blank_origin_and_destination
+13596,,,HPV,blank_origin_and_destination
+13597,,,HPV,blank_origin_and_destination
+13598,,,HPV,blank_origin_and_destination
+13599,,,HPV,blank_origin_and_destination
+13600,,,HPV,blank_origin_and_destination
+13601,,,HPV,blank_origin_and_destination
+13602,,,HPV,blank_origin_and_destination
+13603,,,HPV,blank_origin_and_destination
+13606,,,HPV,blank_origin_and_destination
+13607,,,HPV,blank_origin_and_destination
+13608,,,HPV,blank_origin_and_destination
+13610,,,HPV,blank_origin_and_destination
+13611,SafaKadal ,Jehangir Chowk,MPV,ungeocoded: destination 'JEHANGIR CHOWK'
+13612,,,HPV,blank_origin_and_destination
+13613,,,HPV,blank_origin_and_destination
+13614,,,HPV,blank_origin_and_destination
+13615,,,HPV,blank_origin_and_destination
+13616,,,HPV,blank_origin_and_destination
+13617,,,HPV,blank_origin_and_destination
+13618,,,MPV,blank_origin_and_destination
+13619,,,HPV,blank_origin_and_destination
+13620,,,HPV,blank_origin_and_destination
+13621,,,HPV,blank_origin_and_destination
+13622,,,HPV,blank_origin_and_destination
+13623,,,HPV,blank_origin_and_destination
+13624,,,HPV,blank_origin_and_destination
