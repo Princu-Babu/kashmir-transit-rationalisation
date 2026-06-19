@@ -39,9 +39,9 @@ item not marked ✅ DONE.
 | B2 | Output #4 | A | Add `LPV_Count` to main CSV export so HPV+MPV+LPV = Fleet | ✅ DONE | (batch1) |
 | B3 | Code comment drift / §3 | A | Fix stale comments: 85/15 split, headway tables (README), Calibration sheet LP=60→35, Limitations version refs + synthetic-SSCL note, CLAUDE.md LPV note | ✅ DONE | (batch1) |
 | B4 | Findings 1,2,5 / Rec 1 | A(code) | New `geocode_common.py`: district-aware query, valley extent, Srinagar-centroid rejection, outside-valley rejection, reject + drop files. Wired into latlon.py + geocode_other_routes.py. Unit-tested. Re-run (R1) needs arcgis+network. | ✅ DONE | (batch2) |
-| B9 | Bug 2 / Rec 8 | A | Per-input-row disposition log (kept/merged/dropped+reason) covering all inputs | ☐ TODO | |
-| B7 | §3 QC gap / Rec 8 | A | New QC checks: route-code uniqueness, geocode-collision plausibility, duplicate-corridor over-fleet, load-ratio sanity band | ☐ TODO | |
-| B8 | Rec 2 | A | Pre-engine endpoint QA gate: haversine(O,D) ≥ 1 km, OSRM/haversine ratio sane, centroid-collision flag | ☐ TODO | |
+| B9 | Bug 2 / Rec 8 | A | `_DROP_LOG` + `_record_drop` capture every bbox/null/sub-1km drop; `export_route_disposition` → `Route_Disposition_Kashmir_v3.csv` (kept+dropped, all inputs). Geocoders also write per-row drop CSVs. | ✅ DONE | (batch3) |
+| B7 | §3 QC gap / Rec 8 | A | New QC: QC-Geocode (centroid survivors), QC-DupCorridor (Finding 8), QC-Load (sanity band) in run_all_qc_checks; `qc_route_codes` uniqueness gate after assign. Warn by default, block under KASHMIR_STRICT_QC=1. Unit-tested. | ✅ DONE | (batch3) |
+| B8 | Rec 2 | A | `audit_input_quality()` pre-engine gate: per-row haversine(O,D), Srinagar-centroid + zero-length flags → `input_qa_report.csv` + loud summary. | ✅ DONE | (batch3) |
 | B5 | Finding 8 / Rec 4 | B | Deduplicate identical O–D–class permits → corridor + permit-count weight; fleet at corridor level (kills 108-bus corridor) | ☐ TODO | |
 | B6 | Finding 9 / Rec 6 | B | Apportionment shares sum to union population (not divide-by-competitor-count) | ☐ TODO | |
 | R1 | Rec 10 | C | Re-geocode + re-run engine → v3.3.8; diff vs v3.3.7 route-by-route | ☐ BLOCKED (needs OSRM+geocoder) |
