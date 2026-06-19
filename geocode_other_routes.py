@@ -16,11 +16,13 @@ import re
 import time
 
 import pandas as pd
-from arcgis.geocoding import geocode
-from arcgis.gis import GIS
 
 # Hardened geocoding shared with latlon.py (audit Findings 1,2,5).
 import geocode_common
+
+# arcgis is optional now (audit remediation) — fall back to Nominatim if missing.
+GEOCODE_FN, GEOCODER_NAME = geocode_common.get_default_geocoder()
+print(f"[INFO] Geocoder backend: {GEOCODER_NAME}")
 
 GEO_FAILURES = []   # auditable record of names that could not be placed
 
@@ -109,7 +111,7 @@ def fetch_coordinates(location_name, cache, is_retry=False):
     if location_name in cache:
         return cache[location_name].get("lat"), cache[location_name].get("lon")
 
-    lat, lon = geocode_common.geocode_one(location_name, geocode,
+    lat, lon = geocode_common.geocode_one(location_name, GEOCODE_FN,
                                           failures=GEO_FAILURES)
     if lat is not None and lon is not None:
         status = "[RETRY OK]" if is_retry else "[OK]"

@@ -40,6 +40,7 @@ from __future__ import annotations
 import csv
 import math
 import re
+import time as _time
 from typing import Callable, Dict, List, Optional, Tuple
 
 # ── Srinagar centroid the broken context collapsed everything onto ──
@@ -178,6 +179,56 @@ def geocode_one(location_name: str,
         return None, None
 
     return lat, lon
+
+
+# ── requests-based Nominatim backend (no arcgis dependency) ───────────────────
+# The audit (Recommendation 1) suggests Nominatim with a district viewbox as a
+# second geocoder. It is also a drop-in replacement when the heavy `arcgis`
+# package is not installed, so the re-geocode can run anywhere `requests` is.
+_NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+_NOMINATIM_UA  = ("kashmir-transit-rationalisation/3.3.8 "
+                  "(RTO audit remediation; contact: imassolutionss@gmail.com)")
+_LAST_NOMINATIM_CALL = [0.0]   # mutable holder for simple 1 req/sec throttling
+
+
+def nominatim_geocode(query: str, search_extent: Optional[dict] = None):
+    """Geocoder with the ArcGIS result shape, backed by OSM Nominatim via
+    `requests`. Returns ``[{'location': {'x': lon, 'y': lat}}]`` or ``[]``
+    (None on transport error). Honours Nominatim's 1 req/sec usage policy.
+    """
+    import requests
+    dt = _time.time() - _LAST_NOMINATIM_CALL[0]
+    if dt < 1.1:
+        _time.sleep(1.1 - dt)
+    params = {"q": query, "format": "json", "limit": 1}
+    if search_extent:
+        # viewbox order is xmin,ymax,xmax,ymin (lon/lat); bounded restricts to it
+        params["viewbox"] = (f"{search_extent['xmin']},{search_extent['ymax']},"
+                             f"{search_extent['xmax']},{search_extent['ymin']}")
+        params["bounded"] = 1
+    try:
+        r = requests.get(_NOMINATIM_URL, params=params,
+                         headers={"User-Agent": _NOMINATIM_UA}, timeout=20)
+        _LAST_NOMINATIM_CALL[0] = _time.time()
+        r.raise_for_status()
+        j = r.json()
+    except Exception:
+        return None
+    if not j:
+        return []
+    return [{"location": {"x": float(j[0]["lon"]), "y": float(j[0]["lat"])}}]
+
+
+def get_default_geocoder() -> Tuple[Callable, str]:
+    """Return (geocode_fn, backend_name): the arcgis package if importable and
+    a GIS session can be created, else the requests-based Nominatim backend."""
+    try:
+        from arcgis.gis import GIS              # noqa: F401
+        from arcgis.geocoding import geocode as _arcgis_geocode
+        GIS()                                   # anonymous session
+        return _arcgis_geocode, "arcgis"
+    except Exception:
+        return nominatim_geocode, "nominatim (OSM)"
 
 
 def write_failures(failures: List[Dict], path: str = "geocode_failures.csv") -> None:

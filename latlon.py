@@ -1,6 +1,4 @@
 import pandas as pd
-from arcgis.gis import GIS
-from arcgis.geocoding import geocode
 import time
 import re
 import os
@@ -8,6 +6,11 @@ import json
 
 # Hardened geocoding shared with geocode_other_routes.py (audit Findings 1,2,5).
 import geocode_common
+
+# arcgis is optional now (audit remediation): if the heavy package is missing we
+# fall back to the requests-based Nominatim backend so the re-geocode can run.
+GEOCODE_FN, GEOCODER_NAME = geocode_common.get_default_geocoder()
+print(f"[INFO] Geocoder backend: {GEOCODER_NAME}")
 
 # Accumulates every name that could not be placed, so drops are auditable.
 GEO_FAILURES = []
@@ -98,7 +101,7 @@ def fetch_coordinates(location_name, is_retry=False):
     two geocoders behave identically. Returns (lat, lon) or (None, None) and
     records any failure (incl. a rejected centroid collision) in GEO_FAILURES.
     """
-    lat, lon = geocode_common.geocode_one(location_name, geocode,
+    lat, lon = geocode_common.geocode_one(location_name, GEOCODE_FN,
                                           failures=GEO_FAILURES)
     status = "[RETRY OK]" if is_retry else "[OK]"
     if lat is not None and lon is not None:
