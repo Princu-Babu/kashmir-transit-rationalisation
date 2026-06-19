@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.7
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.8
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -643,8 +643,11 @@ TERMINAL_CATEGORIES = frozenset({"bus_terminal", "market"})
 # operational target of 25-min stop-to-stop frequency and Srinagar's
 # observed peak demand (~4,346 pax/hr citywide at 9 AM from CHALO data).
 # 12-metre buses (HPV) are deployed on long-haul / inter-district routes;
-# 9-metre buses (MPV) cover intra-city loops. The 85/15 HPV-MPV split in
-# Step 9 reflects this real deployment ratio.
+# 9-metre buses (MPV) cover intra-city loops. NOTE (audit fix): SSCL's *actual*
+# deployment is 73×9m + 25×12m ≈ 74/26 MPV-heavy — i.e. MPV-dominant, NOT the
+# "85/15 HPV-MPV" an earlier comment claimed. Step 9 no longer uses any fixed
+# 85/15 split; it assigns HPV share from Route_KM brackets, capped at
+# SSCL_HPV_SHARE_CAP (0.50 in v3.3.7 — neither class a trunk majority).
 SSCL_TRUNK_HEADWAY_MIN = 15   # SSCL e-bus trunk headway — matches SSCL operational
                               # target (~25-min stop-to-stop frequency) and CHALO
                               # observed peak demand (~4,346 pax/hr citywide).
@@ -848,6 +851,7 @@ def truncate_routes_to_bbox(df: pd.DataFrame) -> pd.DataFrame:
         # If it started outside the box, or we don't have enough points left to make a line
         if len(valid_pts) < 2:
             log.debug("  Route %s dropped (Started outside bounding box or too short).", row["Route_ID"])
+            _record_drop(row, "origin_outside_bbox")
             dropped_count += 1
             continue
 
@@ -1050,27 +1054,179 @@ def load_pois(path: str) -> gpd.GeoDataFrame:
     return gdf
 
 
+# Module guard so a producer/consumer Via format mismatch can never again be
+# silent (audit Finding 3).
+_VIA_PARSE_WARNED = False
+
+# Per-input-row disposition trail (audit Bug 2 / Rec 8). Every route that is
+# DROPPED before reaching the output (bbox exit, null geometry, sub-1 km
+# zero-length collision) is recorded here with a reason, so a government-facing
+# rationalisation can show what happened to every permit — not just an
+# aggregate "dropped=N". Reset at the top of main().
+_DROP_LOG: List[Dict] = []
+
+
+def _record_drop(row, reason: str) -> None:
+    """Append a dropped route to the disposition trail."""
+    _DROP_LOG.append({
+        "Route_ID":   row.get("Route_ID", ""),
+        "Route_Name": row.get("Route_Name", ""),
+        "Start_Lat":  row.get("Start_Lat"), "Start_Lon": row.get("Start_Lon"),
+        "End_Lat":    row.get("End_Lat"),   "End_Lon":   row.get("End_Lon"),
+        "Vehicle_Category": row.get("Vehicle_Category", ""),
+        "Disposition": "DROPPED",
+        "Reason":     reason,
+    })
+
+
+# Srinagar centroid the geocoders historically collapsed onto (audit Finding 1).
+# Used by the input-QA gate to flag endpoints that snapped to it.
+_SRINAGAR_CENTROID = (34.085650, 74.805550)
+
+
+def _near_srinagar_centroid(lat, lon, tol_km: float = 0.3) -> bool:
+    try:
+        return _haversine_km(float(lat), float(lon),
+                             _SRINAGAR_CENTROID[0], _SRINAGAR_CENTROID[1]) <= tol_km
+    except (TypeError, ValueError):
+        return False
+
+
+def audit_input_quality(df: pd.DataFrame, out_path: str = "input_qa_report.csv") -> dict:
+    """Pre-engine endpoint QA gate (audit Recommendation 2).
+
+    For every input row, computes the straight-line O→D distance and flags:
+      • origin / destination snapped to the Srinagar centroid (geocode collapse),
+      • zero-length routes (haversine < MIN_ROUTE_KM → will be dropped),
+    writes a per-row report so the data quality is auditable BEFORE rationalisation,
+    and logs a loud summary. Returns a counts dict. Diagnostic, not blocking —
+    the hard gate lives in run_all_qc_checks() (strict mode).
+    """
+    log.info("Input QA: checking endpoint geocode plausibility (Rec 2)…")
+    recs = []
+    for _, row in df.iterrows():
+        try:
+            hav = _haversine_km(float(row["Start_Lat"]), float(row["Start_Lon"]),
+                                float(row["End_Lat"]),   float(row["End_Lon"]))
+        except (TypeError, ValueError, KeyError):
+            hav = float("nan")
+        o_ctr = _near_srinagar_centroid(row.get("Start_Lat"), row.get("Start_Lon"))
+        d_ctr = _near_srinagar_centroid(row.get("End_Lat"),   row.get("End_Lon"))
+        recs.append({
+            "Route_ID": row.get("Route_ID", ""),
+            "Route_Name": row.get("Route_Name", ""),
+            "Haversine_KM": round(hav, 3) if hav == hav else "",
+            "Origin_At_Srinagar_Centroid": o_ctr,
+            "Dest_At_Srinagar_Centroid":   d_ctr,
+            "Zero_Length": bool(hav == hav and hav < MIN_ROUTE_KM),
+        })
+    rep = pd.DataFrame(recs)
+    counts = {
+        "total":          len(rep),
+        "zero_length":    int(rep["Zero_Length"].sum()),
+        "origin_centroid": int(rep["Origin_At_Srinagar_Centroid"].sum()),
+        "dest_centroid":   int(rep["Dest_At_Srinagar_Centroid"].sum()),
+    }
+    try:
+        rep.to_csv(out_path, index=False, encoding="utf-8-sig")
+    except OSError as exc:
+        log.warning("  Could not write input QA report: %s", exc)
+    level = log.warning if counts["zero_length"] else log.info
+    level("  Input QA: %d/%d zero-length (<%.1f km, will be dropped) | "
+          "%d origins & %d destinations at the Srinagar centroid. Report → %s",
+          counts["zero_length"], counts["total"], MIN_ROUTE_KM,
+          counts["origin_centroid"], counts["dest_centroid"], out_path)
+    if counts["zero_length"]:
+        log.warning("  ⚠ Zero-length routes indicate the geocode collapse of "
+                    "Finding 1 — re-geocode (geocode_common.py) before submission.")
+    return counts
+
+
+def export_route_disposition(gdf: gpd.GeoDataFrame, out_path: str) -> None:
+    """Write a per-route disposition record covering every input row (Rec 8).
+
+    Survivors carry their Action_Taken (kept / merged / upgraded); dropped rows
+    come from _DROP_LOG with a reason. No input route is unaccounted for.
+    """
+    surv = gdf[["Route_ID", "Route_Name", "Action_Taken"]].copy()
+    surv = surv.rename(columns={"Action_Taken": "Reason"})
+    surv["Disposition"] = "KEPT"
+    surv = surv[["Route_ID", "Route_Name", "Disposition", "Reason"]]
+    drops = pd.DataFrame(_DROP_LOG)
+    if not drops.empty:
+        drops = drops[["Route_ID", "Route_Name", "Disposition", "Reason"]]
+        out = pd.concat([surv, drops], ignore_index=True)
+    else:
+        out = surv
+    out.to_csv(out_path, index=False, encoding="utf-8-sig")
+    log.info("  Route disposition written: %d kept + %d dropped = %d rows → %s",
+             len(surv), len(_DROP_LOG), len(out), out_path)
+
+
 def parse_via(via_raw) -> List[Tuple[float, float]]:
-    """Parse Via_Coordinates field to list of (lon, lat) tuples."""
+    """Parse a Via_Coordinates value into a list of (lon, lat) tuples.
+
+    Accepts BOTH formats the pipeline uses:
+      • JSON      — '[{"lat":..,"lon":..}, …]' or '[[lon,lat], …]'
+                    (this is what truncate_routes_to_bbox re-writes), and
+      • the plain producer string — 'lat,lon;lat,lon'
+                    (Via_Points_Geocoded emitted by latlon.py /
+                     geocode_other_routes.py — semicolon-separated lat,lon pairs).
+
+    Audit Finding 3 (CRITICAL): the previous implementation only attempted
+    json.loads() and swallowed every failure in a bare except, so 100% of the
+    plain-string vias (429 of 613 input rows) were silently discarded and the
+    permitted via-routing never reached OSRM. Returns [] only for genuinely
+    empty input; a non-empty value that parses to nothing is now logged.
+    """
+    global _VIA_PARSE_WARNED
     if via_raw is None or (isinstance(via_raw, float) and math.isnan(via_raw)):
         return []
     if not isinstance(via_raw, str) or not via_raw.strip():
         return []
-    try:
-        pts = json.loads(via_raw)
-        result = []
-        for p in pts:
-            if isinstance(p, dict):
-                result.append(
-                    (float(p.get("lon", p.get("lng", 0))),
-                     float(p.get("lat", 0)))
-                )
-            elif isinstance(p, (list, tuple)) and len(p) >= 2:
-                a, b = float(p[0]), float(p[1])
-                result.append((b, a) if 6 <= a <= 40 else (a, b))
-        return result
-    except (json.JSONDecodeError, TypeError, ValueError):
-        return []
+    raw = via_raw.strip()
+
+    def _as_lonlat(a: float, b: float) -> Tuple[float, float]:
+        # Kashmir latitudes are ~33–35, longitudes ~73–76. The value in the
+        # [6, 40] band is the latitude, so emit (lon, lat) regardless of order.
+        return (b, a) if 6 <= a <= 40 else (a, b)
+
+    # 1) JSON form (list of dicts, or list of [x, y] pairs)
+    if raw[0] in "[{":
+        try:
+            pts = json.loads(raw)
+            result = []
+            for p in pts:
+                if isinstance(p, dict):
+                    result.append(
+                        (float(p.get("lon", p.get("lng", 0))),
+                         float(p.get("lat", 0)))
+                    )
+                elif isinstance(p, (list, tuple)) and len(p) >= 2:
+                    result.append(_as_lonlat(float(p[0]), float(p[1])))
+            return result
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass  # fall through to the plain-string parser
+
+    # 2) Plain producer string 'lat,lon;lat,lon' (tolerate '|'/whitespace seps)
+    result = []
+    for chunk in re.split(r"[;|]", raw):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        nums = re.split(r"[,\s]+", chunk)
+        if len(nums) < 2:
+            continue
+        try:
+            result.append(_as_lonlat(float(nums[0]), float(nums[1])))
+        except ValueError:
+            continue
+
+    if not result and not _VIA_PARSE_WARNED:
+        log.warning("parse_via: a non-empty Via_Coordinates value parsed to no "
+                    "points (e.g. %r) — vias for such rows are ignored.", raw[:60])
+        _VIA_PARSE_WARNED = True
+    return result
 
 
 def _build_osrm_url(coords: List[Tuple[float, float]]) -> str:
@@ -1312,9 +1468,16 @@ def apply_geometries(df: pd.DataFrame, osrm_results: Dict) -> gpd.GeoDataFrame:
 
     gdf  = gpd.GeoDataFrame(rows, geometry="geometry", crs=WGS84_CRS)
     n0   = len(gdf)
-    # Only drop null geometry and sub-minimum length routes
-    gdf  = gdf[gdf.geometry.notna()].copy()
-    gdf  = gdf[gdf["Route_KM"] >= MIN_ROUTE_KM].copy()
+    # Only drop null geometry and sub-minimum length routes — but record each
+    # drop in the disposition trail first (audit Bug 2: was silent before).
+    for _, r in gdf[gdf.geometry.isna()].iterrows():
+        _record_drop(r, "null_geometry")
+    present = gdf[gdf.geometry.notna()].copy()
+    short_mask = present["Route_KM"] < MIN_ROUTE_KM
+    for _, r in present[short_mask].iterrows():
+        _record_drop(r, f"sub_min_km_zero_length (Route_KM={r['Route_KM']:.3f}; "
+                        f"likely identical O/D geocode — see Finding 1)")
+    gdf  = present[~short_mask].copy()
 
     # Count route types for audit
     type_counts = gdf["Route_Type"].value_counts().to_dict()
@@ -1957,29 +2120,56 @@ def step2_normalise_poi_score(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 # ══════════════════════════════════════════════════════════════════════════════
 #  PHASE 2b  ─  CORRIDOR FREQUENCY, CLUSTERING & ROUTE CLASSIFICATION
 # ══════════════════════════════════════════════════════════════════════════════
-def apportion_route_population(gdf: gpd.GeoDataFrame, freq_scores: np.ndarray) -> gpd.GeoDataFrame:
+def apportion_route_population(gdf: gpd.GeoDataFrame, freq_scores: np.ndarray,
+                               raster_path: str) -> gpd.GeoDataFrame:
     """
-    Divides a route's catchment population by the number of competing routes 
-    sharing its corridor. This genuinely fixes the double-counting in Excel sums 
-    by assigning 'Market Share' rather than absolute catchment.
+    Apportion catchment population among overlapping routes WITHOUT double-counting.
+
+    Audit Finding 9 (CRITICAL): the previous implementation just divided each
+    route's catchment by (competitors + 1). That gives every route a smaller
+    number, but the per-route shares no longer sum to anything meaningful — they
+    totalled 134,684 against the cover's deduplicated-union figure of 1,158,399
+    (an 8.6× contradiction), and everything downstream (Daily_Demand, Load_Ratio,
+    Viability, Subsidy flags, Equity) inherited the error.
+
+    Fix: keep the frequency weighting (a more-contested corridor takes a smaller
+    share of shared demand) but NORMALISE the shares so they sum to the
+    deduplicated network union population. Concretely, with raw catchment p_i and
+    competitor count c_i = freq_scores_i + 1:
+
+        weight_i = p_i / c_i
+        Population_Served_i = weight_i × ( UnionPop / Σ_j weight_j )
+
+    so Σ_i Population_Served_i ≈ UnionPop (the dissolved-catchment union, i.e. the
+    cover number) — the property a de-double-counting apportionment must have.
+    Raw catchment is preserved in Population_Served_Raw for the walkshed view.
     """
-    log.info("Apportioning population among overlapping routes (Competitive Market Share)…")
+    log.info("Apportioning population among overlapping routes "
+             "(frequency-weighted, normalised to the deduplicated union)…")
     gdf = gdf.copy()
-    
-    # freq_scores = number of OTHER overlapping routes. 
-    # Total routes sharing the market = freq_scores + 1
+
+    # freq_scores = number of OTHER overlapping routes; total sharing = +1.
     competitors = freq_scores + 1
-    
-    # Preserve the raw density for the logs, but overwrite the main column for Excel
+
     gdf["Population_Served_Raw"] = gdf["Population_Served"]
-    # v3.3.2: store the competitor count too so Phase-4 can do
-    # frequency-weighted apportionment (high-headway trunks capture more than
-    # an equal-1/N share of corridor demand).
     gdf["Corridor_Competitors"]  = competitors
-    gdf["Population_Served"] = (gdf["Population_Served"] / competitors).astype(int)
-    
-    log.info("  Apportioned Population_Served. New naive sum: %s (much closer to deduplicated reality)", 
-             f"{gdf['Population_Served'].sum():,}")
+
+    weights   = gdf["Population_Served"].astype(float) / competitors
+    union_pop = compute_network_population_total(gdf, raster_path)
+    wsum      = float(weights.sum())
+    if wsum > 0 and union_pop and union_pop > 0:
+        scaled = weights * (union_pop / wsum)
+    else:
+        # Degenerate (no raster / no weight): fall back to the weights as-is so
+        # the column is at least monotonic and non-NaN.
+        log.warning("  Apportionment normalisation skipped (union_pop=%s, wsum=%.1f) "
+                    "— using unnormalised frequency weights.", union_pop, wsum)
+        scaled = weights
+    gdf["Population_Served"] = scaled.round().clip(lower=0).astype(int)
+
+    log.info("  Apportioned Population_Served — Σ = %s vs deduplicated union %s "
+             "(now reconciles with the cover figure; Finding 9 fixed).",
+             f"{int(gdf['Population_Served'].sum()):,}", f"{union_pop:,}")
     return gdf
 
 def compute_frequency_scores(gdf: gpd.GeoDataFrame) -> np.ndarray:
@@ -2937,8 +3127,76 @@ def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
+def consolidate_duplicate_permits(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Consolidate identical-corridor duplicate FEEDER permits (audit Finding 8).
+
+    Permits are records, not routes: the input carries ~380 exact-duplicate
+    (Origin, Destination, Vehicle-class) rows. Feeder-retained duplicates were
+    never consolidated, so Step 8 gave EACH copy its own headway-based fleet —
+    one corridor (Soura→Jehangir Chowk ×18) drew 108 buses, more than the entire
+    SSCL system operates (98). This step keeps ONE representative feeder per
+    identical (rounded O, rounded D, Vehicle_Category) corridor, records the
+    permit multiplicity on it (Permit_Count), and marks the redundant copies
+    MERGED_INTO_TRUNK with Merged_Reason='duplicate_permit' so they are zeroed by
+    zero_merged_route_fleet() and excluded from the active set — exactly like any
+    other absorbed permit. Trunks and the SSCL backbone are left intact.
+
+    Must run AFTER apply_terminal_capacity (feeder states final) and BEFORE the
+    fleet steps, so the consolidated copies flow through the CDI pipeline and are
+    zeroed at the end like every other merged route.
+    """
+    log.info("Consolidating duplicate feeder permits (Finding 8 over-fleeting)…")
+    gdf = gdf.copy()
+    if "Permit_Count" not in gdf.columns:
+        gdf["Permit_Count"] = 1
+    if "Merged_Reason" not in gdf.columns:
+        gdf["Merged_Reason"] = ""
+
+    cmp_col = (gdf["CMP_Trunk"] if "CMP_Trunk" in gdf.columns
+               else pd.Series(False, index=gdf.index)).fillna(False).astype(bool)
+    feeders = gdf[(gdf["Action_Taken"] == "RETAINED_AS_FEEDER") & (~cmp_col)].copy()
+    if feeders.empty:
+        log.info("  No retained feeders to consolidate.")
+        return gdf
+
+    key = (feeders["Start_Lat"].round(4).astype(str) + "," +
+           feeders["Start_Lon"].round(4).astype(str) + "->" +
+           feeders["End_Lat"].round(4).astype(str) + "," +
+           feeders["End_Lon"].round(4).astype(str) + "|" +
+           feeders["Vehicle_Category"].astype(str).str.strip().str.lower())
+
+    _OP = {"minibus": "Private Minibus", "mini bus": "Private Minibus",
+           "mpv": "Private Minibus", "mps": "MPS (Stage Carriage)",
+           "city bus": "JKRTC / City Bus", "jkrtc": "JKRTC / City Bus",
+           "lpv": "LPV / Tempo", "tempo": "LPV / Tempo"}
+
+    n_consolidated = n_corridors = max_grp = 0
+    for _, grp in feeders.assign(_k=key).groupby("_k"):
+        if len(grp) <= 1:
+            continue
+        n_corridors += 1
+        max_grp = max(max_grp, len(grp))
+        rep = grp.index[0]
+        gdf.at[rep, "Permit_Count"] = int(len(grp))
+        for idx in grp.index[1:]:
+            gdf.at[idx, "Action_Taken"]  = "MERGED_INTO_TRUNK"
+            gdf.at[idx, "Merged_Reason"] = "duplicate_permit"
+            gdf.at[idx, "New_Route_ID"]  = gdf.at[rep, "New_Route_ID"]
+            cat = str(gdf.at[idx, "Vehicle_Category"]).strip().lower()
+            gdf.at[idx, "Displaced_Operator_Class"] = next(
+                (lbl for k, lbl in _OP.items() if k in cat), "Private Minibus")
+            n_consolidated += 1
+
+    log.info("  Duplicate-permit consolidation: %d corridors carried duplicates "
+             "(largest = %d permits); %d redundant feeder permits consolidated "
+             "into representatives (Finding 8 over-fleeting removed).",
+             n_corridors, max_grp, n_consolidated)
+    return gdf
+
+
 def zero_merged_route_fleet(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Zero fleet for MERGED_INTO_TRUNK routes — service absorbed by Trunk."""
+    """Zero fleet for MERGED_INTO_TRUNK routes — service absorbed by Trunk
+    (or, where Merged_Reason='duplicate_permit', by the corridor representative)."""
     merged_mask = gdf["Action_Taken"] == "MERGED_INTO_TRUNK"
     gdf = gdf.copy()
     gdf.loc[merged_mask,
@@ -3087,6 +3345,62 @@ def run_all_qc_checks(gdf: gpd.GeoDataFrame) -> None:
             log.info("  ✓ Check CMP: All %d CMP-injected routes confirmed as "
                      "UPGRADED_TO_TRUNK.", cmp_n)
 
+    # ── NEW input-plausibility & sanity checks (audit Rec 8) ──────────────
+    # These catch the classes of defect that "sailed through QC" in v3.3.7.
+    # Warn by default; set KASHMIR_STRICT_QC=1 to make them BLOCKING (the
+    # recommended pre-government-submission gate).
+    strict = os.getenv("KASHMIR_STRICT_QC", "0") == "1"
+
+    def _flag(msg: str) -> None:
+        if strict:
+            failures.append(msg)
+        else:
+            log.warning("  ⚠ %s (non-blocking — set KASHMIR_STRICT_QC=1 to block)", msg)
+
+    active_qc = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"].copy()
+
+    # QC-Geocode: active routes whose endpoint still snaps to the Srinagar
+    # centroid (residue of the Finding 1 collapse).
+    if {"Start_Lat", "Start_Lon", "End_Lat", "End_Lon"}.issubset(active_qc.columns):
+        coll = active_qc[active_qc.apply(
+            lambda r: _near_srinagar_centroid(r["Start_Lat"], r["Start_Lon"])
+            or _near_srinagar_centroid(r["End_Lat"], r["End_Lon"]), axis=1)]
+        if len(coll):
+            _flag(f"QC-GEOCODE — {len(coll)} active route(s) still have an endpoint at "
+                  f"the Srinagar centroid (geocode collapse, Finding 1).")
+        else:
+            log.info("  ✓ QC-Geocode: no active route endpoint at the Srinagar centroid.")
+
+    # QC-DupCorridor: identical O–D fleeted independently (Finding 8 over-fleeting).
+    if {"Start_Lat", "Start_Lon", "End_Lat", "End_Lon",
+        "Fleet_Required"}.issubset(active_qc.columns):
+        key = (active_qc["Start_Lat"].round(3).astype(str) + "," +
+               active_qc["Start_Lon"].round(3).astype(str) + "->" +
+               active_qc["End_Lat"].round(3).astype(str) + "," +
+               active_qc["End_Lon"].round(3).astype(str))
+        dup = (active_qc.assign(_k=key).groupby("_k")
+               .agg(n=("Route_ID", "size"), fleet=("Fleet_Required", "sum")))
+        dup = dup[dup["n"] > 1].sort_values("fleet", ascending=False)
+        if len(dup):
+            w = dup.iloc[0]
+            _flag(f"QC-DUPCORR — {len(dup)} O–D corridor(s) carry >1 independently-"
+                  f"fleeted route; worst = {int(w['n'])} routes / {int(w['fleet'])} buses "
+                  f"on one corridor (Finding 8).")
+        else:
+            log.info("  ✓ QC-DupCorridor: no duplicate O–D corridors fleeted independently.")
+
+    # QC-Load: network mean Load_Ratio sanity band (Findings 8/9/10).
+    if "Load_Ratio" in active_qc.columns:
+        lr = pd.to_numeric(active_qc["Load_Ratio"], errors="coerce").dropna()
+        if len(lr):
+            mean_lr = float(lr.mean())
+            if mean_lr < 0.20:
+                _flag(f"QC-LOAD — mean Load_Ratio {mean_lr:.3f} is implausibly low "
+                      f"(<0.20): demand base / fleet sizing need reconciliation "
+                      f"(Findings 8/9/10).")
+            else:
+                log.info("  ✓ QC-Load: mean Load_Ratio %.3f within plausible band.", mean_lr)
+
     if failures:
         for msg in failures:
             log.error(msg)
@@ -3094,6 +3408,45 @@ def run_all_qc_checks(gdf: gpd.GeoDataFrame) -> None:
             f"QC FAILED: {len(failures)} issue(s). Fix before export. "
             f"See transit_v3.log for details.")
     log.info("  ✓ ALL QC CHECKS PASSED — workbook ready for export.")
+
+
+def qc_route_codes(gdf: gpd.GeoDataFrame) -> None:
+    """Route-code uniqueness gate (audit Output #1). Runs AFTER assign_route_codes.
+
+    244/342 codes were duplicated in v3.3.7 because the code is derived from
+    origin/destination tehsil-sector-stop and the geocode collapse mapped many
+    distinct routes onto the same Srinagar point. Duplicate identifiers in an
+    RTO submission are a hard defect. Warns by default; blocks under
+    KASHMIR_STRICT_QC=1.
+    """
+    if "Route_Code" not in gdf.columns:
+        log.warning("  qc_route_codes: no Route_Code column — skipped.")
+        return
+    active = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"]
+    codes = active["Route_Code"].astype(str)
+    # Missing-code placeholders (blank / TMP- / UNMATCHED) are a coverage gap, not
+    # a duplicate-identifier defect — exclude them from the uniqueness test and
+    # report them separately.
+    is_placeholder = codes.eq("") | codes.eq("UNMATCHED") | codes.str.startswith("TMP-")
+    real = codes[~is_placeholder]
+    dup_mask = real.duplicated(keep=False)
+    n_dup = int(dup_mask.sum())
+    n_distinct = int(real[dup_mask].nunique())
+    n_missing = int(is_placeholder.sum())
+    strict = os.getenv("KASHMIR_STRICT_QC", "0") == "1"
+    if n_dup:
+        msg = (f"QC-CODES — {n_dup} active routes share {n_distinct} non-unique "
+               f"Route_Code(s) (Output #1 — should be unique after the M4 suffix).")
+        if strict:
+            raise RuntimeError("QC FAILED: " + msg)
+        log.warning("  ⚠ %s (non-blocking — set KASHMIR_STRICT_QC=1 to block)", msg)
+    else:
+        log.info("  ✓ QC-Codes: all %d real active route codes are unique.",
+                 len(real))
+    if n_missing:
+        log.warning("  ⚠ QC-Codes: %d active route(s) lack a Route_Code "
+                    "(endpoint absent from the stops master — manual coding "
+                    "needed).", n_missing)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3319,11 +3672,31 @@ def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                 final_codes.append(p)
                 continue
         final_codes.append(code)
-    gdf["Route_Code"] = final_codes
-    remaining = sum(1 for c in final_codes if c == "UNMATCHED")
+
+    # M4 fix (audit Output #1 — route-code uniqueness is a HARD defect):
+    # the 12-char code is a stop-PAIR identifier (TehsilO+TehsilD+SectorO+
+    # SectorD+StopO+StopD), so several distinct services between the same two
+    # master stops collide. Append a deterministic 2-digit suffix to every member
+    # of a colliding group so each route's code is unique. Singletons and
+    # UNMATCHED/blank codes are left untouched, preserving the AAAA######## form
+    # for the non-colliding majority.
+    from collections import Counter
+    code_counts = Counter(c for c in final_codes if c not in ("", "UNMATCHED"))
+    running: Dict[str, int] = {}
+    unique_codes: List[str] = []
+    n_disambiguated = 0
+    for c in final_codes:
+        if c in ("", "UNMATCHED") or code_counts[c] == 1:
+            unique_codes.append(c)
+        else:
+            running[c] = running.get(c, 0) + 1
+            unique_codes.append(f"{c}-{running[c]:02d}")
+            n_disambiguated += 1
+    gdf["Route_Code"] = unique_codes
+    remaining = sum(1 for c in unique_codes if c == "UNMATCHED")
     log.info("  Route_Code: %d/%d matched from stops master · %d backfilled from "
-             "dashboard · %d remaining UNMATCHED.",
-             matched, len(codes), backfilled, remaining)
+             "dashboard · %d remaining UNMATCHED · %d disambiguated for uniqueness "
+             "(M4 fix).", matched, len(codes), backfilled, remaining, n_disambiguated)
     return gdf
 
 
@@ -3382,7 +3755,7 @@ def export_csv(gdf: gpd.GeoDataFrame, file_map: dict, out_path: str) -> None:
         "Pop_Score", "POI_Score", "Road_Multiplier", "Final_CDI",
         "Social_Flag", "Priority_Band",
         "Headway_Min", "Fleet_Required",
-        "HPV_Count", "MPV_Count",
+        "HPV_Count", "MPV_Count", "LPV_Count",
         "CMP_Trunk", "CMP_Route_ID",
         "Population_Served", "Population_Served_Raw",
         "Corridor_Competitors",
@@ -4459,7 +4832,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws1.cell(row=7, column=2, value="Srinagar / Kashmir Valley").font = Font(name="Segoe UI", bold=True, color=TEAL, size=14)
     
     gen_date = datetime.datetime.now().strftime("%d %b %Y")
-    ws1.cell(row=9, column=2, value=f"Version: v3.3.7  |  Generated: {gen_date}").font = subtitle_font
+    ws1.cell(row=9, column=2, value=f"Version: v3.3.8  |  Generated: {gen_date}").font = subtitle_font
     ws1.cell(row=10, column=2, value="Engine: SSCL/CHALO Backbone Injection | Kashmir Geographic Recentre").font = subtitle_font
     
     summary_text = (f"This plan details the rationalised public transport network for Srinagar and the Kashmir Valley. "
@@ -4659,7 +5032,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws3.page_margins.right = 0.4
     ws3.page_margins.top = 0.6
     ws3.page_margins.bottom = 0.6
-    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.3.7"
+    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.3.8"
     ws3.oddHeader.center.size = 12
     ws3.oddFooter.right.text  = "Page &P of &N"
     
@@ -4931,9 +5304,9 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws8.cell(row=2, column=2, value="Calibration & Sources").font = title_font
     
     calib_data = [
-        ("Engine Version", "v3.3.7 (Kashmir Fork)"),
+        ("Engine Version", "v3.3.8 (Kashmir Fork)"),
         ("Date Generated", gen_date),
-        ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 60 min | SSCL: 15 min"),
+        ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 35 min | Regional: 35 min | SSCL: 15 min (35-min ceiling — v3.3.7)"),
         ("CHALO Calibration Scorecard", "Matched to Apr 2026 ridership data"),
         ("Mode-share Assumption", "9% Urban, scaled for Peri-Urban/Regional"),
         ("Fleet-density Target", "0.60 per 1000 residents"),
@@ -4956,9 +5329,13 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
         "• Euclidean walksheds don't account for Dal/Anchar/Jhelum barriers.",
         "• Demand elasticity not modelled (Mohring effect — actual demand will rise with frequency).",
         "• Tourist surge volumes captured via POI weights, not arrival data.",
-        "• 23 routes have TMP-K placeholder codes pending fresh stops-master run.",
+        "• Route_Code is derived from the stops master; where two routes share a "
+        "geocoded endpoint they can receive the same code — endpoint geocoding is "
+        "being hardened (district-aware) to remove collisions (see audit remediation).",
+        "• 30 of the output routes are synthetic SSCL/CHALO e-bus backbone injections, "
+        "not permit rows from existing-routes.csv.",
         "• Military/convoy windows on NH-44 not subtracted.",
-        "• v3.3.5 is phase-1 conservative; v3.3.4 (1,113 buses) was aspirational 15-min plan."
+        "• Phase-1 (recommended) plan; an aspirational 15-min-everywhere variant exists separately."
     ]
     
     for ri, limit in enumerate(limitations, start=4):
@@ -5194,7 +5571,9 @@ def main() -> None:
     log.info("  Directive 6: Full audit logging throughout")
     log.info("  SSCL Injection: %d e-bus routes hardcoded TRUNK/HP @ %d-min headway",
              len(CMP_TRUNK_ROUTES), SSCL_TRUNK_HEADWAY_MIN)
-    log.info("  Vehicle Split: Trunk=85%%HPV+15%%MPV | Feeder=100%%MPV | LPV=0")
+    log.info("  Vehicle Split: Trunk=Route_KM-bracketed HPV (cap %.0f%%) | "
+             "Feeder=100%%MPV (Regular/MPS 30%% HPV) | SSCL=empirical 9m/12m",
+             SSCL_HPV_SHARE_CAP * 100)
     log.info("=" * 70)
 
     if not _HAS_JENKSPY:
@@ -5203,7 +5582,11 @@ def main() -> None:
 
     # ── PHASE 1: Data Ingestion, OSRM, Geometry ───────────────────────────
     log.info("\n── PHASE 1: Data Ingestion & OSRM ──────────────────────────────────")
+    _DROP_LOG.clear()           # reset the per-route disposition trail
     df_routes    = load_routes(ROUTES_CSV)
+    # Pre-engine endpoint QA gate (audit Rec 2): flag geocode-collapse / zero-length
+    # input before any rationalisation happens. Diagnostic; hard gate is in QC.
+    audit_input_quality(df_routes, "input_qa_report.csv")
     # --- SSCL E-BUS ROUTE INJECTION (replaces Jammu CMP synthetic routes) ----
     # All 30 SSCL routes from CHALO Apr 2026 data with approximated lat/lon
     # for major Srinagar / Valley terminals. These will be matched by
@@ -5369,12 +5752,13 @@ def main() -> None:
     # ── Route Classification ──────────────────────────────────────────────
     log.info("\n── ROUTE CLASSIFICATION ─────────────────────────────────────────────")
     freq_scores    = compute_frequency_scores(gdf)
-    gdf            = apportion_route_population(gdf, freq_scores)
+    gdf            = apportion_route_population(gdf, freq_scores, RASTER_PATH)
     overlap_matrix = compute_overlap_matrix(gdf)
     gdf            = cluster_routes(gdf, overlap_matrix)
     gdf            = backfill_overlap_metric(gdf, overlap_matrix)
     gdf            = classify_routes(gdf, freq_scores, overlap_matrix)  # v3: 30th pct + CMP bonus
     gdf            = apply_terminal_capacity(gdf, gdf_pois)
+    gdf            = consolidate_duplicate_permits(gdf)   # audit Finding 8: kill duplicate over-fleeting
 
     # ── STEPS 3–9: CDI Pipeline ──────────────────────────────────────────
     log.info("\n── STEPS 3–9: CDI Pipeline ──────────────────────────────────────────")
@@ -5385,7 +5769,7 @@ def main() -> None:
     gdf = step5b_flag_sscl_cdi_conflicts(gdf)  # v3.3 Phase-1 audit: planner-review flag
     gdf = step6_assign_headways(gdf)         # CMP override: 10-min hardcoded
     gdf = step8_compute_fleet_required(gdf)  # v3: floor at MIN, no LPV downgrade
-    gdf = step9_compute_vehicle_split(gdf)   # v3: Trunk=85/15 | Feeder=100% MPV
+    gdf = step9_compute_vehicle_split(gdf)   # Route_KM-bracketed HPV (cap 50%) | Feeder 100% MPV | SSCL empirical
     gdf = zero_merged_route_fleet(gdf)
     gdf = compute_phase4_metrics(gdf)        # v3.3 Phase-1 audit: derived KPIs
 
@@ -5411,11 +5795,14 @@ def main() -> None:
                      net_pop, network_score)
     file_map = build_individual_maps(gdf, gdf_pois, OUTPUT_DIR)
     gdf = assign_route_codes(gdf)   # v3.3.7: bake Route_Code into every export
+    qc_route_codes(gdf)             # audit Output #1: route-code uniqueness gate
     export_csv(gdf, file_map, ROUTES_OUT_CSV)
     export_xlsx(gdf, out_path=ROUTES_OUT_XLSX, net_pop=net_pop)
-    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.7_RTO.xlsx", net_pop=net_pop)
+    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.8_RTO.xlsx", net_pop=net_pop)
     export_passenger_impact(gdf, PASSENGER_IMPACT_CSV)
     export_geojson(gdf, ROUTES_GEOJSON)
+    # Per-route disposition trail covering every input row (audit Rec 8).
+    export_route_disposition(gdf, "Route_Disposition_Kashmir_v3.csv")
 
     elapsed = time.perf_counter() - t0
     active  = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"]

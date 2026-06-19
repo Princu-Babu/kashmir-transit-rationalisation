@@ -122,7 +122,8 @@ version bumps. (These are `_`-prefixed helper scripts, committed to the engine r
 | v3.3.4 | Honest fleet sizing | SSCL empirical fleet = FLOOR not override (eliminated 12 false Red_Overload); LPV restored to dashboard breakdown; cross_evaluate headway-scaled objective |
 | v3.3.5 | Conservative phase-1 | Non-SSCL HP headway 15→20, MP 30→35; fleet 1,113→988 |
 | v3.3.6 | RTO Kashmir asks r1 | SSCL_HPV_SHARE_CAP=0.60 (more MPV on HPV-dominated trunks); LP headway 60→35 min; route-code generator integrated |
-| **v3.3.7** | **RTO Kashmir asks r2 (CURRENT)** | **35-min headway CEILING (HEADWAY_MAX_MIN=35 — regional 60/90, MPS 45, "regular" 60 all eliminated → headways now only 15/20/35); SSCL_HPV_SHARE_CAP 0.60→0.50 + long-haul bracket 0.60→0.50 (neither class a trunk majority); dashboard download cleanup (hero pretty-workbook + collapsed technical files); _sync_dashboard auto-copies RTO+Pretty workbooks and purges stale ones** |
+| v3.3.7 | RTO Kashmir asks r2 | 35-min headway CEILING (HEADWAY_MAX_MIN=35 — regional 60/90, MPS 45, "regular" 60 all eliminated → headways now only 15/20/35); SSCL_HPV_SHARE_CAP 0.60→0.50 + long-haul bracket 0.60→0.50 (neither class a trunk majority); dashboard download cleanup; _sync_dashboard auto-copies RTO+Pretty workbooks and purges stale ones |
+| **v3.3.8** | **Independent audit remediation (CURRENT)** | **Re-geocoded district-aware via Nominatim (`geocode_common.py`; `arcgis` now optional) — eliminated the 118-name Srinagar-centroid collapse (0 centroid endpoints, was 391/416). `parse_via` format fix; duplicate-permit consolidation (Finding 8); apportionment normalised to the dedup union (Finding 9); input-QA gate + per-route disposition trail; new QC checks (geocode/dup-corridor/load/route-code uniqueness); LPV_Count in CSV; route-code uniqueness suffix. Outcome: fleet 1,009→855, coverage 69.8%→94.7%, median route 8.7→16.5 km. See `AUDIT_FIX_LOG.md`.** |
 
 ---
 
@@ -151,22 +152,24 @@ _route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
 
 ---
 
-## 6. Current numbers (v3.3.7, the live plan)
+## 6. Current numbers (v3.3.8, the live plan — audit-remediated)
 
-- 342 in-scope permits → **207 active** (Trunk 50 / Feeder 157 / Merged 135)
-- **Total fleet 1,009** = HPV 80 / MPV 807 / LPV 122
-- 45 SSCL permits matched to 30 CHALO routes
-- 69 tourist corridors, 87 social-obligation routes (53 active)
-- **Headways present: ONLY 15 / 20 / 35 min** (45 routes @15, 145 @20, 152 @35);
-  max headway = 35, **0 routes above** (the 60/90-min bands are gone — RTO ask r2)
-- **Trunk vehicle mix balanced 50/50**; verified **0 trunk routes with an HPV majority**
-- Network coverage 69.78% of 1.66M (deduplicated 1,158,399 residents) — unchanged
-  from v3.3.6 (headway/mix changes don't alter the active route set or geometry)
-- **0.61 buses / 1000 residents** (peer band: BMTC 0.51, Chandigarh CTU 0.65, Pune 0.75)
-- **QC 8/8 passing, 0 Red_Overload**
-- Calibration vs CHALO Apr 2026: per-route SSCL fleet **+9.7%** vs headway-scaled
-  CHALO (within ±25% band) — unchanged. Raw total-fleet +269% is NOT an error
-  (operator absorption + 34→15 min headway upgrade).
+- 613 permits → re-geocoded district-aware → **419 routes** (389 permit-derived
+  + 30 synthetic SSCL); **136 active** (Trunk 42 / Feeder 94 / Merged 283)
+- **Total fleet 855** = HPV 73 / MPV 644 / LPV 138
+- 30 CHALO SSCL routes → 38 trunks (incl. 8 absorbed duplicate permits); SSCL fleet 348
+- **Headways present: ONLY 15 / 20 / 35 min** (ceiling preserved from v3.3.7)
+- Route types: Urban 62 / Peri_Urban 59 / Regional_District 15 (median route 16.5 km
+  — genuinely valley-wide now, not a Srinagar-city plan)
+- **Network coverage 94.74% of 1.66M (deduplicated 1,572,627 residents)** — up from
+  69.78% in v3.3.7 because the re-geocode spread routes across the real valley
+- **~0.54 buses / 1000 residents** (peer band: BMTC 0.51, Chandigarh CTU 0.65)
+- **QC 8/8 passing** + QC-Geocode clean (0 centroid endpoints), route codes unique
+- Calibration vs CHALO Apr 2026: per-route SSCL fleet **+24.9%** vs headway-scaled
+  CHALO (within ±25% band; rose from +9.7% because corrected geometry routes SSCL
+  trunks through their real via-waypoints → longer cycles → more honest fleet)
+- Audit reject worklist (manual resolution): `geocode_failures*.csv`,
+  `existing_routes_dropped.csv`; per-route disposition `Route_Disposition_Kashmir_v3.csv`
 
 ### Two service-level plans on the table
 - **v3.3.7 (recommended phase-1)**: ~1,009 buses, +68% over current ~600,
@@ -196,7 +199,7 @@ Known structural caveats (don't "fix" without intent):
 
 | File | What |
 |---|---|
-| `Rationalised_Routes_Kashmir_v3.csv` | Full operational CSV (50+ cols). NOTE: drops LPV_Count — derive as Fleet−HPV−MPV |
+| `Rationalised_Routes_Kashmir_v3.csv` | Full operational CSV (50+ cols). v3.3.8 audit-fix: now carries LPV_Count so HPV+MPV+LPV = Fleet_Required (was previously dropped) |
 | `Kashmir_Route_Frequency_Plan_v3.xlsx` | Legacy 4-sheet workbook (engineering) |
 | `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO.xlsx` | 9-sheet RTO-ready workbook (export_xlsx_rto in engine) |
 | `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO_Pretty.xlsx` | **2-sheet** bus schedule (Summary + Route Plan), via `_beautify_rto_master.py`. v3.3.7: Operator Absorption + Sign-off sheets removed (RTO ask) — that detail stays in the 9-sheet RTO master. Route Plan carries Route_Code per route. **This is the dashboard's hero download.** |
