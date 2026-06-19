@@ -6,6 +6,30 @@ This file is the **resumable source of truth** — if a working session is cut
 short, the next session reads this top-to-bottom and continues from the first
 item not marked ✅ DONE.
 
+## STATUS: all audit code fixes done + real v3.3.8 produced & validated
+Every audit finding with a code/data root cause is fixed, committed, and pushed
+to branch `audit-remediation-v3.3.8`. The corrected v3.3.8 plan is in
+`outputs_v3.3.8/`. CHALO calibration re-checked: per-route fleet +24.9% vs
+headway-scaled CHALO — within ±25% ("Calibration OK").
+
+### Decisions left for the user (NOT done unilaterally — outward-facing)
+1. **Adopt v3.3.8 as the plan?** Headline numbers changed materially (the audit
+   predicted this): active routes 207→136, fleet 1009→855, coverage 69.8%→94.7%,
+   median route 8.7→16.5 km. v3.3.8 is more defensible but different from what was
+   shown to the RTO. Needs a human call before it goes out.
+2. **If adopting:** bump version labels v3.3.7→v3.3.8 (engine header, workbook
+   "Engine Version" cell, RTO xlsx filename in main(), + helper scripts
+   _beautify_rto_master.py / _sync_dashboard.py paths), then regenerate the
+   outward decks/pretty-workbook/dashboard (generate_presentations.py,
+   generate_kashmir_pitch.py, _beautify_rto_master.py, _sync_dashboard.py).
+   The engine already auto-wrote in-engine decks + RTO xlsx into outputs_v3.3.8/.
+3. **Geocode reject worklist:** geocode_failures*.csv + *_dropped.csv list names
+   that didn't resolve (mostly junk tokens + a few hubs already covered by the
+   SSCL injection). Optional: add a small verified gazetteer for LD Hospital /
+   Jehangir Chowk / Bohri Kadal / Ilahibagh to recover a few more routes.
+4. **M1 (band semantics)** and **M2 (demand has no Mohring elasticity)** remain
+   open design questions for the RTO, not code bugs.
+
 ## How to resume
 1. Read this whole file.
 2. Re-read `E:\audit\Kashmir_Transit_Audit_v3.3.7.md` for finding detail.
