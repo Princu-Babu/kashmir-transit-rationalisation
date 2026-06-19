@@ -196,7 +196,7 @@ Known structural caveats (don't "fix" without intent):
 
 | File | What |
 |---|---|
-| `Rationalised_Routes_Kashmir_v3.csv` | Full operational CSV (50+ cols). NOTE: drops LPV_Count — derive as Fleet−HPV−MPV |
+| `Rationalised_Routes_Kashmir_v3.csv` | Full operational CSV (50+ cols). v3.3.8 audit-fix: now carries LPV_Count so HPV+MPV+LPV = Fleet_Required (was previously dropped) |
 | `Kashmir_Route_Frequency_Plan_v3.xlsx` | Legacy 4-sheet workbook (engineering) |
 | `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO.xlsx` | 9-sheet RTO-ready workbook (export_xlsx_rto in engine) |
 | `Kashmir_Route_Frequency_Plan_vX.Y.Z_RTO_Pretty.xlsx` | **2-sheet** bus schedule (Summary + Route Plan), via `_beautify_rto_master.py`. v3.3.7: Operator Absorption + Sign-off sheets removed (RTO ask) — that detail stays in the 9-sheet RTO master. Route Plan carries Route_Code per route. **This is the dashboard's hero download.** |

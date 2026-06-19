@@ -643,8 +643,11 @@ TERMINAL_CATEGORIES = frozenset({"bus_terminal", "market"})
 # operational target of 25-min stop-to-stop frequency and Srinagar's
 # observed peak demand (~4,346 pax/hr citywide at 9 AM from CHALO data).
 # 12-metre buses (HPV) are deployed on long-haul / inter-district routes;
-# 9-metre buses (MPV) cover intra-city loops. The 85/15 HPV-MPV split in
-# Step 9 reflects this real deployment ratio.
+# 9-metre buses (MPV) cover intra-city loops. NOTE (audit fix): SSCL's *actual*
+# deployment is 73×9m + 25×12m ≈ 74/26 MPV-heavy — i.e. MPV-dominant, NOT the
+# "85/15 HPV-MPV" an earlier comment claimed. Step 9 no longer uses any fixed
+# 85/15 split; it assigns HPV share from Route_KM brackets, capped at
+# SSCL_HPV_SHARE_CAP (0.50 in v3.3.7 — neither class a trunk majority).
 SSCL_TRUNK_HEADWAY_MIN = 15   # SSCL e-bus trunk headway — matches SSCL operational
                               # target (~25-min stop-to-stop frequency) and CHALO
                               # observed peak demand (~4,346 pax/hr citywide).
@@ -1050,27 +1053,75 @@ def load_pois(path: str) -> gpd.GeoDataFrame:
     return gdf
 
 
+# Module guard so a producer/consumer Via format mismatch can never again be
+# silent (audit Finding 3).
+_VIA_PARSE_WARNED = False
+
+
 def parse_via(via_raw) -> List[Tuple[float, float]]:
-    """Parse Via_Coordinates field to list of (lon, lat) tuples."""
+    """Parse a Via_Coordinates value into a list of (lon, lat) tuples.
+
+    Accepts BOTH formats the pipeline uses:
+      • JSON      — '[{"lat":..,"lon":..}, …]' or '[[lon,lat], …]'
+                    (this is what truncate_routes_to_bbox re-writes), and
+      • the plain producer string — 'lat,lon;lat,lon'
+                    (Via_Points_Geocoded emitted by latlon.py /
+                     geocode_other_routes.py — semicolon-separated lat,lon pairs).
+
+    Audit Finding 3 (CRITICAL): the previous implementation only attempted
+    json.loads() and swallowed every failure in a bare except, so 100% of the
+    plain-string vias (429 of 613 input rows) were silently discarded and the
+    permitted via-routing never reached OSRM. Returns [] only for genuinely
+    empty input; a non-empty value that parses to nothing is now logged.
+    """
+    global _VIA_PARSE_WARNED
     if via_raw is None or (isinstance(via_raw, float) and math.isnan(via_raw)):
         return []
     if not isinstance(via_raw, str) or not via_raw.strip():
         return []
-    try:
-        pts = json.loads(via_raw)
-        result = []
-        for p in pts:
-            if isinstance(p, dict):
-                result.append(
-                    (float(p.get("lon", p.get("lng", 0))),
-                     float(p.get("lat", 0)))
-                )
-            elif isinstance(p, (list, tuple)) and len(p) >= 2:
-                a, b = float(p[0]), float(p[1])
-                result.append((b, a) if 6 <= a <= 40 else (a, b))
-        return result
-    except (json.JSONDecodeError, TypeError, ValueError):
-        return []
+    raw = via_raw.strip()
+
+    def _as_lonlat(a: float, b: float) -> Tuple[float, float]:
+        # Kashmir latitudes are ~33–35, longitudes ~73–76. The value in the
+        # [6, 40] band is the latitude, so emit (lon, lat) regardless of order.
+        return (b, a) if 6 <= a <= 40 else (a, b)
+
+    # 1) JSON form (list of dicts, or list of [x, y] pairs)
+    if raw[0] in "[{":
+        try:
+            pts = json.loads(raw)
+            result = []
+            for p in pts:
+                if isinstance(p, dict):
+                    result.append(
+                        (float(p.get("lon", p.get("lng", 0))),
+                         float(p.get("lat", 0)))
+                    )
+                elif isinstance(p, (list, tuple)) and len(p) >= 2:
+                    result.append(_as_lonlat(float(p[0]), float(p[1])))
+            return result
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass  # fall through to the plain-string parser
+
+    # 2) Plain producer string 'lat,lon;lat,lon' (tolerate '|'/whitespace seps)
+    result = []
+    for chunk in re.split(r"[;|]", raw):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        nums = re.split(r"[,\s]+", chunk)
+        if len(nums) < 2:
+            continue
+        try:
+            result.append(_as_lonlat(float(nums[0]), float(nums[1])))
+        except ValueError:
+            continue
+
+    if not result and not _VIA_PARSE_WARNED:
+        log.warning("parse_via: a non-empty Via_Coordinates value parsed to no "
+                    "points (e.g. %r) — vias for such rows are ignored.", raw[:60])
+        _VIA_PARSE_WARNED = True
+    return result
 
 
 def _build_osrm_url(coords: List[Tuple[float, float]]) -> str:
@@ -3382,7 +3433,7 @@ def export_csv(gdf: gpd.GeoDataFrame, file_map: dict, out_path: str) -> None:
         "Pop_Score", "POI_Score", "Road_Multiplier", "Final_CDI",
         "Social_Flag", "Priority_Band",
         "Headway_Min", "Fleet_Required",
-        "HPV_Count", "MPV_Count",
+        "HPV_Count", "MPV_Count", "LPV_Count",
         "CMP_Trunk", "CMP_Route_ID",
         "Population_Served", "Population_Served_Raw",
         "Corridor_Competitors",
@@ -4933,7 +4984,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     calib_data = [
         ("Engine Version", "v3.3.7 (Kashmir Fork)"),
         ("Date Generated", gen_date),
-        ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 60 min | SSCL: 15 min"),
+        ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 35 min | Regional: 35 min | SSCL: 15 min (35-min ceiling — v3.3.7)"),
         ("CHALO Calibration Scorecard", "Matched to Apr 2026 ridership data"),
         ("Mode-share Assumption", "9% Urban, scaled for Peri-Urban/Regional"),
         ("Fleet-density Target", "0.60 per 1000 residents"),
@@ -4956,9 +5007,13 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
         "• Euclidean walksheds don't account for Dal/Anchar/Jhelum barriers.",
         "• Demand elasticity not modelled (Mohring effect — actual demand will rise with frequency).",
         "• Tourist surge volumes captured via POI weights, not arrival data.",
-        "• 23 routes have TMP-K placeholder codes pending fresh stops-master run.",
+        "• Route_Code is derived from the stops master; where two routes share a "
+        "geocoded endpoint they can receive the same code — endpoint geocoding is "
+        "being hardened (district-aware) to remove collisions (see audit remediation).",
+        "• 30 of the output routes are synthetic SSCL/CHALO e-bus backbone injections, "
+        "not permit rows from existing-routes.csv.",
         "• Military/convoy windows on NH-44 not subtracted.",
-        "• v3.3.5 is phase-1 conservative; v3.3.4 (1,113 buses) was aspirational 15-min plan."
+        "• Phase-1 (recommended) plan; an aspirational 15-min-everywhere variant exists separately."
     ]
     
     for ri, limit in enumerate(limitations, start=4):
@@ -5194,7 +5249,9 @@ def main() -> None:
     log.info("  Directive 6: Full audit logging throughout")
     log.info("  SSCL Injection: %d e-bus routes hardcoded TRUNK/HP @ %d-min headway",
              len(CMP_TRUNK_ROUTES), SSCL_TRUNK_HEADWAY_MIN)
-    log.info("  Vehicle Split: Trunk=85%%HPV+15%%MPV | Feeder=100%%MPV | LPV=0")
+    log.info("  Vehicle Split: Trunk=Route_KM-bracketed HPV (cap %.0f%%) | "
+             "Feeder=100%%MPV (Regular/MPS 30%% HPV) | SSCL=empirical 9m/12m",
+             SSCL_HPV_SHARE_CAP * 100)
     log.info("=" * 70)
 
     if not _HAS_JENKSPY:
@@ -5385,7 +5442,7 @@ def main() -> None:
     gdf = step5b_flag_sscl_cdi_conflicts(gdf)  # v3.3 Phase-1 audit: planner-review flag
     gdf = step6_assign_headways(gdf)         # CMP override: 10-min hardcoded
     gdf = step8_compute_fleet_required(gdf)  # v3: floor at MIN, no LPV downgrade
-    gdf = step9_compute_vehicle_split(gdf)   # v3: Trunk=85/15 | Feeder=100% MPV
+    gdf = step9_compute_vehicle_split(gdf)   # Route_KM-bracketed HPV (cap 50%) | Feeder 100% MPV | SSCL empirical
     gdf = zero_merged_route_fleet(gdf)
     gdf = compute_phase4_metrics(gdf)        # v3.3 Phase-1 audit: derived KPIs
 
