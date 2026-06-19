@@ -115,19 +115,46 @@ def is_srinagar_centroid(lat: float, lon: float,
     return _haversine_m(lat, lon, *SRINAGAR_CENTROID) <= tol_m
 
 
+# Spelling normalisation: the permit data records Srinagar localities with
+# concatenated / non-standard spellings the geocoder can't match (BATAMAALO,
+# PANTHACHOWK, LALCHOWK …). Map the cleaned token to a canonical, OSM-resolvable
+# name — coordinates still come from the geocoder, we only fix the query string.
+NAME_ALIASES: Dict[str, str] = {
+    "BATAMAALO": "Batamaloo", "BATAMALLO": "Batamaloo", "BATAMALOO": "Batamaloo",
+    "LALCHOWK": "Lal Chowk", "LAL CHOWK": "Lal Chowk",
+    "PANTHACHOWK": "Pantha Chowk", "PANTHACHOK": "Pantha Chowk",
+    "PATHACHOWK": "Pantha Chowk", "PANTHA CHOK": "Pantha Chowk",
+    "NOWHATA": "Nowhatta", "SONAWAR": "Sonwar", "SONWAR": "Sonwar",
+    "RAINAWARA": "Rainawari", "KARANANGAR": "Karan Nagar",
+    "ZONIMAR": "Zoonimar", "BOHRIKADAL": "Bohri Kadal",
+    "RAJIAKADAL": "Raja Kadal", "RAZIAKADAL": "Raja Kadal",
+    "ILLAHIBAGH": "Ilahibagh", "JAWAHIRNAGAR": "Jawahar Nagar",
+    "JAWAHAIRNAGAR": "Jawahar Nagar", "RANGRATH": "Rangreth",
+    "SORA": "Soura", "CHADORA": "Chadoora", "JEHANGIR CHOWK": "Jehangir Chowk",
+    "BAGHI MEHTAB": "Bagh-i-Mehtab", "ILLAHI BAGH": "Ilahibagh",
+}
+
+
 def _first_token(name: str) -> str:
     return re.split(r"[\s\-]+", name.strip().upper(), maxsplit=1)[0] if name else ""
 
 
+def _canonical(location_name: str) -> str:
+    return NAME_ALIASES.get(location_name.strip().upper(), location_name)
+
+
 def build_query(location_name: str) -> str:
-    """District-aware query string. Falls back to a valley-wide context."""
+    """District-aware query string. Applies a spelling alias, then a known
+    town→district hint; falls back to a valley-wide context."""
     up = location_name.strip().upper()
-    district = DISTRICT_HINTS.get(up) or DISTRICT_HINTS.get(_first_token(up))
+    canon = _canonical(location_name)
+    district = (DISTRICT_HINTS.get(up) or DISTRICT_HINTS.get(_first_token(up))
+                or DISTRICT_HINTS.get(canon.strip().upper()))
     if district:
-        return f"{location_name}, {district}, Jammu and Kashmir, India"
+        return f"{canon}, {district}, Jammu and Kashmir, India"
     # Srinagar localities and everything else: keep the city/valley context but
     # NOT as the sole disambiguator — the extent + centroid rejection guard it.
-    return f"{location_name}, Srinagar, Jammu and Kashmir, India"
+    return f"{canon}, Srinagar, Jammu and Kashmir, India"
 
 
 def geocode_one(location_name: str,
@@ -197,25 +224,35 @@ def nominatim_geocode(query: str, search_extent: Optional[dict] = None):
     (None on transport error). Honours Nominatim's 1 req/sec usage policy.
     """
     import requests
-    dt = _time.time() - _LAST_NOMINATIM_CALL[0]
-    if dt < 1.1:
-        _time.sleep(1.1 - dt)
-    params = {"q": query, "format": "json", "limit": 1}
-    if search_extent:
-        # viewbox order is xmin,ymax,xmax,ymin (lon/lat); bounded restricts to it
-        params["viewbox"] = (f"{search_extent['xmin']},{search_extent['ymax']},"
-                             f"{search_extent['xmax']},{search_extent['ymin']}")
-        params["bounded"] = 1
-    try:
-        r = requests.get(_NOMINATIM_URL, params=params,
-                         headers={"User-Agent": _NOMINATIM_UA}, timeout=20)
-        _LAST_NOMINATIM_CALL[0] = _time.time()
-        r.raise_for_status()
-        j = r.json()
-    except Exception:
-        return None
+
+    def _call(bounded: bool):
+        dt = _time.time() - _LAST_NOMINATIM_CALL[0]
+        if dt < 1.1:
+            _time.sleep(1.1 - dt)
+        params = {"q": query, "format": "json", "limit": 1}
+        if search_extent:
+            # viewbox order is xmin,ymax,xmax,ymin (lon/lat)
+            params["viewbox"] = (f"{search_extent['xmin']},{search_extent['ymax']},"
+                                 f"{search_extent['xmax']},{search_extent['ymin']}")
+            if bounded:
+                params["bounded"] = 1
+        try:
+            r = requests.get(_NOMINATIM_URL, params=params,
+                             headers={"User-Agent": _NOMINATIM_UA}, timeout=20)
+            _LAST_NOMINATIM_CALL[0] = _time.time()
+            r.raise_for_status()
+            return r.json()
+        except Exception:
+            return None
+
+    # Pass 1: bounded to the valley (strict). Pass 2: soft viewbox bias only, so
+    # spelling/POI variants OSM only knows globally still resolve — the caller's
+    # valley-extent + Srinagar-centroid checks remain the safety net either way.
+    j = _call(bounded=True)
     if not j:
-        return []
+        j = _call(bounded=False)
+    if not j:
+        return [] if j == [] else None
     return [{"location": {"x": float(j[0]["lon"]), "y": float(j[0]["lat"])}}]
 
 
