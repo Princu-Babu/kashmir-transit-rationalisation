@@ -2028,6 +2028,37 @@ def compute_cycle_times(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
+def reconcile_active_population(gdf: gpd.GeoDataFrame, net_pop: int) -> gpd.GeoDataFrame:
+    """F-V6: make the ACTIVE plan's per-route Population_Served sum to the
+    deduplicated network union (the cover figure).
+
+    apportion_route_population() normalises Population_Served across ALL routes,
+    but after clustering/dedup ~62% of that total is stranded on the merged /
+    consolidated rows (fleet-zeroed, not population-zeroed). A reader summing the
+    Population_Served column in the published (active) plan therefore lands well
+    below the cover number — the residual of audit Finding 9 / Output #2.
+
+    This step credits the absorbed population back to the active network: it zeros
+    Population_Served on merged rows and rescales the active rows so their sum
+    equals net_pop (the dissolved-catchment union). Relative shares among active
+    routes are preserved. Safe to run after Phase-4 — Load_Ratio/Daily_Demand use
+    Population_Served_Raw (untouched), and Equity_Score is a 0–1 normalisation
+    invariant to a global rescale.
+    """
+    gdf = gdf.copy()
+    active = gdf["Action_Taken"] != "MERGED_INTO_TRUNK"
+    cur = float(gdf.loc[active, "Population_Served"].sum())
+    gdf.loc[~active, "Population_Served"] = 0
+    if cur > 0 and net_pop and net_pop > 0:
+        scale = net_pop / cur
+        gdf.loc[active, "Population_Served"] = (
+            (gdf.loc[active, "Population_Served"] * scale).round().clip(lower=0).astype(int))
+    log.info("  Reconciled active Population_Served to the dedup union %s "
+             "(Σ active = %s; Finding 9 / Output #2 fully closed).",
+             f"{net_pop:,}", f"{int(gdf.loc[active, 'Population_Served'].sum()):,}")
+    return gdf
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  STEPS 1 & 2  ─  NORMALISED DEMAND SCORES
 # ══════════════════════════════════════════════════════════════════════════════
@@ -5780,6 +5811,8 @@ def main() -> None:
     # ── Network Totals ────────────────────────────────────────────────────
     net_pop       = compute_network_population_total(gdf, RASTER_PATH)
     network_score = compute_network_score(gdf, net_pop)
+    # F-V6: reconcile the active plan's Population_Served column to the cover figure.
+    gdf           = reconcile_active_population(gdf, net_pop)
 
     # ── PHASE 3: Log ──────────────────────────────────────────────────────
     log.info("\n── PHASE 3: Rationalisation Log ─────────────────────────────────────")

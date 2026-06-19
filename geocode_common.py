@@ -135,6 +135,23 @@ NAME_ALIASES: Dict[str, str] = {
 }
 
 
+# Authoritative coordinate pins for hubs the public geocoder places poorly
+# (F-V3). Checked BEFORE the API in geocode_one(). Parimpora & LD use the same
+# coords as the SSCL synthetic routes so permit-derived and SSCL services share
+# the terminal; Airport/TRC verified against OSM. Keys are cleaned (UPPER) names
+# in the forms the two cleaners emit.
+GAZETTEER: Dict[str, Tuple[float, float]] = {
+    "PARIMPORA": (34.1112, 74.7475),          # actual bus-stand/mandi (OSM gives a bypass rd 4.6 km off)
+    "LD": (34.0822, 74.8059),
+    "LD HOSPITAL": (34.0822, 74.8059),
+    "LAL DED HOSPITAL SRINAGAR": (34.0822, 74.8059),
+    "AIRPORT": (33.9934, 74.7752),            # Sheikh ul-Alam Int'l Airport
+    "SRINAGAR AIRPORT": (33.9934, 74.7752),
+    "TRC": (34.0747, 74.8247),
+    "TRC SRINAGAR": (34.0747, 74.8247),
+}
+
+
 def _first_token(name: str) -> str:
     return re.split(r"[\s\-]+", name.strip().upper(), maxsplit=1)[0] if name else ""
 
@@ -167,6 +184,12 @@ def geocode_one(location_name: str,
     Returns (lat, lon) or (None, None). On failure, appends a reason row to
     ``failures`` if provided.
     """
+    # Authoritative pin first (F-V3) — overrides the public geocoder for hubs it
+    # places poorly (e.g. Parimpora, the busiest origin).
+    pin = GAZETTEER.get(location_name.strip().upper())
+    if pin is not None:
+        return pin
+
     name_is_srinagar = "SRINAGAR" in location_name.upper()
     query = build_query(location_name)
     try:

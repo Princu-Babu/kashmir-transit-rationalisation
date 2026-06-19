@@ -104,6 +104,37 @@ def clean_location(loc):
     return loc_str if loc_str else None
 
 
+# F-V4b: depot timetable rows record the whole corridor as a dash-pair in the
+# 'to' field (e.g. "Bandipora-Soura", "Sopore-Srinagar") while 'from' defaults to
+# "Srinagar". Splitting the pair recovers the true O/D (a local Bandipora↔Soura
+# route) instead of a wrong Srinagar→Bandipora one.
+_HUB_TOKENS = {
+    "SRINAGAR", "SGR", "ANANTNAG", "ANANTNAGH", "ANG", "BARAMULLA", "BARAMULA",
+    "BLA", "BANDIPORA", "BPR", "SOPORE", "KUPWARA", "SHOPIAN", "KULGAM",
+    "PULWAMA", "GANDERBAL", "GBL", "SOURA",
+}
+
+
+def _split_route_pair(raw_to):
+    """If a 'to' value is a dash-separated corridor pair with a known hub on one
+    side, return (origin, destination); else None."""
+    if not isinstance(raw_to, str):
+        return None
+    parts = [p.strip() for p in re.split(r"\s*-\s*", raw_to) if p.strip()]
+    if len(parts) == 2 and any(p.upper() in _HUB_TOKENS for p in parts):
+        return parts[0], parts[1]
+    return None
+
+
+def _row_endpoints(row):
+    """Return (origin_clean, dest_clean) for a JKRTC/Other row, applying the
+    depot-pair split (F-V4b)."""
+    pair = _split_route_pair(row.get("To"))
+    if pair:
+        return clean_location(pair[0]), clean_location(pair[1])
+    return clean_location(row.get("From")), clean_location(row.get("To"))
+
+
 def fetch_coordinates(location_name, cache, is_retry=False):
     """Geocode with district-aware context + Srinagar-centroid rejection
     (audit Finding 1). Delegates to geocode_common.geocode_one so both
@@ -169,24 +200,35 @@ def main():
     # Drop unnamed columns
     df = df[[c for c in df.columns if not c.startswith("Unnamed")]]
 
-    # 2. Filter out EBus (already SSCL backbone) and MTS Bus (out of bounding box)
+    # 2. Filter out EBus (already SSCL backbone) and MTS Bus (out of study area).
+    #    F-V4a: the MTS section is mostly inter-state (Srinagar↔Jammu/Delhi/Leh/…)
+    #    but ALSO contains the in-valley "TRC to Airport" link (8 daily departures).
+    #    Keep any MTS row that mentions the airport so the airport connection is
+    #    retained; drop the rest of MTS.
     before = len(df)
-    ebus_count = len(df[df["Vehicle_Category"].str.strip() == "EBus"])
-    mts_count = len(df[df["Vehicle_Category"].str.strip() == "MTS Bus"])
-    df = df[~df["Vehicle_Category"].str.strip().isin(["EBus", "MTS Bus"])]
+    cat = df["Vehicle_Category"].astype(str).str.strip()
+    def _col(name):
+        return df[name].fillna("").astype(str) if name in df.columns else pd.Series("", index=df.index)
+    rowtext = (_col("From") + " " + _col("To") + " " + _col("Via")).str.lower()
+    is_airport_mts = (cat == "MTS Bus") & rowtext.str.contains("airport", na=False)
+    ebus_count = int((cat == "EBus").sum())
+    mts_count = int((cat == "MTS Bus").sum())
+    drop_mask = cat.isin(["EBus", "MTS Bus"]) & ~is_airport_mts
+    kept_airport = int(is_airport_mts.sum())
+    df = df[~drop_mask]
     print(f"[INFO] Filtered out {ebus_count} EBus routes (already SSCL backbone)")
-    print(f"[INFO] Filtered out {mts_count} MTS Bus routes (out of bounding box)")
+    print(f"[INFO] Filtered out {mts_count - kept_airport} MTS Bus routes (inter-state, out of area); "
+          f"KEPT {kept_airport} in-valley MTS airport link (F-V4a)")
     print(f"[INFO] Remaining: {len(df)} routes to geocode")
 
     # 3. Extract unique locations
     cache = load_cache()
     unique_locs = set()
-    for col in ["From", "To", "Via"]:
-        if col in df.columns:
-            for val in df[col].dropna():
-                cleaned = clean_location(val)
-                if cleaned:
-                    unique_locs.add(cleaned)
+    for _, row in df.iterrows():
+        o, d = _row_endpoints(row)               # F-V4b depot-pair aware
+        for x in (o, d, clean_location(row.get("Via"))):
+            if x:
+                unique_locs.add(x)
 
     print(f"[INFO] Found {len(unique_locs)} unique locations")
     to_fetch = [loc for loc in unique_locs if loc not in cache]
@@ -207,8 +249,7 @@ def main():
     new_routes = []
     dropped_rows = []   # audit trail: every JKRTC row that did NOT make the CSV
     for _, row in df.iterrows():
-        origin = clean_location(row.get("From"))
-        destination = clean_location(row.get("To"))
+        origin, destination = _row_endpoints(row)   # F-V4b depot-pair aware
         via_raw = clean_location(row.get("Via"))
 
         origin_lat = cache.get(origin, {}).get("lat") if origin else None
