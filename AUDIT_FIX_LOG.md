@@ -42,14 +42,35 @@ item not marked ✅ DONE.
 | B9 | Bug 2 / Rec 8 | A | `_DROP_LOG` + `_record_drop` capture every bbox/null/sub-1km drop; `export_route_disposition` → `Route_Disposition_Kashmir_v3.csv` (kept+dropped, all inputs). Geocoders also write per-row drop CSVs. | ✅ DONE | (batch3) |
 | B7 | §3 QC gap / Rec 8 | A | New QC: QC-Geocode (centroid survivors), QC-DupCorridor (Finding 8), QC-Load (sanity band) in run_all_qc_checks; `qc_route_codes` uniqueness gate after assign. Warn by default, block under KASHMIR_STRICT_QC=1. Unit-tested. | ✅ DONE | (batch3) |
 | B8 | Rec 2 | A | `audit_input_quality()` pre-engine gate: per-row haversine(O,D), Srinagar-centroid + zero-length flags → `input_qa_report.csv` + loud summary. | ✅ DONE | (batch3) |
-| B5 | Finding 8 / Rec 4 | B | `consolidate_duplicate_permits()` after apply_terminal_capacity: identical (O,D,class) feeders → one representative (Permit_Count=N), rest MERGED_INTO_TRUNK (Merged_Reason='duplicate_permit') → zeroed + non-active. Kills 108-bus corridor. | ⏳ VALIDATING | (batch4) |
-| B6 | Finding 9 / Rec 6 | B | Apportionment now frequency-weighted AND normalised to the dedup union (Σ ≈ cover figure), not divide-by-competitor. Unit-tested Σ→1.16M. | ⏳ VALIDATING | (batch4) |
-| R1 | Rec 10 | C | Re-geocode (needs `arcgis`) + re-run → v3.3.8; diff vs v3.3.7. Code-test run (OSRM up, OLD geocodes) done to validate fixes don't crash. | ⏳ PARTIAL | |
+| B5 | Finding 8 / Rec 4 | B | `consolidate_duplicate_permits()`: identical (O,D,class) feeders → one representative (Permit_Count=N), rest MERGED_INTO_TRUNK (Merged_Reason='duplicate_permit'). VALIDATED: fleet 1009→743, 314 redundant permits consolidated. | ✅ DONE | (batch4) |
+| B6 | Finding 9 / Rec 6 | B | Apportionment frequency-weighted + normalised to dedup union. VALIDATED: Pop_Served Σ 99,999→1,206,139 ≈ union 1,206,152. | ✅ DONE | (batch4) |
+| R1 | Rec 10 | C | Re-geocode (needs `arcgis`) + re-run → real v3.3.8; diff vs v3.3.7. Code-test (OSRM up, OLD geocodes) PASSED — fixes run & behave correctly. Still BLOCKED on `arcgis` for the actual re-geocode. | ⏳ BLOCKED on arcgis |
 
 ## Additional methodology flaws found (beyond the audit) — log as discovered
 (none yet)
 
 ---
 
+## Code-test run (2026-06-19, OSRM up, OLD collapsed geocodes — NOT a deliverable)
+Validates the fixes execute and have the right directional effect. Output dir:
+`outputs_v3.3.8_codetest/`. Numbers are not a plan (input geocodes still broken).
+
+| Metric | v3.3.7 | code-test | note |
+|---|---|---|---|
+| rows / active | 342 / 207 | 478 / 122 | 478 = parse_via rescued collapsed-via O==D routes (artifact of broken geocodes; gone after R1) |
+| Fleet total | 1009 | 743 | B5 consolidated 314 redundant permits |
+| Pop_Served Σ | 99,999 | 1,206,139 | B6: now ≈ dedup union 1,206,152 (cover reconciles) |
+| LPV in CSV | no | yes, sum exact | B2 |
+| disposition rows | none | 643 (478 kept + 165 dropped) | B9 |
+| input QA | none | 291 zero-length, 391/416 centroid endpoints flagged | B8 |
+
+QC (warn mode): QC-GEOCODE 68 centroid survivors · QC-DUPCORR 22 (worst 9/66, all
+centroid O==D trunk artifacts) · QC-LOAD mean 0.107 · QC-CODES 55 share 21 codes.
+All are correct signals about the still-broken input — they clear after R1.
+
 ## Change journal (newest first)
-- 2026-06-19: Ledger created; audit findings 1,2,3,8,9 + CSV/QC gaps verified against current source.
+- 2026-06-19: Batch 4 — B5 dedup + B6 apportionment, validated by full OSRM run.
+- 2026-06-19: Batch 3 — B7/B8/B9 (input QA, disposition trail, new QC checks).
+- 2026-06-19: Batch 2 — B4 geocoder hardening (geocode_common.py).
+- 2026-06-19: Batch 1 — B1 parse_via, B2 LPV_Count, B3 doc/comment drift.
+- 2026-06-19: Ledger created; audit findings 1,2,3,8,9 + CSV/QC gaps verified.
