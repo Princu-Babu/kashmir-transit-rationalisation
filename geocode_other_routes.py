@@ -43,7 +43,7 @@ ABBREVIATIONS = {
     "LD": "LAL DED HOSPITAL SRINAGAR",
 }
 
-gis = GIS()
+# (GIS session, if any, is created inside get_default_geocoder().)
 
 
 def load_cache():

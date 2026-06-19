@@ -46,8 +46,30 @@ item not marked ✅ DONE.
 | B6 | Finding 9 / Rec 6 | B | Apportionment frequency-weighted + normalised to dedup union. VALIDATED: Pop_Served Σ 99,999→1,206,139 ≈ union 1,206,152. | ✅ DONE | (batch4) |
 | R1 | Rec 10 | C | Re-geocode (needs `arcgis`) + re-run → real v3.3.8; diff vs v3.3.7. Code-test (OSRM up, OLD geocodes) PASSED — fixes run & behave correctly. Still BLOCKED on `arcgis` for the actual re-geocode. | ⏳ BLOCKED on arcgis |
 
+## Batch 5 — R1 unblocked
+`arcgis` made optional; added a requests/Nominatim backend in geocode_common.py
+(`get_default_geocoder()`). Verified the 6 collapse towns now geocode correctly.
+This means the actual re-geocode + real v3.3.8 (R1) CAN run here — no longer
+blocked. Backups: `existing-routes.v3.3.7-collapsed.csv`,
+`geocode_cache.arcgis-collapsed.json`.
+
 ## Additional methodology flaws found (beyond the audit) — log as discovered
-(none yet)
+- **M1 (Finding 11 confirmed, design):** Priority bands are dominated by overrides
+  (SSCL HP-lock, 30th-pct trunk gate, CMP 1.5× bonus, social floors) so ~56% of
+  routes are "High Priority" — the band loses discriminating power. Not a code
+  bug; a prioritisation-design decision to revisit with the RTO. NOT changed
+  unilaterally.
+- **M2 (demand calibration, documented caveat):** `Daily_Demand` multiplies BOTH
+  `mode_share` (~9%) AND `PHASE4_CORRIDOR_CAPTURE_SCALE` (0.18); both discount for
+  non-bus usage, so the 0.18 scalar is a pure empirical fudge to match CHALO, not
+  a structural quantity. Fine as a calibrated anchor but should be labelled as
+  such (it is, in code). Load_Ratio uses `Population_Served_Raw`, so it is
+  independent of the B6 apportionment fix.
+- **M3 (parse_via interaction, input-dependent):** with vias now parsed (B1),
+  routes whose O==D collapsed onto the centroid but carry a via survive as
+  centroid→via→centroid loops on the OLD geocodes. This is a broken-INPUT
+  artifact, caught by the input-QA + QC-Geocode checks, and disappears after the
+  re-geocode. Not a code defect.
 
 ---
 

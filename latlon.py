@@ -23,11 +23,10 @@ OUTPUT_FILE = "existing-routes.csv"
 CACHE_FILE = "geocode_cache.json"
 
 # Delay between API calls (seconds) to prevent rate-limiting bans
-API_DELAY = 1.0  
-RETRY_DELAY = 2.0 
+API_DELAY = 1.0
+RETRY_DELAY = 2.0
 
-# Initialize GIS (Anonymous connection)
-gis = GIS()
+# (GIS session, if any, is created inside get_default_geocoder().)
 
 # ==========================================
 # HELPER FUNCTIONS
