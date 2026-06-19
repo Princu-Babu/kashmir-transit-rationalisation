@@ -3424,19 +3424,29 @@ def qc_route_codes(gdf: gpd.GeoDataFrame) -> None:
         return
     active = gdf[gdf["Action_Taken"] != "MERGED_INTO_TRUNK"]
     codes = active["Route_Code"].astype(str)
-    dup_mask = codes.duplicated(keep=False) & codes.ne("") & ~codes.str.startswith("TMP-")
+    # Missing-code placeholders (blank / TMP- / UNMATCHED) are a coverage gap, not
+    # a duplicate-identifier defect — exclude them from the uniqueness test and
+    # report them separately.
+    is_placeholder = codes.eq("") | codes.eq("UNMATCHED") | codes.str.startswith("TMP-")
+    real = codes[~is_placeholder]
+    dup_mask = real.duplicated(keep=False)
     n_dup = int(dup_mask.sum())
-    n_distinct = int(codes[dup_mask].nunique())
+    n_distinct = int(real[dup_mask].nunique())
+    n_missing = int(is_placeholder.sum())
     strict = os.getenv("KASHMIR_STRICT_QC", "0") == "1"
     if n_dup:
         msg = (f"QC-CODES — {n_dup} active routes share {n_distinct} non-unique "
-               f"Route_Code(s) (Output #1; root cause is the geocode collapse, "
-               f"Finding 1 — fixed by re-geocoding).")
+               f"Route_Code(s) (Output #1 — should be unique after the M4 suffix).")
         if strict:
             raise RuntimeError("QC FAILED: " + msg)
         log.warning("  ⚠ %s (non-blocking — set KASHMIR_STRICT_QC=1 to block)", msg)
     else:
-        log.info("  ✓ QC-Codes: all %d active route codes are unique.", len(active))
+        log.info("  ✓ QC-Codes: all %d real active route codes are unique.",
+                 len(real))
+    if n_missing:
+        log.warning("  ⚠ QC-Codes: %d active route(s) lack a Route_Code "
+                    "(endpoint absent from the stops master — manual coding "
+                    "needed).", n_missing)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3662,11 +3672,31 @@ def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                 final_codes.append(p)
                 continue
         final_codes.append(code)
-    gdf["Route_Code"] = final_codes
-    remaining = sum(1 for c in final_codes if c == "UNMATCHED")
+
+    # M4 fix (audit Output #1 — route-code uniqueness is a HARD defect):
+    # the 12-char code is a stop-PAIR identifier (TehsilO+TehsilD+SectorO+
+    # SectorD+StopO+StopD), so several distinct services between the same two
+    # master stops collide. Append a deterministic 2-digit suffix to every member
+    # of a colliding group so each route's code is unique. Singletons and
+    # UNMATCHED/blank codes are left untouched, preserving the AAAA######## form
+    # for the non-colliding majority.
+    from collections import Counter
+    code_counts = Counter(c for c in final_codes if c not in ("", "UNMATCHED"))
+    running: Dict[str, int] = {}
+    unique_codes: List[str] = []
+    n_disambiguated = 0
+    for c in final_codes:
+        if c in ("", "UNMATCHED") or code_counts[c] == 1:
+            unique_codes.append(c)
+        else:
+            running[c] = running.get(c, 0) + 1
+            unique_codes.append(f"{c}-{running[c]:02d}")
+            n_disambiguated += 1
+    gdf["Route_Code"] = unique_codes
+    remaining = sum(1 for c in unique_codes if c == "UNMATCHED")
     log.info("  Route_Code: %d/%d matched from stops master · %d backfilled from "
-             "dashboard · %d remaining UNMATCHED.",
-             matched, len(codes), backfilled, remaining)
+             "dashboard · %d remaining UNMATCHED · %d disambiguated for uniqueness "
+             "(M4 fix).", matched, len(codes), backfilled, remaining, n_disambiguated)
     return gdf
 
 

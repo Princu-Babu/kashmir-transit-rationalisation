@@ -45,7 +45,7 @@ item not marked ✅ DONE.
 | B5 | Finding 8 / Rec 4 | B | `consolidate_duplicate_permits()`: identical (O,D,class) feeders → one representative (Permit_Count=N), rest MERGED_INTO_TRUNK (Merged_Reason='duplicate_permit'). VALIDATED: fleet 1009→743, 314 redundant permits consolidated. | ✅ DONE | (batch4) |
 | B6 | Finding 9 / Rec 6 | B | Apportionment frequency-weighted + normalised to dedup union. VALIDATED: Pop_Served Σ 99,999→1,206,139 ≈ union 1,206,152. | ✅ DONE | (batch4) |
 | R1 | Rec 10 | C | RE-GEOCODE + real v3.3.8 DONE. 400 routes (0 collapse). Fleet 1009→855, coverage 69.8%→94.7%, all QC pass. Diff table below. | ✅ DONE |
-| M4 | (new) | — | Route-code scheme collides on stop-pair (63/136 share 28 codes even with good geocodes) — needs per-route suffix. | ☐ TODO |
+| M4 | (new) | A | Route-code uniqueness: append deterministic 2-digit suffix to colliding stop-pair codes in assign_route_codes; qc_route_codes now separates missing-code from duplicate-code. VALIDATED: 133/133 real codes unique, 0 dup. | ✅ DONE |
 
 ## Batch 5 — R1 unblocked
 `arcgis` made optional; added a requests/Nominatim backend in geocode_common.py
