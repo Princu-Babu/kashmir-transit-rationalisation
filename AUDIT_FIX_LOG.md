@@ -42,9 +42,9 @@ item not marked ✅ DONE.
 | B9 | Bug 2 / Rec 8 | A | `_DROP_LOG` + `_record_drop` capture every bbox/null/sub-1km drop; `export_route_disposition` → `Route_Disposition_Kashmir_v3.csv` (kept+dropped, all inputs). Geocoders also write per-row drop CSVs. | ✅ DONE | (batch3) |
 | B7 | §3 QC gap / Rec 8 | A | New QC: QC-Geocode (centroid survivors), QC-DupCorridor (Finding 8), QC-Load (sanity band) in run_all_qc_checks; `qc_route_codes` uniqueness gate after assign. Warn by default, block under KASHMIR_STRICT_QC=1. Unit-tested. | ✅ DONE | (batch3) |
 | B8 | Rec 2 | A | `audit_input_quality()` pre-engine gate: per-row haversine(O,D), Srinagar-centroid + zero-length flags → `input_qa_report.csv` + loud summary. | ✅ DONE | (batch3) |
-| B5 | Finding 8 / Rec 4 | B | Deduplicate identical O–D–class permits → corridor + permit-count weight; fleet at corridor level (kills 108-bus corridor) | ☐ TODO | |
-| B6 | Finding 9 / Rec 6 | B | Apportionment shares sum to union population (not divide-by-competitor-count) | ☐ TODO | |
-| R1 | Rec 10 | C | Re-geocode + re-run engine → v3.3.8; diff vs v3.3.7 route-by-route | ☐ BLOCKED (needs OSRM+geocoder) |
+| B5 | Finding 8 / Rec 4 | B | `consolidate_duplicate_permits()` after apply_terminal_capacity: identical (O,D,class) feeders → one representative (Permit_Count=N), rest MERGED_INTO_TRUNK (Merged_Reason='duplicate_permit') → zeroed + non-active. Kills 108-bus corridor. | ⏳ VALIDATING | (batch4) |
+| B6 | Finding 9 / Rec 6 | B | Apportionment now frequency-weighted AND normalised to the dedup union (Σ ≈ cover figure), not divide-by-competitor. Unit-tested Σ→1.16M. | ⏳ VALIDATING | (batch4) |
+| R1 | Rec 10 | C | Re-geocode (needs `arcgis`) + re-run → v3.3.8; diff vs v3.3.7. Code-test run (OSRM up, OLD geocodes) done to validate fixes don't crash. | ⏳ PARTIAL | |
 
 ## Additional methodology flaws found (beyond the audit) — log as discovered
 (none yet)

@@ -2120,29 +2120,56 @@ def step2_normalise_poi_score(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 # ══════════════════════════════════════════════════════════════════════════════
 #  PHASE 2b  ─  CORRIDOR FREQUENCY, CLUSTERING & ROUTE CLASSIFICATION
 # ══════════════════════════════════════════════════════════════════════════════
-def apportion_route_population(gdf: gpd.GeoDataFrame, freq_scores: np.ndarray) -> gpd.GeoDataFrame:
+def apportion_route_population(gdf: gpd.GeoDataFrame, freq_scores: np.ndarray,
+                               raster_path: str) -> gpd.GeoDataFrame:
     """
-    Divides a route's catchment population by the number of competing routes 
-    sharing its corridor. This genuinely fixes the double-counting in Excel sums 
-    by assigning 'Market Share' rather than absolute catchment.
+    Apportion catchment population among overlapping routes WITHOUT double-counting.
+
+    Audit Finding 9 (CRITICAL): the previous implementation just divided each
+    route's catchment by (competitors + 1). That gives every route a smaller
+    number, but the per-route shares no longer sum to anything meaningful — they
+    totalled 134,684 against the cover's deduplicated-union figure of 1,158,399
+    (an 8.6× contradiction), and everything downstream (Daily_Demand, Load_Ratio,
+    Viability, Subsidy flags, Equity) inherited the error.
+
+    Fix: keep the frequency weighting (a more-contested corridor takes a smaller
+    share of shared demand) but NORMALISE the shares so they sum to the
+    deduplicated network union population. Concretely, with raw catchment p_i and
+    competitor count c_i = freq_scores_i + 1:
+
+        weight_i = p_i / c_i
+        Population_Served_i = weight_i × ( UnionPop / Σ_j weight_j )
+
+    so Σ_i Population_Served_i ≈ UnionPop (the dissolved-catchment union, i.e. the
+    cover number) — the property a de-double-counting apportionment must have.
+    Raw catchment is preserved in Population_Served_Raw for the walkshed view.
     """
-    log.info("Apportioning population among overlapping routes (Competitive Market Share)…")
+    log.info("Apportioning population among overlapping routes "
+             "(frequency-weighted, normalised to the deduplicated union)…")
     gdf = gdf.copy()
-    
-    # freq_scores = number of OTHER overlapping routes. 
-    # Total routes sharing the market = freq_scores + 1
+
+    # freq_scores = number of OTHER overlapping routes; total sharing = +1.
     competitors = freq_scores + 1
-    
-    # Preserve the raw density for the logs, but overwrite the main column for Excel
+
     gdf["Population_Served_Raw"] = gdf["Population_Served"]
-    # v3.3.2: store the competitor count too so Phase-4 can do
-    # frequency-weighted apportionment (high-headway trunks capture more than
-    # an equal-1/N share of corridor demand).
     gdf["Corridor_Competitors"]  = competitors
-    gdf["Population_Served"] = (gdf["Population_Served"] / competitors).astype(int)
-    
-    log.info("  Apportioned Population_Served. New naive sum: %s (much closer to deduplicated reality)", 
-             f"{gdf['Population_Served'].sum():,}")
+
+    weights   = gdf["Population_Served"].astype(float) / competitors
+    union_pop = compute_network_population_total(gdf, raster_path)
+    wsum      = float(weights.sum())
+    if wsum > 0 and union_pop and union_pop > 0:
+        scaled = weights * (union_pop / wsum)
+    else:
+        # Degenerate (no raster / no weight): fall back to the weights as-is so
+        # the column is at least monotonic and non-NaN.
+        log.warning("  Apportionment normalisation skipped (union_pop=%s, wsum=%.1f) "
+                    "— using unnormalised frequency weights.", union_pop, wsum)
+        scaled = weights
+    gdf["Population_Served"] = scaled.round().clip(lower=0).astype(int)
+
+    log.info("  Apportioned Population_Served — Σ = %s vs deduplicated union %s "
+             "(now reconciles with the cover figure; Finding 9 fixed).",
+             f"{int(gdf['Population_Served'].sum()):,}", f"{union_pop:,}")
     return gdf
 
 def compute_frequency_scores(gdf: gpd.GeoDataFrame) -> np.ndarray:
@@ -3100,8 +3127,76 @@ def step9_compute_vehicle_split(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
+def consolidate_duplicate_permits(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Consolidate identical-corridor duplicate FEEDER permits (audit Finding 8).
+
+    Permits are records, not routes: the input carries ~380 exact-duplicate
+    (Origin, Destination, Vehicle-class) rows. Feeder-retained duplicates were
+    never consolidated, so Step 8 gave EACH copy its own headway-based fleet —
+    one corridor (Soura→Jehangir Chowk ×18) drew 108 buses, more than the entire
+    SSCL system operates (98). This step keeps ONE representative feeder per
+    identical (rounded O, rounded D, Vehicle_Category) corridor, records the
+    permit multiplicity on it (Permit_Count), and marks the redundant copies
+    MERGED_INTO_TRUNK with Merged_Reason='duplicate_permit' so they are zeroed by
+    zero_merged_route_fleet() and excluded from the active set — exactly like any
+    other absorbed permit. Trunks and the SSCL backbone are left intact.
+
+    Must run AFTER apply_terminal_capacity (feeder states final) and BEFORE the
+    fleet steps, so the consolidated copies flow through the CDI pipeline and are
+    zeroed at the end like every other merged route.
+    """
+    log.info("Consolidating duplicate feeder permits (Finding 8 over-fleeting)…")
+    gdf = gdf.copy()
+    if "Permit_Count" not in gdf.columns:
+        gdf["Permit_Count"] = 1
+    if "Merged_Reason" not in gdf.columns:
+        gdf["Merged_Reason"] = ""
+
+    cmp_col = (gdf["CMP_Trunk"] if "CMP_Trunk" in gdf.columns
+               else pd.Series(False, index=gdf.index)).fillna(False).astype(bool)
+    feeders = gdf[(gdf["Action_Taken"] == "RETAINED_AS_FEEDER") & (~cmp_col)].copy()
+    if feeders.empty:
+        log.info("  No retained feeders to consolidate.")
+        return gdf
+
+    key = (feeders["Start_Lat"].round(4).astype(str) + "," +
+           feeders["Start_Lon"].round(4).astype(str) + "->" +
+           feeders["End_Lat"].round(4).astype(str) + "," +
+           feeders["End_Lon"].round(4).astype(str) + "|" +
+           feeders["Vehicle_Category"].astype(str).str.strip().str.lower())
+
+    _OP = {"minibus": "Private Minibus", "mini bus": "Private Minibus",
+           "mpv": "Private Minibus", "mps": "MPS (Stage Carriage)",
+           "city bus": "JKRTC / City Bus", "jkrtc": "JKRTC / City Bus",
+           "lpv": "LPV / Tempo", "tempo": "LPV / Tempo"}
+
+    n_consolidated = n_corridors = max_grp = 0
+    for _, grp in feeders.assign(_k=key).groupby("_k"):
+        if len(grp) <= 1:
+            continue
+        n_corridors += 1
+        max_grp = max(max_grp, len(grp))
+        rep = grp.index[0]
+        gdf.at[rep, "Permit_Count"] = int(len(grp))
+        for idx in grp.index[1:]:
+            gdf.at[idx, "Action_Taken"]  = "MERGED_INTO_TRUNK"
+            gdf.at[idx, "Merged_Reason"] = "duplicate_permit"
+            gdf.at[idx, "New_Route_ID"]  = gdf.at[rep, "New_Route_ID"]
+            cat = str(gdf.at[idx, "Vehicle_Category"]).strip().lower()
+            gdf.at[idx, "Displaced_Operator_Class"] = next(
+                (lbl for k, lbl in _OP.items() if k in cat), "Private Minibus")
+            n_consolidated += 1
+
+    log.info("  Duplicate-permit consolidation: %d corridors carried duplicates "
+             "(largest = %d permits); %d redundant feeder permits consolidated "
+             "into representatives (Finding 8 over-fleeting removed).",
+             n_corridors, max_grp, n_consolidated)
+    return gdf
+
+
 def zero_merged_route_fleet(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Zero fleet for MERGED_INTO_TRUNK routes — service absorbed by Trunk."""
+    """Zero fleet for MERGED_INTO_TRUNK routes — service absorbed by Trunk
+    (or, where Merged_Reason='duplicate_permit', by the corridor representative)."""
     merged_mask = gdf["Action_Taken"] == "MERGED_INTO_TRUNK"
     gdf = gdf.copy()
     gdf.loc[merged_mask,
@@ -5627,12 +5722,13 @@ def main() -> None:
     # ── Route Classification ──────────────────────────────────────────────
     log.info("\n── ROUTE CLASSIFICATION ─────────────────────────────────────────────")
     freq_scores    = compute_frequency_scores(gdf)
-    gdf            = apportion_route_population(gdf, freq_scores)
+    gdf            = apportion_route_population(gdf, freq_scores, RASTER_PATH)
     overlap_matrix = compute_overlap_matrix(gdf)
     gdf            = cluster_routes(gdf, overlap_matrix)
     gdf            = backfill_overlap_metric(gdf, overlap_matrix)
     gdf            = classify_routes(gdf, freq_scores, overlap_matrix)  # v3: 30th pct + CMP bonus
     gdf            = apply_terminal_capacity(gdf, gdf_pois)
+    gdf            = consolidate_duplicate_permits(gdf)   # audit Finding 8: kill duplicate over-fleeting
 
     # ── STEPS 3–9: CDI Pipeline ──────────────────────────────────────────
     log.info("\n── STEPS 3–9: CDI Pipeline ──────────────────────────────────────────")
