@@ -181,7 +181,36 @@ buses/1000 now measured per 1,000 SERVED (peer-comparable). Decks/README/dashboa
 relabelled. **This was the highest government-credibility risk — a 95.7% claim
 would not survive a census/WorldPop cross-check.**
 
+## Final anomaly scan (no new bugs)
+0 zero-fleet active, 0 negative values, fleet/route 2–15 (median 5), cycle 9–287 min
+(plausible for 1–71 km routes), route codes unique, QC 8/8 pass. Three FRAMING /
+DESIGN items remain (not code bugs):
+- **Economics (frame honestly):** 3.9% farebox recovery, 101/133 subsidy-risk,
+  119/133 Amber_Under. Even with correct demand calibration the network is
+  supply-led — justify on ACCESS/EQUITY/induced-demand (Mohring), NOT farebox.
+- **Journey time >45 min on 126/133:** inherent to route length + Srinagar
+  congestion (cycle ×2.2 core + Jhelum bridge); a frequency plan can't change it.
+- **Priority bands 50% HP (67/133):** the SSCL HP-lock + bonuses stack so the band
+  loses discriminating power (audit Finding 11 / M1) — a design choice to revisit
+  with the RTO, not an error.
+- 2 Red_Overload routes (Bandipora–Soura 1.51, Batamaloo–Charesharief 1.21):
+  genuine high-demand corridors that could take +1–2 buses (fleet is headway-driven
+  by design, so the engine doesn't auto-bump for demand).
+
+## GOVERNMENT-FIT ASSESSMENT
+**Sound & productive:** source-faithful (permits/SSCL/timetable verified exactly);
+geocoding correct & valley-wide; fleet 817 (+36% over ~600) is a credible Year-1
+ask; demand anchored to CHALO; full audit trail (disposition + reject files); all
+metrics now honest and survive cross-checking.
+**Present it as a forward ACCESS/SERVICE plan, not a farebox plan.** The single
+most important framing point: the economics are weak by design (3.9% recovery) —
+lead with access (1.59M residents reachable, valley-wide, 15–35 min headways,
+women-safety via the free-fare SSCL backbone), and state plainly that farebox
+recovery is not the objective. Do NOT reinstate the inflated 95.7% coverage claim;
+the honest figure is 1.59M residents / 31% of the study area.
+
 ## Change journal (newest first)
+- 2026-06-20: Final anomaly scan + government-fit assessment. REVIEW COMPLETE.
 - 2026-06-20: Round-2 review — F-V8 (demand recalibration 0.18→0.33) + F-V9
   (coverage denominator fix, ~95.7%→~31%); both fixed, re-released.
 - 2026-06-19: V7 done + overall verdict + R-V remediation plan. VERIFICATION COMPLETE.
