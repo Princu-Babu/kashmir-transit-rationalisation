@@ -3763,56 +3763,77 @@ def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         return (str(row["Tehsil_Code"]).strip()[:2].upper(),
                 f"{int(row['Sector_ID']):02d}", f"{int(row['Stop_No']):02d}")
 
+    # Coordinate-based nearest-stop fallback (v3.3.8): the name matcher can't place
+    # recovered villages / Srinagar features, and the old dashboard-code backfill
+    # propagated STALE codes (from the collapsed era) — producing WRONG codes that
+    # collided with correctly-matched routes. Instead, when the name doesn't match
+    # the master, derive the tehsil/sector/stop from the master stop NEAREST to the
+    # route's actual geocoded endpoint. Deterministic, location-based, distinct.
+    stops["_lat"] = pd.to_numeric(stops["Latitude"], errors="coerce")
+    stops["_lon"] = pd.to_numeric(stops["Longitude"], errors="coerce")
+    svalid = stops.dropna(subset=["_lat", "_lon"]).reset_index(drop=True)
+
+    def _nearest_stop(lat, lon):
+        if lat is None or lon is None:
+            return None
+        d2 = ((svalid["_lat"] - lat) * 111.0) ** 2 + ((svalid["_lon"] - lon) * 92.0) ** 2
+        row = svalid.loc[d2.idxmin()]
+        return (str(row["Tehsil_Code"]).strip()[:2].upper(),
+                f"{int(row['Sector_ID']):02d}", f"{int(row['Stop_No']):02d}")
+
+    def _ends(r):
+        g = r.get("geometry")
+        try:
+            cs = list(g.coords)
+            return (cs[0][1], cs[0][0]), (cs[-1][1], cs[-1][0])   # (lat,lon) O, D
+        except Exception:
+            return (None, None), (None, None)
+
     codes: List[str] = []
+    n_namematch = n_coordfb = 0
     for _, r in gdf.iterrows():
         o, d = _rc_extract_origin_dest(r.get("Route_Name", ""))
         oi, di = _stop_info(o), _stop_info(d)
-        if oi and di:
-            codes.append(f"{oi[0]}{di[0]}{oi[1]}{di[1]}{oi[2]}{di[2]}")
+        if not (oi and di):
+            (olat, olon), (dlat, dlon) = _ends(r)
+            if oi is None:
+                oi = _nearest_stop(olat, olon)
+            if di is None:
+                di = _nearest_stop(dlat, dlon)
+            if oi and di:
+                n_coordfb += 1
         else:
-            codes.append("UNMATCHED")
-    matched = sum(1 for c in codes if c != "UNMATCHED")
+            n_namematch += 1
+        codes.append(f"{oi[0]}{di[0]}{oi[1]}{di[1]}{oi[2]}{di[2]}" if (oi and di) else "UNMATCHED")
+    matched = n_namematch
+    final_codes = codes
 
-    # Backfill UNMATCHED from the official dashboard codes (by Route_ID).
-    prior = _load_dashboard_route_codes()
-    backfilled = 0
-    rids = gdf["Route_ID"].astype(str) if "Route_ID" in gdf.columns else pd.Series([""] * len(gdf))
-    final_codes: List[str] = []
-    for code, rid in zip(codes, rids):
-        if code == "UNMATCHED":
-            p = prior.get(str(rid).strip(), "")
-            if p:
-                backfilled += 1
-                final_codes.append(p)
-                continue
-        final_codes.append(code)
-
-    # M4 fix (audit Output #1 — route-code uniqueness is a HARD defect):
-    # the 12-char code is a stop-PAIR identifier, so distinct services between the
-    # same two master stops collide. Append a -NN suffix ONLY when 2+ *active*
-    # routes share a base code — merged/consolidated duplicates (not shown in the
-    # plan) must NOT force a needless suffix onto an otherwise-unique active route
-    # (v3.3.8: this had been producing ~26 spurious "-01"s). Merged rows keep the
-    # base code (they share their corridor representative's code, which is correct).
-    from collections import Counter
+    # Uniqueness (audit Output #1): when 2+ ACTIVE routes still share a stop-pair
+    # code, append a clean trailing LETTER variant (A/B/C — the standard "5A/5B"
+    # bus convention), NOT a dash-number. Deterministic by route name. Merged
+    # (non-active) rows keep the base code (not shown in the plan).
+    from collections import Counter, defaultdict
     active_flags = (gdf["Action_Taken"] != "MERGED_INTO_TRUNK").tolist()
+    names = gdf["Route_Name"].astype(str).tolist()
     code_counts = Counter(c for c, a in zip(final_codes, active_flags)
                           if a and c not in ("", "UNMATCHED"))
-    running: Dict[str, int] = {}
-    unique_codes: List[str] = []
-    n_disambiguated = 0
-    for c, a in zip(final_codes, active_flags):
-        if c in ("", "UNMATCHED") or not a or code_counts.get(c, 0) <= 1:
-            unique_codes.append(c)
-        else:
-            running[c] = running.get(c, 0) + 1
-            unique_codes.append(f"{c}-{running[c]:02d}")
-            n_disambiguated += 1
+    groups = defaultdict(list)
+    for i, (c, a) in enumerate(zip(final_codes, active_flags)):
+        if a and code_counts.get(c, 0) > 1:
+            groups[c].append(i)
+    suffix: Dict[int, str] = {}
+    for c, idxs in groups.items():
+        for rank, i in enumerate(sorted(idxs, key=lambda j: names[j])):
+            suffix[i] = chr(ord("A") + rank) if rank < 26 else f"Z{rank}"
+    unique_codes = [(c + suffix[i]) if i in suffix else c
+                    for i, c in enumerate(final_codes)]
+    n_disambiguated = len(suffix)
+    backfilled = n_coordfb
     gdf["Route_Code"] = unique_codes
     remaining = sum(1 for c in unique_codes if c == "UNMATCHED")
-    log.info("  Route_Code: %d/%d matched from stops master · %d backfilled from "
-             "dashboard · %d remaining UNMATCHED · %d disambiguated for uniqueness "
-             "(M4 fix).", matched, len(codes), backfilled, remaining, n_disambiguated)
+    log.info("  Route_Code: %d/%d name-matched · %d coordinate-fallback (nearest "
+             "master stop) · %d remaining UNMATCHED · %d letter-disambiguated "
+             "(no dash).", matched, len(codes), backfilled, remaining, n_disambiguated)
     return gdf
 
 
