@@ -3653,7 +3653,21 @@ def _rc_extract_origin_dest(route_name: str) -> Tuple[Optional[str], Optional[st
         origin, rest = route_name.split(" TO ", 1)
         dest = rest.split(" VIA ")[0] if " VIA " in rest else rest
         return origin.strip(), dest.strip()
+    # Manual fix: some JKRTC names are "A, B" (comma) rather than "A to B".
+    if "," in route_name:
+        a, b = route_name.split(",", 1)
+        if a.strip() and b.strip():
+            return a.strip(), b.split(" VIA ")[0].strip()
     return None, None
+
+
+# Manual stop entries for endpoints absent from the 187-stop master, so their
+# routes get a proper 12-char code instead of UNMATCHED (user-requested).
+# (UPPER compact name) -> (Tehsil_Code, Sector_ID, Stop_No).
+_MANUAL_STOPS: Dict[str, Tuple[str, int, int]] = {
+    "JAWAHIRNAGAR": ("SR", 10, 63),    # Jawahir Nagar — central Srinagar (Rambagh/Karan Nagar belt)
+    "JAWAHARNAGAR": ("SR", 10, 63),
+}
 
 
 def _resolve_stops_master() -> Optional[Path]:
@@ -3720,6 +3734,9 @@ def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             if close:
                 m = stops[stops["_compact"] == close[0]]
         if m.empty:
+            ms = _MANUAL_STOPS.get(name_compact) or _MANUAL_STOPS.get(name.upper())
+            if ms:
+                return (ms[0][:2].upper(), f"{ms[1]:02d}", f"{ms[2]:02d}")
             return None
         row = m.iloc[0]
         return (str(row["Tehsil_Code"]).strip()[:2].upper(),
