@@ -14,7 +14,7 @@ Four government files feed one engine. Two are **plan inputs** (the permit dump 
 the JKRTC timetable become candidate routes), one is the **calibration anchor**
 (SSCL ridership), and one is **corroboration only** (the Smart City e-bus list).
 The engine geocodes them, routes them on real roads, scores demand from open data,
-then sizes frequency and fleet. Final: **420 routes → 133 active → 817 buses**.
+then sizes frequency and fleet. Final: **420 routes → 104 active → 670 buses**.
 
 ---
 
@@ -81,14 +81,17 @@ Overlapping corridors merged to trunks; rest become feeders; a Composite Demand
 Index (population + POIs + road class) + Jenks breaks set HP/MP/LP bands.
 
 **Fixed:** ~380 duplicate permits were each getting their own fleet (one corridor
-drew **108 buses**) → added duplicate-permit consolidation (262 redundant permits
-collapsed); fixed population apportionment so the active plan sums to the network
-total.
+drew **108 buses**) → added duplicate-permit consolidation **by corridor across both
+trunks and feeders** (~291 redundant permits collapsed to one service per corridor;
+a real SSCL backbone route is never merged away). This also caught duplicate
+*trunks* the first pass missed (e.g. 6 identical Batamaloo→Pantha Chowk permit-
+trunks, ~48 buses → one 7-bus service at load 0.12). Fixed population apportionment
+so the active plan sums to the network total.
 
 **Verdict: ✅ mechanics; ⚠ one design choice** — after the overrides (SSCL HP-lock,
-bonuses, social floors), **67/133 routes (half) are "High Priority,"** so the band
-loses discriminating power. Not a bug; rebalance thresholds with the RTO if bands
-must drive phasing.
+bonuses, social floors), **55/104 routes (just over half) are "High Priority,"** so
+the band loses discriminating power. Not a bug; rebalance thresholds with the RTO
+if bands must drive phasing.
 
 ## STAGE 6 — Frequency + fleet + bus mix — *the engineering core*
 Headways 15 (SSCL) / 20 (trunks) / 35 (feeders) with a hard 35-min ceiling.
@@ -96,8 +99,8 @@ Fleet = `⌈cycle ÷ headway⌉ × 1.15`, floored 2 urban / 1 regional. Trunks 5
 big/medium, feeders 100% medium.
 
 **Verified independently:** fleet formula **reproduces 100%** of routes;
-HPV+MPV+LPV = Fleet for all 133. Totals: **817 buses, +36% over ~600 today, ~0.51
-buses/1,000 served** (BMTC/Chandigarh peer band).
+HPV+MPV+LPV = Fleet for all 104. Totals: **670 buses, +12% over ~600 today, ~0.42
+buses/1,000 served** — a redistribution of an over-concentrated fleet, not a build-out.
 
 **Verdict: ✅ the most solid part** — textbook (Vuchic), reproduces exactly,
 credible Year-1 ask.
@@ -130,7 +133,7 @@ it would not survive a census/WorldPop cross-check.
 corridor, load-sanity, route-code uniqueness); CSV/workbooks/maps/decks/dashboard;
 per-route disposition file accounting for every input.
 
-**Verified:** QC 8/8 pass, all 133 active route codes unique, **0 UNMATCHED
+**Verified:** QC 8/8 pass, all 104 active route codes unique, **0 UNMATCHED
 anywhere**, every one of 420 inputs accounted for. **Verdict: ✅.**
 
 ---
@@ -140,7 +143,7 @@ anywhere**, every one of 420 inputs accounted for. **Verdict: ✅.**
 
 - ✅ **Solid:** source fidelity, geocoding (now correct), road geometry, fleet
   sizing (100% reproducible), SSCL calibration (0.99× CHALO), QC + audit trail.
-  The scrutinised core — **817 buses, +36%, 15–35 min frequency** — holds up.
+  The scrutinised core — **670 buses, +12%, 15–35 min frequency** — holds up.
 - ⚠ **Frame, don't fix:** (1) economics are weak by design (3.9% recovery) → sell
   on access/equity, never farebox; (2) coverage is 31% of the study area → the
   honest number, don't oversell; (3) half the routes are "High Priority" → rebalance

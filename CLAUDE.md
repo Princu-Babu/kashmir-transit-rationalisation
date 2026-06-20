@@ -155,17 +155,23 @@ _route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
 ## 6. Current numbers (v3.3.8, the live plan — audit-remediated)
 
 - 613 permits → re-geocoded district-aware → **420 routes** (390 permit-derived
-  + 30 synthetic SSCL); **133 active** (Trunk 45 / Feeder 88 / Merged 287)
-- **Total fleet 817** = HPV 76 / MPV 627 / LPV 114
-- 30 CHALO SSCL routes → 38 trunks (incl. 8 absorbed duplicate permits); SSCL fleet 348
+  + 30 synthetic SSCL); **104 active** (Trunk 40 / Feeder 64 / Merged 316)
+- **Total fleet 670** = HPV 76 / MPV 550 / LPV 44 (+12% over current ~600 — a
+  REDISTRIBUTION, not a build-out; duplicate over-provisioning removed)
+- 30 CHALO SSCL routes → 33 trunks (incl. absorbed duplicate permits); SSCL fleet 307
+- **Corridor consolidation now spans trunks AND feeders** (v3.3.8 r2): identical
+  (rounded O→D) duplicate permits collapse to one service per corridor regardless
+  of class; a real SSCL backbone route is never merged away. Removed e.g. 6
+  identical Batamaloo→Pantha Chowk permit-trunks (~48 buses → one 7-bus service,
+  load 0.12). Route codes: 0 duplicates, 0 duplicate names among active.
 - **Headways present: ONLY 15 / 20 / 35 min** (ceiling preserved from v3.3.7)
-- Route types: Urban 76 / Peri_Urban 42 / Regional_District 15 (median route 14.4 km
+- Route types: Urban 57 / Peri_Urban 32 / Regional_District 15 (median route 14.9 km
   — genuinely valley-wide now, not a Srinagar-city plan)
 - **Network reaches 1,588,964 residents within 400m = 31.1% of the 5.1M study-area
   population** (F-V9 fix: the old "95.7%/69.8%" divided by the 1.66M Srinagar-UA
   planning figure — wrong denominator, inflated ~3×; honest denominator is the
   WorldPop study-area total ~5,105,699). ~the entire Srinagar urban core + district reach.
-- **~0.51 buses / 1000 residents SERVED** (peer band: BMTC 0.51, Chandigarh CTU 0.65)
+- **~0.42 buses / 1000 residents SERVED** (lean after de-duplication; peer band: BMTC 0.51, Chandigarh CTU 0.65)
 - v3.3.8 R-V/round-2 re-verification fixes: Parimpora hub pinned, TRC→Airport link
   kept, depot "A-B" pairs split, active Population_Served reconciled to the cover
   (Finding 9 closed), demand re-anchored to CHALO (capture scale 0.18→0.33), coverage

@@ -210,6 +210,18 @@ recovery is not the objective. Do NOT reinstate the inflated 95.7% coverage clai
 the honest figure is 1.59M residents / 31% of the study area.
 
 ## Change journal (newest first)
+- 2026-06-20: F-V10 — duplicate route-CODE investigation (user-flagged "-01/-02" in
+  the pretty Excel). Two causes: (1) M4 suffix counted MERGED siblings, putting a
+  needless "-01" on ~26 unique-among-active routes → now suffix only among ACTIVE;
+  (2) consolidation was feeder-only + within-class, leaving cross-class pairs
+  (minibus+tempo on one O/D) AND duplicate SSCL-matched permit-TRUNKS (6 identical
+  Batamaloo→Pantha Chowk ≈ 48 buses) as separate active routes → consolidation now
+  spans trunks+feeders, by corridor, never merging a real SSCL backbone route.
+  Result: active 133→104, fleet 817→670, **0 duplicate active codes, 0 duplicate
+  active names**; consolidated busy corridor verified NOT under-served (load 0.12).
+  Pretty Excel also trimmed to fleet-carrying routes only. All QC pass; SSCL 30/30
+  preserved. Per-route SSCL fleet now 9.3 vs scaled-CHALO 7.33 (+26.9%, marginally
+  over the ±25% guideline — defensible: de-duplicated set + corrected geometry).
 - 2026-06-20: Final anomaly scan + government-fit assessment. REVIEW COMPLETE.
 - 2026-06-20: Round-2 review — F-V8 (demand recalibration 0.18→0.33) + F-V9
   (coverage denominator fix, ~95.7%→~31%); both fixed, re-released.

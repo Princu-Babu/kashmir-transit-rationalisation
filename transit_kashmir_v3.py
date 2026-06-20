@@ -3211,8 +3211,8 @@ def consolidate_duplicate_permits(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     never consolidated, so Step 8 gave EACH copy its own headway-based fleet —
     one corridor (Soura→Jehangir Chowk ×18) drew 108 buses, more than the entire
     SSCL system operates (98). This step keeps ONE representative feeder per
-    identical (rounded O, rounded D, Vehicle_Category) corridor, records the
-    permit multiplicity on it (Permit_Count), and marks the redundant copies
+    identical (rounded O, rounded D) CORRIDOR — across vehicle classes (v3.3.8) —
+    records the permit multiplicity on it (Permit_Count), and marks the redundant copies
     MERGED_INTO_TRUNK with Merged_Reason='duplicate_permit' so they are zeroed by
     zero_merged_route_fleet() and excluded from the active set — exactly like any
     other absorbed permit. Trunks and the SSCL backbone are left intact.
@@ -3228,18 +3228,28 @@ def consolidate_duplicate_permits(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     if "Merged_Reason" not in gdf.columns:
         gdf["Merged_Reason"] = ""
 
-    cmp_col = (gdf["CMP_Trunk"] if "CMP_Trunk" in gdf.columns
-               else pd.Series(False, index=gdf.index)).fillna(False).astype(bool)
-    feeders = gdf[(gdf["Action_Taken"] == "RETAINED_AS_FEEDER") & (~cmp_col)].copy()
-    if feeders.empty:
-        log.info("  No retained feeders to consolidate.")
+    # v3.3.8: consolidate by CORRIDOR (rounded O→D) across BOTH feeders AND trunks
+    # and across vehicle classes. Rationalisation = one service per corridor.
+    # The earlier feeder-only / within-class key left duplicates as separate active
+    # routes — e.g. 6 identical "Batamaloo→Pantha Chowk" SSCL-matched permit TRUNKS
+    # (~48 buses on one corridor) and minibus+tempo pairs on the same O/D — which
+    # showed as duplicate route codes. A real SSCL backbone route (Route_ID
+    # "SSCL-*") is NEVER merged away; permit duplicates are absorbed into it (this
+    # is the documented "8 absorbed duplicate permits" behaviour, now enforced for
+    # all corridors). Displaced operators are still tracked via the class label.
+    def _is_synth_sscl(rid):
+        return str(rid).upper().startswith("SSCL")
+
+    cands = gdf[gdf["Action_Taken"].isin(["RETAINED_AS_FEEDER",
+                                          "UPGRADED_TO_TRUNK"])].copy()
+    if cands.empty:
+        log.info("  No active routes to consolidate.")
         return gdf
 
-    key = (feeders["Start_Lat"].round(4).astype(str) + "," +
-           feeders["Start_Lon"].round(4).astype(str) + "->" +
-           feeders["End_Lat"].round(4).astype(str) + "," +
-           feeders["End_Lon"].round(4).astype(str) + "|" +
-           feeders["Vehicle_Category"].astype(str).str.strip().str.lower())
+    key = (cands["Start_Lat"].round(4).astype(str) + "," +
+           cands["Start_Lon"].round(4).astype(str) + "->" +
+           cands["End_Lat"].round(4).astype(str) + "," +
+           cands["End_Lon"].round(4).astype(str))
 
     _OP = {"minibus": "Private Minibus", "mini bus": "Private Minibus",
            "mpv": "Private Minibus", "mps": "MPS (Stage Carriage)",
@@ -3247,17 +3257,28 @@ def consolidate_duplicate_permits(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
            "lpv": "LPV / Tempo", "tempo": "LPV / Tempo"}
 
     n_consolidated = n_corridors = max_grp = 0
-    for _, grp in feeders.assign(_k=key).groupby("_k"):
+    for _, grp in cands.assign(_k=key).groupby("_k"):
         if len(grp) <= 1:
+            continue
+        # Representative preference: a synthetic SSCL backbone route, else a trunk,
+        # else the first feeder. (Stable: rank then original order.)
+        def _rank(idx):
+            rid = gdf.at[idx, "Route_ID"]
+            is_trunk = gdf.at[idx, "Action_Taken"] == "UPGRADED_TO_TRUNK"
+            return (0 if _is_synth_sscl(rid) else 1, 0 if is_trunk else 1)
+        ordered = sorted(grp.index, key=lambda i: (_rank(i), list(grp.index).index(i)))
+        rep = ordered[0]
+        absorbed = [i for i in ordered[1:] if not _is_synth_sscl(gdf.at[i, "Route_ID"])]
+        if not absorbed:
             continue
         n_corridors += 1
         max_grp = max(max_grp, len(grp))
-        rep = grp.index[0]
-        gdf.at[rep, "Permit_Count"] = int(len(grp))
-        for idx in grp.index[1:]:
+        gdf.at[rep, "Permit_Count"] = int(gdf.at[rep, "Permit_Count"]) + len(absorbed)
+        for idx in absorbed:
             gdf.at[idx, "Action_Taken"]  = "MERGED_INTO_TRUNK"
             gdf.at[idx, "Merged_Reason"] = "duplicate_permit"
             gdf.at[idx, "New_Route_ID"]  = gdf.at[rep, "New_Route_ID"]
+            gdf.at[idx, "CMP_Trunk"]     = False   # absorbed permit, not a backbone route
             cat = str(gdf.at[idx, "Vehicle_Category"]).strip().lower()
             gdf.at[idx, "Displaced_Operator_Class"] = next(
                 (lbl for k, lbl in _OP.items() if k in cat), "Private Minibus")
@@ -3767,19 +3788,21 @@ def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         final_codes.append(code)
 
     # M4 fix (audit Output #1 — route-code uniqueness is a HARD defect):
-    # the 12-char code is a stop-PAIR identifier (TehsilO+TehsilD+SectorO+
-    # SectorD+StopO+StopD), so several distinct services between the same two
-    # master stops collide. Append a deterministic 2-digit suffix to every member
-    # of a colliding group so each route's code is unique. Singletons and
-    # UNMATCHED/blank codes are left untouched, preserving the AAAA######## form
-    # for the non-colliding majority.
+    # the 12-char code is a stop-PAIR identifier, so distinct services between the
+    # same two master stops collide. Append a -NN suffix ONLY when 2+ *active*
+    # routes share a base code — merged/consolidated duplicates (not shown in the
+    # plan) must NOT force a needless suffix onto an otherwise-unique active route
+    # (v3.3.8: this had been producing ~26 spurious "-01"s). Merged rows keep the
+    # base code (they share their corridor representative's code, which is correct).
     from collections import Counter
-    code_counts = Counter(c for c in final_codes if c not in ("", "UNMATCHED"))
+    active_flags = (gdf["Action_Taken"] != "MERGED_INTO_TRUNK").tolist()
+    code_counts = Counter(c for c, a in zip(final_codes, active_flags)
+                          if a and c not in ("", "UNMATCHED"))
     running: Dict[str, int] = {}
     unique_codes: List[str] = []
     n_disambiguated = 0
-    for c in final_codes:
-        if c in ("", "UNMATCHED") or code_counts[c] == 1:
+    for c, a in zip(final_codes, active_flags):
+        if c in ("", "UNMATCHED") or not a or code_counts.get(c, 0) <= 1:
             unique_codes.append(c)
         else:
             running[c] = running.get(c, 0) + 1
