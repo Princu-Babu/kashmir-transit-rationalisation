@@ -415,13 +415,16 @@ def main():
         "Red_NoCapacity": ("B71C1C", WHITE, "Red"),
     }
 
-    for row_i, (_, row) in enumerate(df.iterrows(), start=2):
+    # RTO ask: the bus schedule lists only routes that actually run a fleet.
+    # MERGED_INTO_TRUNK rows are consolidated/duplicate permits whose service is
+    # absorbed into their trunk (Fleet_Required = 0), so they're excluded here.
+    # (The Summary sheet still reports the full breakdown for context.)
+    plan_df = df[df["Action_Taken"] != "MERGED_INTO_TRUNK"].copy()
+    for row_i, (_, row) in enumerate(plan_df.iterrows(), start=2):
         action = str(row.get("Action_Taken", ""))
         band   = str(row.get("Priority_Band", ""))
         load   = str(row.get("Load_Flag", "") or "")
         row_bg = LIGHT if row_i % 2 == 0 else WHITE
-        if action == "MERGED_INTO_TRUNK":
-            row_bg = SAFFRON_LT
 
         for ci, (key, _hdr, _w, align) in enumerate(columns, start=1):
             value = row.get(key, "")
@@ -499,7 +502,7 @@ def main():
     print(f"Wrote {DST}")
     print(f"Also  {ALSO}")
     print(f"  Sheet 1  ·  Summary           (KPI dashboard)")
-    print(f"  Sheet 2  ·  Route Plan        ({len(df)} routes × {len(columns)} cols)")
+    print(f"  Sheet 2  ·  Route Plan        ({len(plan_df)} fleet-carrying routes × {len(columns)} cols)")
 
 
 if __name__ == "__main__":
