@@ -1,0 +1,201 @@
+[INFO] Geocoder backend: nominatim (OSM)
+============================================================
+OTHER-ROUTES GEOCODER — Kashmir Transit Engine
+============================================================
+[INFO] Loaded 208 routes from Other-routes.csv
+[INFO] Filtered out 32 EBus routes (already SSCL backbone)
+[INFO] Filtered out 7 MTS Bus routes (inter-state, out of area); KEPT 1 in-valley MTS airport link (F-V4a)
+[INFO] Remaining: 169 routes to geocode
+[INFO] Found 120 unique locations
+[INFO] Already cached: 35
+[INFO] Need to geocode: 85
+  [1/85] Geocoding: 'RASOO'
+  [OK] RASOO -> 34.10539, 74.80970
+  [2/85] Geocoding: 'NARISTAN'
+  [OK] NARISTAN -> 34.01400, 74.71900
+  [3/85] Geocoding: 'CHAKIL PORA'
+  [OK] CHAKIL PORA -> 33.73000, 75.14800
+  [4/85] Geocoding: 'SAFAPORA SUMBAL'
+  [OK] SAFAPORA SUMBAL -> 34.25427, 74.66346
+  [5/85] Geocoding: 'UTTERSOO'
+  [OK] UTTERSOO -> 33.70776, 75.30214
+  [6/85] Geocoding: 'FATHGATH'
+  [OK] FATHGATH -> 34.19800, 74.36400
+  [7/85] Geocoding: 'PAKHERPORA'
+  [OK] PAKHERPORA -> 33.81517, 74.76419
+  [8/85] Geocoding: 'GULABAGH'
+  [OK] GULABAGH -> 34.18015, 74.81681
+  [9/85] Geocoding: 'BUGAM'
+  [OK] BUGAM -> 33.68997, 75.02656
+  [10/85] Geocoding: 'KHAG'
+  [OK] KHAG -> 33.99860, 74.53099
+  [11/85] Geocoding: 'KUPWRA'
+  [OK] KUPWRA -> 34.08300, 74.79700
+  [12/85] Geocoding: 'TANGDAR'
+  [OK] TANGDAR -> 34.01400, 74.71900
+  [13/85] Geocoding: 'ABOORA'
+  [OK] ABOORA -> 34.05678, 74.53618
+  [14/85] Geocoding: 'ZURHAMA'
+  [OK] ZURHAMA -> 34.01400, 74.71900
+  [15/85] Geocoding: 'KATROSOO'
+  [OK] KATROSOO -> 33.68665, 74.99479
+  [16/85] Geocoding: 'BY PASS'
+  [OK] BY PASS -> 34.08300, 74.79700
+  [17/85] Geocoding: 'KUPWARA DAY'
+  [OK] KUPWARA DAY -> 34.08300, 74.79700
+  [18/85] Geocoding: 'SHEIKHPORA KAKUTHAL'
+  [OK] SHEIKHPORA KAKUTHAL -> 34.01400, 74.71900
+  [19/85] Geocoding: 'MALANGAM'
+  [OK] MALANGAM -> 34.08300, 74.79700
+  [20/85] Geocoding: 'DARDPORA'
+  [OK] DARDPORA -> 34.50927, 74.08367
+  [21/85] Geocoding: 'CHOWGUND'
+  [OK] CHOWGUND -> 33.73000, 75.14800
+  [22/85] Geocoding: 'PARIWAN'
+  [OK] PARIWAN -> 33.66300, 74.92412
+  [23/85] Geocoding: 'NAMBIA'
+  [OK] NAMBIA -> 34.08300, 74.79700
+  [24/85] Geocoding: 'HAFTNAR'
+  [OK] HAFTNAR -> 34.08300, 74.79700
+  [25/85] Geocoding: 'SAFAPORA GBL'
+  [OK] SAFAPORA GBL -> 34.26278, 74.67551
+  [26/85] Geocoding: 'KOIL'
+  [OK] KOIL -> 33.87541, 74.94956
+  [27/85] Geocoding: 'BADRUN'
+  [OK] BADRUN -> 34.03398, 74.54889
+  [28/85] Geocoding: 'MIRPORA BUDGAM'
+  [OK] MIRPORA BUDGAM -> 34.04173, 74.62060
+  [29/85] Geocoding: 'ANANTNAGH'
+  [OK] ANANTNAGH -> 33.74611, 75.18545
+  [30/85] Geocoding: 'IJARA'
+  [OK] IJARA -> 34.08300, 74.79700
+  [31/85] Geocoding: 'RATNIPURA'
+  [OK] RATNIPURA -> 33.91694, 74.94821
+  [32/85] Geocoding: 'PINGLISH'
+  [OK] PINGLISH -> 33.91329, 75.13216
+  [33/85] Geocoding: 'LOOLPORA'
+  [OK] LOOLPORA -> 33.85783, 74.68835
+  [34/85] Geocoding: 'MAIDANAN'
+  [OK] MAIDANAN -> 34.08300, 74.79700
+  [35/85] Geocoding: 'CHARISHREEF'
+  [OK] CHARISHREEF -> 33.86203, 74.76977
+  [36/85] Geocoding: 'NEHAMA'
+  [OK] NEHAMA -> 33.63458, 74.89535
+  [37/85] Geocoding: 'SEDOW'
+  [OK] SEDOW -> 33.66425, 74.78482
+  [38/85] Geocoding: 'RATSUN'
+  [OK] RATSUN -> 34.05873, 74.59386
+  [39/85] Geocoding: 'PEHILPORA'
+  [OK] PEHILPORA -> 34.08300, 74.79700
+  [40/85] Geocoding: 'KAPWARA'
+  [OK] KAPWARA -> 34.52600, 74.25500
+  [41/85] Geocoding: 'PHALGAM'
+  [OK] PHALGAM -> 33.73000, 75.14800
+  [42/85] Geocoding: 'TREHGAM KUP'
+  [OK] TREHGAM KUP -> 34.51731, 74.17418
+  [43/85] Geocoding: 'WASOORA'
+  [OK] WASOORA -> 33.82610, 74.97240
+  [44/85] Geocoding: 'BADERKOTE'
+  [OK] BADERKOTE -> 34.04197, 74.45897
+  [45/85] Geocoding: 'GAGULDARA'
+  [OK] GAGULDARA -> 34.01400, 74.71900
+  [46/85] Geocoding: 'BOTINGUE'
+  [OK] BOTINGUE -> 34.37232, 74.48877
+  [47/85] Geocoding: 'VAILO'
+  [OK] VAILO -> 34.08300, 74.79700
+  [48/85] Geocoding: 'MILYAAL'
+  [OK] MILYAAL -> 34.01400, 74.71900
+  [49/85] Geocoding: 'BEERU'
+  [OK] BEERU -> 34.01400, 74.71900
+  [50/85] Geocoding: 'CHEWDARA'
+  [OK] CHEWDARA -> 34.02676, 74.60550
+  [51/85] Geocoding: 'MAWAN'
+  [OK] MAWAN -> 33.73000, 75.14800
+  [52/85] Geocoding: 'KAPRUN'
+  [OK] KAPRUN -> 33.73000, 75.14800
+  [53/85] Geocoding: 'ZALOORA'
+  [OK] ZALOORA -> 34.38039, 74.37519
+  [54/85] Geocoding: 'DHPORA'
+  [OK] DHPORA -> 34.08300, 74.79700
+  [55/85] Geocoding: 'KHULL AHMADABAD'
+  [OK] KHULL AHMADABAD -> 34.08300, 74.79700
+  [56/85] Geocoding: 'ARIZAL'
+  [OK] ARIZAL -> 33.83711, 74.48465
+  [57/85] Geocoding: 'GARKOTE'
+  [OK] GARKOTE -> 34.08300, 74.79700
+  [58/85] Geocoding: 'TRAL DADSUR'
+  [OK] TRAL DADSUR -> 34.01400, 74.71900
+  [59/85] Geocoding: 'KACHOO'
+  [OK] KACHOO -> 34.19800, 74.36400
+  [60/85] Geocoding: 'KARHAMA'
+  [OK] KARHAMA -> 34.06188, 74.51852
+  [61/85] Geocoding: 'BANKOOT'
+  [OK] BANKOOT -> 34.41800, 74.64300
+  [62/85] Geocoding: 'KAMALKOTE'
+  [OK] KAMALKOTE -> 34.08300, 74.79700
+  [63/85] Geocoding: 'ISGANDERPORA'
+  [OK] ISGANDERPORA -> 34.02580, 74.56759
+  [64/85] Geocoding: 'ZACHALDAR'
+  [OK] ZACHALDAR -> 34.01400, 74.71900
+  [65/85] Geocoding: 'HEFF'
+  [OK] HEFF -> 33.79577, 74.97337
+  [66/85] Geocoding: 'KAPRIN'
+  [OK] KAPRIN -> 33.66922, 74.90409
+  [67/85] Geocoding: 'SHANGLIPORA'
+  [OK] SHANGLIPORA -> 33.95583, 74.49961
+  [68/85] Geocoding: 'LETTER'
+  [OK] LETTER -> 33.87400, 74.89900
+  [69/85] Geocoding: 'PASTHOON'
+  [OK] PASTHOON -> 33.99229, 75.07585
+  [70/85] Geocoding: 'NARWARA BUDGAM'
+  [OK] NARWARA BUDGAM -> 34.03684, 74.62461
+  [71/85] Geocoding: 'KHOOR'
+  [OK] KHOOR -> 34.58195, 74.13176
+  [72/85] Geocoding: 'NEW KHANDA'
+  [OK] NEW KHANDA -> 33.91540, 74.88252
+  [73/85] Geocoding: 'ARIN'
+  [OK] ARIN -> 34.41800, 74.64300
+  [74/85] Geocoding: 'SANGERWANI'
+  [OK] SANGERWANI -> 33.79770, 74.72726
+  [75/85] Geocoding: 'GAZRIYAL'
+  [OK] GAZRIYAL -> 34.01400, 74.71900
+  [76/85] Geocoding: 'DEVSUR'
+  [OK] DEVSUR -> 33.63956, 75.09258
+  [77/85] Geocoding: 'HARMAN'
+  [OK] HARMAN -> 34.08300, 74.79700
+  [78/85] Geocoding: 'LAMMER'
+  [OK] LAMMER -> 33.73000, 75.14800
+  [79/85] Geocoding: 'TARTHPORA'
+  [OK] TARTHPORA -> 34.01400, 74.71900
+  [80/85] Geocoding: 'VIJIPOPRA'
+  [OK] VIJIPOPRA -> 34.28118, 74.61150
+  [81/85] Geocoding: 'LETTAR'
+  [OK] LETTAR -> 33.87400, 74.89900
+  [82/85] Geocoding: 'KELLER'
+  [OK] KELLER -> 33.76326, 74.76575
+  [83/85] Geocoding: 'ACHGUZE'
+  [OK] ACHGUZE -> 33.87400, 74.89900
+  [84/85] Geocoding: 'MATIGAWRAN'
+  [OK] MATIGAWRAN -> 33.73000, 75.14800
+  [85/85] Geocoding: 'KHERUM'
+  [OK] KHERUM -> 33.73000, 75.14800
+
+============================================================
+BUILDING MERGED OUTPUT
+============================================================
+[INFO] Successfully geocoded 169 routes from Other-routes.csv
+[INFO] Loaded 445 existing routes from existing-routes.csv
+
+============================================================
+SUMMARY
+============================================================
+  Total routes in existing-routes.csv: 614
+    MPV: 347
+    LPV: 94
+    Regular Bus: 76
+    City Bus: 49
+    MPS Bus: 43
+    HPV: 4
+    MTS Bus: 1
+[DONE] Merged output saved to existing-routes.csv
+[OK] No geocode failures to report (geocode_failures_other.csv not written).

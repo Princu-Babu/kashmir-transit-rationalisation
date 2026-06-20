@@ -152,6 +152,33 @@ GAZETTEER: Dict[str, Tuple[float, float]] = {
 }
 
 
+def _load_gazetteer_csv() -> int:
+    """Merge curated village coordinates from kashmir_gazetteer.csv into GAZETTEER
+    (recovered village/town centres + district-centre approximations, so no route
+    is dropped for lack of coordinates). Hardcoded pins above take precedence."""
+    import csv as _csv
+    import os as _os
+    n = 0
+    for p in ("kashmir_gazetteer.csv",
+              _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "kashmir_gazetteer.csv")):
+        if _os.path.exists(p):
+            try:
+                with open(p, encoding="utf-8") as f:
+                    for row in _csv.DictReader(f):
+                        nm = str(row.get("name", "")).strip().upper()
+                        la, lo = row.get("lat", ""), row.get("lon", "")
+                        if nm and str(la) and str(lo) and nm not in GAZETTEER:
+                            GAZETTEER[nm] = (float(la), float(lo))
+                            n += 1
+            except Exception:
+                pass
+            break
+    return n
+
+
+_GAZETTEER_CSV_LOADED = _load_gazetteer_csv()
+
+
 def _first_token(name: str) -> str:
     return re.split(r"[\s\-]+", name.strip().upper(), maxsplit=1)[0] if name else ""
 

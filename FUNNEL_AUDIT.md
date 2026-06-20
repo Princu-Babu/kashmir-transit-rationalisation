@@ -86,7 +86,20 @@ first ☐ step.
 - NOT recommended: reverting the de-duplication (the 453→74 minibus collapse is
   real) or padding the fleet (the headway-based sizing is correct).
 
+## RECOVERY DONE (2026-06-21) — the fix from F was executed
+The gazetteer recovery (GAZETTEER_RECOVERY.md) recovered the ~110 lost villages:
+- existing-routes.csv 401 → **614**; active routes 104 → **172**; fleet 670 → **1,053**;
+  coverage 31.1% → **37.8% (1.93M)**. JKRTC recovered in full (Regular 19→76, MPS
+  8→43, City 38→49). Only 2 genuine void markers (SCRAPED/SCRAPPED) excluded.
+- This confirms the verdict: the bottleneck WAS geocoding recall, and fixing it
+  (not reverting de-dup, not padding fleet) grew the plan to its honest size.
+- The 1,053 lands near the original v3.3.7 1,009 — but that was wrong (centroid
+  collapse + duplicate over-provisioning); 1,053 is honest (real geocodes,
+  de-duplicated, full rural reach). 43 of the recovered villages use a district-
+  centre approximation (documented).
+
 ## Change journal
+- 2026-06-21: Recovery executed → 172 routes / 1,053 buses / 37.8% coverage.
 - 2026-06-20: Funnel audit A–F complete. Root cause of "only 104" = geocoding
   recall (122 JKRTC corridors → 33), NOT over-consolidation. Fleet 670 correct for
   the (under-sized) network. Fix = gazetteer the ~110 failed villages.

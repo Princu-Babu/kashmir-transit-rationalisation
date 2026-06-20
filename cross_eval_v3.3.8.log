@@ -1,0 +1,57 @@
+Data sources:
+  Ridership : .\Ridership Data.csv
+  Buses     : .\Route Wise deployed Buses.csv
+  Hourly    : .\Hourly Passenger Count.csv
+  Engine out: outputs_v3.3.8/Rationalised_Routes_Kashmir_v3.csv
+
+=== CHALO vs Engine Cross-Evaluation (v3.3 — 12-month average) ===
+
+--- Level 1: System-Wide Totals (12-month daily averages) ---
+CHALO Daily Pax   (SSCL 30 routes, 12-mo avg): ~31,869
+CHALO Daily Operated KM:                       ~18,362
+CHALO Daily Trips:                             ~855
+
+NOTE: All CHALO metrics above are SSCL-only (30 e-bus routes).
+      Full-network engine metrics are shown separately for context.
+
+Engine Fleet — Full network: 855 buses  |  SSCL-only: 348 buses
+(Full-network includes private minibuses + JKRTC + MPS — not directly comparable to SSCL's 98)
+Engine Daily Round-Trips — Full: ~5,778  |  SSCL-only: ~2,432
+Engine Daily KM          — Full: ~227,960  |  SSCL-only: ~107,278
+  (Engine numbers are SCHEDULED service at TARGET headways — 15-min for SSCL trunks.
+   CHALO numbers are OBSERVED operations at CURRENT headways (≈25-30 min on most routes).
+   The supply gap is the whole point of the rationalisation, not a model error.)
+
+Engine Daily_Demand_Pax — SSCL trunks:  ~19,061
+Engine Daily_Demand_Pax — full network: ~27,388
+CHALO Observed Daily Pax (SSCL, 12-mo avg):  ~31,869
+  SSCL demand engine/CHALO:  0.60x  (target 0.5–2.0x — corridor-sharing is approximate)
+  Full-network demand / CHALO SSCL ridership: 0.86x  (informational only)
+
+--- Level 2: SSCL Route Fleet ---
+CHALO Total SSCL Fleet Deployed:     98 buses
+Engine SSCL Fleet Recommended:       348 buses
+  → Difference: +250 buses (+255.1%)
+
+--- Level 3: Temporal Shape ---
+CHALO Peak Hour:   9.0:00 with ~4346 pax
+CHALO Trough Hour: 6.0:00 with ~46 pax
+Engine currently uses flat headways — time-of-day multipliers are v4.
+
+--- Objective (SSCL per-route fleet parity at TARGET headway) ---
+  CHALO SSCL routes (table):            30
+  Engine permits upgraded to TRUNK:     38 (= 30 CHALO + 8 absorbed duplicates)
+  CHALO  fleet/route   (current ops):   3.27 buses  @ 34-min effective headway
+  CHALO  fleet/route   (scaled→15-min): 7.33 buses  (98 × 34/15 = 220)
+  Engine fleet/route   (recommendation): 9.16 buses  @ 15-min target headway
+
+  Per-route error vs SCALED CHALO:      +24.9%   (this is the calibration signal — should be ±25%)
+  Total-fleet error vs SCALED CHALO:    +58.2%   (engine vs same-headway CHALO equivalent)
+
+  Per-route error vs raw CHALO:         +180.3%   (NOT a calibration error — different headways)
+  Total-fleet error vs raw CHALO:       +255.1%   (includes operator-absorption + headway gap)
+  Objective (scaled per-route %%-err²): 619.9
+
+--- Calibration Advice ---
+Per-route fleet within ±25% of headway-scaled CHALO (9.16 vs 7.33 buses/route). Calibration OK.
+NOTE: Engine absorbed 8 duplicate operator permits into trunk service. Total-fleet delta vs raw CHALO (+255.1%) reflects operator rationalisation + the headway upgrade from 34 min to 15 min.

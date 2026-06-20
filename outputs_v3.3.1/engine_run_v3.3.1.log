@@ -1,0 +1,228 @@
+2026-05-18 00:39:12,600  INFO      ======================================================================
+2026-05-18 00:39:12,600  INFO        Srinagar / Kashmir Valley Transit Rationalisation — ENGINE v3.0 (Kashmir Fork)
+2026-05-18 00:39:12,600  INFO        SSCL/CHALO Backbone Injection + Kashmir Geographic Recentre | May 2026
+2026-05-18 00:39:12,600  INFO      ======================================================================
+2026-05-18 00:39:12,600  INFO        Map tile provider     : OpenStreetMap / CartoDB
+2026-05-18 00:39:12,600  INFO        Scenario              : SUMMER / SHOULDER
+2026-05-18 00:39:12,600  INFO        Walkshed (effective)  : 400 m  (POI buffer: 250 m)
+2026-05-18 00:39:12,600  INFO        Tier-3 POI weight     : 0.60 (tourism POIs)
+2026-05-18 00:39:12,600  INFO        Women-anchor boost    : 25% (CHALO: 64.5% female ridership)
+2026-05-18 00:39:12,600  INFO        CHALO observed peak   : 4346 pax/hr @ 9:00 (citywide)
+2026-05-18 00:39:12,600  INFO        CHALO op ratio        : 84.5% (operated / scheduled KM)
+2026-05-18 00:39:12,600  INFO      ======================================================================
+2026-05-18 00:39:12,600  INFO        Directive 1: Zero Route Truncation — ALL routes processed
+2026-05-18 00:39:12,600  INFO        Directive 2: Realistic Cycle Times (Srinagar congestion zones)
+2026-05-18 00:39:12,600  INFO        Directive 3: Min Fleet = 2 (floor, no LPV downgrade)
+2026-05-18 00:39:12,600  INFO        Directive 4: Trunk CDI gate = 30th percentile (aggressive) | Anti-stranding: 5.0 km min | SSCL connectivity bonus: 1.5x
+2026-05-18 00:39:12,600  INFO        Directive 5: Pop cap = 95th percentile | POI tiers: 1.0/0.4/0.6
+2026-05-18 00:39:12,600  INFO        Directive 6: Full audit logging throughout
+2026-05-18 00:39:12,600  INFO        SSCL Injection: 30 e-bus routes hardcoded TRUNK/HP @ 15-min headway
+2026-05-18 00:39:12,600  INFO        Vehicle Split: Trunk=85%%HPV+15%%MPV | Feeder=100%%MPV | LPV=0
+2026-05-18 00:39:12,600  INFO      ======================================================================
+2026-05-18 00:39:12,600  INFO      
+── PHASE 1: Data Ingestion & OSRM ──────────────────────────────────
+2026-05-18 00:39:12,600  INFO      Loading routes from 'existing-routes.csv'
+2026-05-18 00:39:12,613  INFO        Route_Name reconstructed for 444 blank rows (Origin ↔ Destination).
+2026-05-18 00:39:12,613  INFO        Loaded 613 routes (no length filter applied — Directive 1).
+2026-05-18 00:39:12,613  INFO        Injecting all 30 SSCL e-bus routes (CHALO Apr 2026)…
+2026-05-18 00:39:12,613  INFO        30 SSCL routes appended (will be force-matched to TRUNK in inject step).
+2026-05-18 00:39:12,613  INFO      Truncating routes to strict bounding box (Lat: 33.5 to 34.5, Lon: 74.4 to 75.2)…
+2026-05-18 00:39:12,642  INFO        Bounding Box Truncation: 0 routes truncated, 11 dropped entirely.
+2026-05-18 00:39:12,645  INFO      Loading POIs from 'pois.csv' (Kashmir 3-tier + women-anchor boost)…
+2026-05-18 00:39:12,663  INFO        Loaded 2431 POIs — T1 (≥1.0): 1030  T2 (≤0.4): 1072  T3 mid: 329 [scenario=SUMMER, T3 weight=0.60]
+2026-05-18 00:39:12,663  INFO        Women-anchor POIs boosted by 25%: 12
+2026-05-18 00:39:12,673  INFO      Fetching OSRM geometries (632 routes, 12 workers)…
+2026-05-18 00:39:13,766  INFO        OSRM: 632/632 ok, 0 use circuity fallback.
+2026-05-18 00:39:13,767  INFO      Merging geometries — ALL routes retained (Directive 1)…
+2026-05-18 00:39:13,822  INFO        Directive 1 — Route type breakdown after geometry: Urban=308  Peri_Urban=25  Regional_District=9  (total=342, dropped=290 for null geometry or sub-1km)
+2026-05-18 00:39:13,823  INFO        Jhelum bridge bottleneck (+8.0 min) applied to 151 routes.
+2026-05-18 00:39:13,823  INFO      Imputing existing fleet sizes for context…
+2026-05-18 00:39:13,823  INFO        Fleet imputed for 342 zero-bus routes (context only).
+2026-05-18 00:39:13,823  INFO      
+── SSCL BACKBONE INJECTION ──────────────────────────────────────────
+2026-05-18 00:39:13,823  INFO      SSCL Injection: scanning dataset against 30 SSCL e-bus trunk routes (from CHALO data)…
+2026-05-18 00:39:13,853  INFO        ✓ CMP SSCL-01 (Parimpora → Harwan): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:13,872  INFO        ✓ CMP SSCL-02 (Batamaloo → Nasrullah Pora): matched 2 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:13,904  INFO        ✓ CMP SSCL-03 (Batamaloo → Hazratbal): matched 4 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:13,935  INFO        ✓ CMP SSCL-04 (Batamaloo → Chadoora Chowk): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:13,962  INFO        ✓ CMP SSCL-05 (LD Hospital → Pandach): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:13,992  INFO        ✓ CMP SSCL-06 (Pantha Chowk → Narbal Crossing): matched 10 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,020  INFO        ✓ CMP SSCL-07 (Batamaloo → Drussu Pulwama): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,048  INFO        ✓ CMP SSCL-08 (Batamaloo → Budgam Railway Station): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,072  INFO        ✓ CMP SSCL-09 (Parimpora → Naseem Bagh): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,108  INFO        ✓ CMP SSCL-10 (Pantha Chowk → Agri Kalan Kanihama): matched 2 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,129  INFO        ✓ CMP SSCL-11 (Old City → Old City Loop): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,163  INFO        ✓ CMP SSCL-12 (Rangreth → District Court Srinagar): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,188  INFO        ✓ CMP SSCL-13 (Batamaloo → Beehama Ganderbal): matched 2 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,212  INFO        ✓ CMP SSCL-14 (TRC → Central University Ganderbal): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,241  INFO        ✓ CMP SSCL-15 (TRC → Pulwama): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,263  INFO        ✓ CMP SSCL-16 (Batamaloo → Khonmoh): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,292  INFO        ✓ CMP SSCL-17 (Batamaloo → Womens College Batpora): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,313  INFO        ✓ CMP SSCL-18 (Jehangir Chowk → Wadwan): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,345  INFO        ✓ CMP SSCL-19 (Pantha Chowk → Sumbal): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,366  INFO        ✓ CMP SSCL-20 (Pantha Chowk → Safapora): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,397  INFO        ✓ CMP SSCL-21 (Batamaloo → Arath): matched 2 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,421  INFO        ✓ CMP SSCL-22 (Batamaloo → Khrew Bus Stand): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,450  INFO        ✓ CMP SSCL-23 (Batamaloo → Charesharief): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,475  INFO        ✓ CMP SSCL-24 (Pantha Chowk → Palhalan): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,503  INFO        ✓ CMP SSCL-25 (Batamaloo → Dadsara Tral): matched 2 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,524  INFO        ✓ CMP SSCL-26 (Batamaloo → Kangan): matched 2 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,556  INFO        ✓ CMP SSCL-27 (Batamaloo → Manigam): matched 2 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,581  INFO        ✓ CMP SSCL-28 (Batamaloo → Pinglena Pampore): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,609  INFO        ✓ CMP SSCL-29 (Pantha Chowk → Panzinara): matched 2 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,638  INFO        ✓ CMP SSCL-30 (Batamaloo → DC Office Budgam): matched 1 dataset route(s) — forced TRUNK/HP.
+2026-05-18 00:39:14,638  INFO      SSCL Injection complete: 50 dataset routes forcibly upgraded to TRUNK/HP.
+2026-05-18 00:39:14,638  INFO      
+── PHASE 2: Spatial Analysis ────────────────────────────────────────
+2026-05-18 00:39:14,638  INFO      Building walk catchments (stop spacing=250m, walk radius=400m)…
+2026-05-18 00:39:15,607  INFO        Catchments built for 342 routes.
+2026-05-18 00:39:15,607  INFO      Computing per-route population from raster: E:/kash/kashmir_worldpop.tif
+2026-05-18 00:39:15,607  INFO        CMP reference: Year=2024  Total study-area population=1,660,000
+2026-05-18 00:39:16,782  INFO        Population_Served     — max raw count : 161,341
+2026-05-18 00:39:16,782  INFO        Population_Served_Pct — max: 9.72%  mean: 4.06%  (denominator: CMP 2024 total = 1,660,000)
+2026-05-18 00:39:16,782  INFO      Counting POI weighted scores (250m buffer, 2-tier weights per Directive 5)…
+2026-05-18 00:39:17,112  INFO        POI raw score mean: 9.2806  max: 20.1882
+2026-05-18 00:39:17,112  INFO      Computing junction penalties (threshold=75°, 0.5 min/turn)…
+2026-05-18 00:39:17,268  INFO        342 routes have junction penalties.
+2026-05-18 00:39:17,268  INFO      Step 7: Computing REALISTIC cycle times (Directive 2)…
+2026-05-18 00:39:17,268  INFO        Congestion: City_Core=2.2×  Peri_Urban=1.4×
+2026-05-18 00:39:17,268  INFO        Stop spacing=500m, penalty=0.5 min/stop, layover buffer=10%
+2026-05-18 00:39:17,283  INFO        Zone split — City_Core: 330  Peri_Urban: 12
+2026-05-18 00:39:17,283  INFO        Cycle_Time_Min — mean: 63.6  max: 182.3  min: 9.4
+2026-05-18 00:39:17,283  INFO        Per-km sanity cap (v3.3.1): 283 routes capped at {Urban:4.0 / Peri:2.5 / Inter:1.5} min/km × 2 directions.
+2026-05-18 00:39:17,283  INFO      
+── STEPS 1–2: Normalised Demand Scores ─────────────────────────────
+2026-05-18 00:39:17,283  INFO      Step 1: Normalising population score from CMP 2024 percentages (0–1, 95th pct density cap — Directive 5)…
+2026-05-18 00:39:17,283  INFO        Pct-density 95th pct cap = 0.6233 %/km  (raw max was 0.9097 %/km)
+2026-05-18 00:39:17,283  INFO        1 routes capped at density ceiling (Pop_Score clipped to 1.0).
+2026-05-18 00:39:17,283  INFO        Pop_Score mean: 0.7395  max: 1.0000  (based on % of CMP 2024 study-area population)
+2026-05-18 00:39:17,283  INFO      Step 2: Normalising POI gravity score (0–1, 2-tier weights)…
+2026-05-18 00:39:17,283  INFO        POI_Score mean: 0.4471  max: 1.0000
+2026-05-18 00:39:17,283  INFO      
+── ROUTE CLASSIFICATION ─────────────────────────────────────────────
+2026-05-18 00:39:17,283  INFO      Computing corridor frequency scores (STRtree)…
+2026-05-18 00:39:19,084  INFO        Frequency scores — mean: 238.4  max: 301
+2026-05-18 00:39:19,084  INFO      Apportioning population among overlapping routes (Competitive Market Share)…
+2026-05-18 00:39:19,084  INFO        Apportioned Population_Served. New naive sum: 129,254 (much closer to deduplicated reality)
+2026-05-18 00:39:19,084  INFO      Computing pairwise overlap matrix (Multiprocessed)…
+2026-05-18 00:39:19,101  INFO        Simplifying and buffering geometries at C-level...
+2026-05-18 00:39:19,318  INFO        Building spatial index...
+2026-05-18 00:39:19,318  INFO        Preparing parallel intersection tasks...
+2026-05-18 00:39:19,337  INFO        Computing 341 route clusters across 15 CPU cores...
+  Progress: [0/341] 0.0%  Progress: [1/341] 0.3%  Progress: [2/341] 0.6%  Progress: [3/341] 0.9%  Progress: [4/341] 1.2%  Progress: [5/341] 1.5%  Progress: [6/341] 1.8%  Progress: [7/341] 2.1%  Progress: [8/341] 2.3%  Progress: [9/341] 2.6%  Progress: [10/341] 2.9%  Progress: [11/341] 3.2%  Progress: [12/341] 3.5%  Progress: [13/341] 3.8%  Progress: [14/341] 4.1%  Progress: [15/341] 4.4%  Progress: [16/341] 4.7%  Progress: [17/341] 5.0%  Progress: [18/341] 5.3%  Progress: [19/341] 5.6%  Progress: [20/341] 5.9%  Progress: [21/341] 6.2%  Progress: [22/341] 6.5%  Progress: [23/341] 6.7%  Progress: [24/341] 7.0%  Progress: [25/341] 7.3%  Progress: [26/341] 7.6%  Progress: [27/341] 7.9%  Progress: [28/341] 8.2%  Progress: [29/341] 8.5%  Progress: [30/341] 8.8%  Progress: [31/341] 9.1%  Progress: [32/341] 9.4%  Progress: [33/341] 9.7%  Progress: [34/341] 10.0%  Progress: [35/341] 10.3%  Progress: [36/341] 10.6%  Progress: [37/341] 10.9%  Progress: [38/341] 11.1%  Progress: [39/341] 11.4%  Progress: [40/341] 11.7%  Progress: [41/341] 12.0%  Progress: [42/341] 12.3%  Progress: [43/341] 12.6%  Progress: [44/341] 12.9%  Progress: [45/341] 13.2%  Progress: [46/341] 13.5%  Progress: [47/341] 13.8%  Progress: [48/341] 14.1%  Progress: [49/341] 14.4%  Progress: [50/341] 14.7%  Progress: [51/341] 15.0%  Progress: [52/341] 15.2%  Progress: [53/341] 15.5%  Progress: [54/341] 15.8%  Progress: [55/341] 16.1%  Progress: [56/341] 16.4%  Progress: [57/341] 16.7%  Progress: [58/341] 17.0%  Progress: [59/341] 17.3%  Progress: [60/341] 17.6%  Progress: [61/341] 17.9%  Progress: [62/341] 18.2%  Progress: [63/341] 18.5%  Progress: [64/341] 18.8%  Progress: [65/341] 19.1%  Progress: [66/341] 19.4%  Progress: [67/341] 19.6%  Progress: [68/341] 19.9%  Progress: [69/341] 20.2%  Progress: [70/341] 20.5%  Progress: [71/341] 20.8%  Progress: [72/341] 21.1%  Progress: [73/341] 21.4%  Progress: [74/341] 21.7%  Progress: [75/341] 22.0%  Progress: [76/341] 22.3%  Progress: [77/341] 22.6%  Progress: [78/341] 22.9%  Progress: [79/341] 23.2%  Progress: [80/341] 23.5%  Progress: [81/341] 23.8%  Progress: [82/341] 24.0%  Progress: [83/341] 24.3%  Progress: [84/341] 24.6%  Progress: [85/341] 24.9%  Progress: [86/341] 25.2%  Progress: [87/341] 25.5%  Progress: [88/341] 25.8%  Progress: [89/341] 26.1%  Progress: [90/341] 26.4%  Progress: [91/341] 26.7%  Progress: [92/341] 27.0%  Progress: [93/341] 27.3%  Progress: [94/341] 27.6%  Progress: [95/341] 27.9%  Progress: [96/341] 28.2%  Progress: [97/341] 28.4%  Progress: [98/341] 28.7%  Progress: [99/341] 29.0%  Progress: [100/341] 29.3%  Progress: [101/341] 29.6%  Progress: [102/341] 29.9%  Progress: [103/341] 30.2%  Progress: [104/341] 30.5%  Progress: [105/341] 30.8%  Progress: [106/341] 31.1%  Progress: [107/341] 31.4%  Progress: [108/341] 31.7%  Progress: [109/341] 32.0%  Progress: [110/341] 32.3%  Progress: [111/341] 32.6%  Progress: [112/341] 32.8%  Progress: [113/341] 33.1%  Progress: [114/341] 33.4%  Progress: [115/341] 33.7%  Progress: [116/341] 34.0%  Progress: [117/341] 34.3%  Progress: [118/341] 34.6%  Progress: [119/341] 34.9%  Progress: [120/341] 35.2%  Progress: [121/341] 35.5%  Progress: [122/341] 35.8%  Progress: [123/341] 36.1%  Progress: [124/341] 36.4%  Progress: [125/341] 36.7%  Progress: [126/341] 37.0%  Progress: [127/341] 37.2%  Progress: [128/341] 37.5%  Progress: [129/341] 37.8%  Progress: [130/341] 38.1%  Progress: [131/341] 38.4%  Progress: [132/341] 38.7%  Progress: [133/341] 39.0%  Progress: [134/341] 39.3%  Progress: [135/341] 39.6%  Progress: [136/341] 39.9%  Progress: [137/341] 40.2%  Progress: [138/341] 40.5%  Progress: [139/341] 40.8%  Progress: [140/341] 41.1%  Progress: [141/341] 41.3%  Progress: [142/341] 41.6%  Progress: [143/341] 41.9%  Progress: [144/341] 42.2%  Progress: [145/341] 42.5%  Progress: [146/341] 42.8%  Progress: [147/341] 43.1%  Progress: [148/341] 43.4%  Progress: [149/341] 43.7%  Progress: [150/341] 44.0%  Progress: [151/341] 44.3%  Progress: [152/341] 44.6%  Progress: [153/341] 44.9%  Progress: [154/341] 45.2%  Progress: [155/341] 45.5%  Progress: [156/341] 45.7%  Progress: [157/341] 46.0%  Progress: [158/341] 46.3%  Progress: [159/341] 46.6%  Progress: [160/341] 46.9%  Progress: [161/341] 47.2%  Progress: [162/341] 47.5%  Progress: [163/341] 47.8%  Progress: [164/341] 48.1%  Progress: [165/341] 48.4%  Progress: [166/341] 48.7%  Progress: [167/341] 49.0%  Progress: [168/341] 49.3%  Progress: [169/341] 49.6%  Progress: [170/341] 49.9%  Progress: [171/341] 50.1%  Progress: [172/341] 50.4%  Progress: [173/341] 50.7%  Progress: [174/341] 51.0%  Progress: [175/341] 51.3%  Progress: [176/341] 51.6%  Progress: [177/341] 51.9%  Progress: [178/341] 52.2%  Progress: [179/341] 52.5%  Progress: [180/341] 52.8%  Progress: [181/341] 53.1%  Progress: [182/341] 53.4%  Progress: [183/341] 53.7%  Progress: [184/341] 54.0%  Progress: [185/341] 54.3%  Progress: [186/341] 54.5%  Progress: [187/341] 54.8%  Progress: [188/341] 55.1%  Progress: [189/341] 55.4%  Progress: [190/341] 55.7%  Progress: [191/341] 56.0%  Progress: [192/341] 56.3%  Progress: [193/341] 56.6%  Progress: [194/341] 56.9%  Progress: [195/341] 57.2%  Progress: [196/341] 57.5%  Progress: [197/341] 57.8%  Progress: [198/341] 58.1%  Progress: [199/341] 58.4%  Progress: [200/341] 58.7%  Progress: [201/341] 58.9%  Progress: [202/341] 59.2%  Progress: [203/341] 59.5%  Progress: [204/341] 59.8%  Progress: [205/341] 60.1%  Progress: [206/341] 60.4%  Progress: [207/341] 60.7%  Progress: [208/341] 61.0%  Progress: [209/341] 61.3%  Progress: [210/341] 61.6%  Progress: [211/341] 61.9%  Progress: [212/341] 62.2%  Progress: [213/341] 62.5%  Progress: [214/341] 62.8%  Progress: [215/341] 63.0%  Progress: [216/341] 63.3%  Progress: [217/341] 63.6%  Progress: [218/341] 63.9%  Progress: [219/341] 64.2%  Progress: [220/341] 64.5%  Progress: [221/341] 64.8%  Progress: [222/341] 65.1%  Progress: [223/341] 65.4%  Progress: [224/341] 65.7%  Progress: [225/341] 66.0%  Progress: [226/341] 66.3%  Progress: [227/341] 66.6%  Progress: [228/341] 66.9%  Progress: [229/341] 67.2%  Progress: [230/341] 67.4%  Progress: [231/341] 67.7%  Progress: [232/341] 68.0%  Progress: [233/341] 68.3%  Progress: [234/341] 68.6%  Progress: [235/341] 68.9%  Progress: [236/341] 69.2%  Progress: [237/341] 69.5%  Progress: [238/341] 69.8%  Progress: [239/341] 70.1%  Progress: [240/341] 70.4%  Progress: [241/341] 70.7%  Progress: [242/341] 71.0%  Progress: [243/341] 71.3%  Progress: [244/341] 71.6%  Progress: [245/341] 71.8%  Progress: [246/341] 72.1%  Progress: [247/341] 72.4%  Progress: [248/341] 72.7%  Progress: [249/341] 73.0%  Progress: [250/341] 73.3%  Progress: [251/341] 73.6%  Progress: [252/341] 73.9%  Progress: [253/341] 74.2%  Progress: [254/341] 74.5%  Progress: [255/341] 74.8%  Progress: [256/341] 75.1%  Progress: [257/341] 75.4%  Progress: [258/341] 75.7%  Progress: [259/341] 76.0%  Progress: [260/341] 76.2%  Progress: [261/341] 76.5%  Progress: [262/341] 76.8%  Progress: [263/341] 77.1%  Progress: [264/341] 77.4%  Progress: [265/341] 77.7%  Progress: [266/341] 78.0%  Progress: [267/341] 78.3%  Progress: [268/341] 78.6%  Progress: [269/341] 78.9%  Progress: [270/341] 79.2%  Progress: [271/341] 79.5%  Progress: [272/341] 79.8%  Progress: [273/341] 80.1%  Progress: [274/341] 80.4%  Progress: [275/341] 80.6%  Progress: [276/341] 80.9%  Progress: [277/341] 81.2%  Progress: [278/341] 81.5%  Progress: [279/341] 81.8%  Progress: [280/341] 82.1%  Progress: [281/341] 82.4%  Progress: [282/341] 82.7%  Progress: [283/341] 83.0%  Progress: [284/341] 83.3%  Progress: [285/341] 83.6%  Progress: [286/341] 83.9%  Progress: [287/341] 84.2%  Progress: [288/341] 84.5%  Progress: [289/341] 84.8%  Progress: [290/341] 85.0%  Progress: [291/341] 85.3%  Progress: [292/341] 85.6%  Progress: [293/341] 85.9%  Progress: [294/341] 86.2%  Progress: [295/341] 86.5%  Progress: [296/341] 86.8%  Progress: [297/341] 87.1%  Progress: [298/341] 87.4%  Progress: [299/341] 87.7%  Progress: [300/341] 88.0%  Progress: [301/341] 88.3%  Progress: [302/341] 88.6%  Progress: [303/341] 88.9%  Progress: [304/341] 89.1%  Progress: [305/341] 89.4%  Progress: [306/341] 89.7%  Progress: [307/341] 90.0%  Progress: [308/341] 90.3%  Progress: [309/341] 90.6%  Progress: [310/341] 90.9%  Progress: [311/341] 91.2%  Progress: [312/341] 91.5%  Progress: [313/341] 91.8%  Progress: [314/341] 92.1%  Progress: [315/341] 92.4%  Progress: [316/341] 92.7%  Progress: [317/341] 93.0%  Progress: [318/341] 93.3%  Progress: [319/341] 93.5%  Progress: [320/341] 93.8%  Progress: [321/341] 94.1%  Progress: [322/341] 94.4%  Progress: [323/341] 94.7%  Progress: [324/341] 95.0%  Progress: [325/341] 95.3%  Progress: [326/341] 95.6%  Progress: [327/341] 95.9%  Progress: [328/341] 96.2%  Progress: [329/341] 96.5%  Progress: [330/341] 96.8%  Progress: [331/341] 97.1%  Progress: [332/341] 97.4%  Progress: [333/341] 97.7%  Progress: [334/341] 97.9%  Progress: [335/341] 98.2%  Progress: [336/341] 98.5%  Progress: [337/341] 98.8%  Progress: [338/341] 99.1%  Progress: [339/341] 99.4%  Progress: [340/341] 99.7%  Progress: [341/341] 100.0%
+2026-05-18 00:39:24,367  INFO        Overlap matrix (342×342) done  (parallel execution).
+2026-05-18 00:39:24,372  INFO      Union-Find clustering (threshold=65%)…
+2026-05-18 00:39:24,377  INFO        16 clusters formed.
+2026-05-18 00:39:24,383  INFO      Classifying routes — v3 aggressive trunk rules…
+2026-05-18 00:39:24,383  INFO        CDI gate: 30th percentile (was 50th in v2)
+2026-05-18 00:39:24,383  INFO        Anti-stranding: routes < 5.0 km ineligible for Trunk
+2026-05-18 00:39:24,383  INFO        CMP connectivity bonus: 1.5× for routes intersecting CMP backbone
+2026-05-18 00:39:24,385  INFO        Demand gate threshold (30th pct): 1.0269
+2026-05-18 00:39:24,562  INFO        CMP backbone union built from 45 trunk geometries.
+2026-05-18 00:39:24,849  INFO        v3 gate (30th pct) — 3 clusters had no eligible Trunk (all assigned as feeders).
+2026-05-18 00:39:24,849  INFO        Trunks: 51 | Merged: 105 | Feeders: 186
+2026-05-18 00:39:24,857  INFO        Displaced operator summary (105 routes merged):
+2026-05-18 00:39:24,857  INFO          Private Minibus                : 70 permits absorbed
+2026-05-18 00:39:24,857  INFO          LPV / Tempo                    : 32 permits absorbed
+2026-05-18 00:39:24,857  INFO          HPV Bus                        : 3 permits absorbed
+2026-05-18 00:39:24,860  INFO      Applying terminal capacity constraints…
+2026-05-18 00:39:24,870  INFO        0 trunks capacity-downgraded to feeder.
+2026-05-18 00:39:24,870  INFO      
+── STEPS 3–9: CDI Pipeline ──────────────────────────────────────────
+2026-05-18 00:39:24,870  INFO      Step 3: Assigning Road_Multiplier (Action_Taken fallback)…
+2026-05-18 00:39:24,870  INFO        Road_Multiplier — Trunk: 1.25  Feeder: 0.75
+2026-05-18 00:39:24,870  INFO      Step 4a: Computing Final_CDI = Pop×0.50 + POI×0.50 (Road_Multiplier moved to Step-5 tie-breaker in v3.2)…
+2026-05-18 00:39:24,870  INFO        Final_CDI mean: 0.5933  max: 1.0000  min: 0.0000
+2026-05-18 00:39:24,870  INFO      Step 4b: Computing Social_Flag (500m buffer, 11 attractors)…
+2026-05-18 00:39:24,993  INFO        87 routes flagged as Social Obligation.
+2026-05-18 00:39:24,993  INFO      Step 5: Assigning Priority Bands via Jenks Natural Breaks (Road_Multiplier acts as tie-breaker near band edges)…
+2026-05-18 00:39:24,993  INFO        Jenks breaks → LP < 0.3844  ≤ MP < 0.6487  ≤ HP
+2026-05-18 00:39:24,993  INFO        CMP lock: 40 SSCL trunk(s) re-elevated to HP after Jenks.
+2026-05-18 00:39:24,993  INFO        Priority bands — HP: 195  MP: 126  LP: 21  (8 Social LP→MP, 0 District-HQ LP→MP, 1 road-promoted, 2 road-demoted)
+2026-05-18 00:39:24,993  INFO      Step 5b (v3.3.1 +0.20 delta): 10 non-SSCL routes at/above strongest SSCL trunk (max_sscl_cdi=1.0000); 41 SSCL routes below strongest non-SSCL by ≥0.20 (max_non_sscl_cdi=0.8543). Planner review only; no auto-reclassification.
+2026-05-18 00:39:25,002  INFO      Step 6: Assigning headways by Priority Band + Route_Type…
+2026-05-18 00:39:25,002  INFO        SSCL Trunk routes: hardcoded 15 min (SSCL operational target)
+2026-05-18 00:39:25,002  INFO        Urban/Peri-Urban: HP=15  MP=30  LP=60 min
+2026-05-18 00:39:25,002  INFO        Regional_District lifelines: HP=60  MP=90 min
+2026-05-18 00:39:25,003  INFO        45 SSCL Trunk routes → hardcoded 15-min headway.
+2026-05-18 00:39:25,003  INFO        9 Regional_District routes assigned relaxed headways.
+2026-05-18 00:39:25,003  INFO      Step 8: Computing Fleet_Required = CEILING(Cycle_Time / Headway) × spare_ratio 1.15. Floors: Urban/Peri=2  Regional_District=1.
+2026-05-18 00:39:25,014  INFO        Floors hit — Urban/Peri raised to 2: 0 routes; Regional_District raised to 1: 0 routes.
+2026-05-18 00:39:25,014  INFO        Fleet_Required — mean: 5.0  max: 15  total: 1702
+2026-05-18 00:39:25,014  INFO      Step 9: Computing HPV/MPV/LPV vehicle split (v3.2 Route_KM-bracketed + SSCL table override)…
+2026-05-18 00:39:25,055  INFO        HPV total: 52  MPV total: 1270  LPV total: 153  (SSCL table override applied to 45 routes)
+2026-05-18 00:39:25,055  INFO        Zeroed fleet for 105 MERGED_INTO_TRUNK routes.
+2026-05-18 00:39:25,055  INFO      Phase 4: computing derived per-route KPIs (Load_Ratio, Journey_Time, Viability, Emissions, Equity)…
+2026-05-18 00:39:25,066  INFO        Load_Flag: Green=0  Amber_Under=237  Amber_Tight=0  Red_Overload=0  Red_NoCap=0
+2026-05-18 00:39:25,066  INFO        Pax journey time >45 min: 161 routes
+2026-05-18 00:39:25,066  INFO        Subsidy risk (viability<0.60, non-social): 184 routes
+2026-05-18 00:39:25,066  INFO        Tourist corridors active: 4  |  Winter-suspended: 0
+2026-05-18 00:39:25,066  INFO      
+── QC CHECKS ────────────────────────────────────────────────────────
+2026-05-18 00:39:25,066  INFO      Running QC checks (8 checks — v3 HPV/MPV only policy)…
+2026-05-18 00:39:25,066  INFO        ✓ Check 1: Vehicle count integrity — HPV+MPV+LPV = Fleet_Required for all rows.
+2026-05-18 00:39:25,066  INFO        ✓ Check 2: LPV check bypassed — LPV retention enabled in v3.1.
+2026-05-18 00:39:25,066  INFO        ✓ Check 3: No null Priority_Band values.
+2026-05-18 00:39:25,066  INFO        ✓ Check 4: Bypassed (feeders can have HPVs based on vehicle category).
+2026-05-18 00:39:25,073  INFO        ✓ Check 5: All non-SSCL trunks ≥12 km have HPV_Count > 0  (18 short trunks <12 km and 29 SSCL all-9m trunks legitimately MPV-only).
+2026-05-18 00:39:25,073  INFO        ✓ Check 6: All active routes have Fleet_Required > 0 (total fleet = 1016).
+2026-05-18 00:39:25,078  INFO        ✓ Check 7: All 45 matched SSCL trunks confirmed HP (30/30 SSCL IDs matched).
+2026-05-18 00:39:25,078  INFO        ✓ Check 8: No Social Obligation routes in LP band.
+2026-05-18 00:39:25,078  INFO        ✓ Check CMP: All 45 CMP-injected routes confirmed as UPGRADED_TO_TRUNK.
+2026-05-18 00:39:25,078  INFO        ✓ ALL QC CHECKS PASSED — workbook ready for export.
+2026-05-18 00:39:25,078  INFO      Computing deduplicated network population (dissolved union)…
+2026-05-18 00:39:25,595  INFO        Deduplicated network population: 1,158,399  (69.78% of CMP 2024 total: 1,660,000)
+2026-05-18 00:39:25,598  INFO      ====================================================================
+2026-05-18 00:39:25,598  INFO        NETWORK EFFICIENCY SUMMARY (v3)
+2026-05-18 00:39:25,598  INFO        Deduplicated Pop. Served : 1,158,399 residents
+2026-05-18 00:39:25,598  INFO        Active Fleet Required    : 1016 buses
+2026-05-18 00:39:25,598  INFO        Fleet Efficiency         : 1140 res/bus
+2026-05-18 00:39:25,598  INFO        SSCL Backbone Trunks     : 45 routes (hardcoded 15-min headway)
+2026-05-18 00:39:25,598  INFO        Routes > 40km (lifelines): 9 (Directive 1 — retained, not dropped)
+2026-05-18 00:39:25,598  INFO        LPV fleet                : 0 (eradicated in v3)
+2026-05-18 00:39:25,598  INFO      ====================================================================
+2026-05-18 00:39:25,598  INFO      
+── PHASE 3: Rationalisation Log ─────────────────────────────────────
+2026-05-18 00:39:25,598  INFO      Generating Rationalisation Log → Rationalisation_Log_Kashmir_v3.csv
+2026-05-18 00:39:25,614  INFO        Log written: 342 rows.
+2026-05-18 00:39:25,614  INFO      
+── PHASE 4: Cartography & Export ────────────────────────────────────
+2026-05-18 00:39:25,614  INFO      Building master transit map → Master_Transit_Map_Kashmir_v3.html
+2026-05-18 00:39:25,820  INFO        Master map saved.
+2026-05-18 00:39:25,823  INFO      Building individual route maps → route_maps_kashmir/
+2026-05-18 00:39:28,255  INFO        222 individual maps saved.
+2026-05-18 00:39:28,255  INFO      Exporting CSV → Rationalised_Routes_Kashmir_v3.csv
+2026-05-18 00:39:28,255  INFO        CSV written: 342 rows.
+2026-05-18 00:39:28,255  INFO      Exporting XLSX → Kashmir_Route_Frequency_Plan_v3.xlsx
+2026-05-18 00:39:28,907  INFO        XLSX written: 342 data rows, 4 sheets.
+2026-05-18 00:39:28,907  INFO      Exporting Passenger Impact → Passenger_Impact_Kashmir_v3.csv
+2026-05-18 00:39:28,907  INFO        Passenger impact written: 237 rows.
+2026-05-18 00:39:28,907  INFO      Exporting Network GeoJSON → Rationalised_Routes_Kashmir_v3.geojson
+2026-05-18 00:39:29,101  INFO      Created 237 records
+2026-05-18 00:39:29,101  INFO        GeoJSON written: 237 active features.
+2026-05-18 00:39:29,101  INFO      
+======================================================================
+2026-05-18 00:39:29,101  INFO        PIPELINE v3 COMPLETE  (16.5 s)
+2026-05-18 00:39:29,101  INFO        Total routes in dataset : 342 (no length truncation — D1)
+2026-05-18 00:39:29,101  INFO        Active routes           : 237  (Trunk: 51  Feeder: 186  Merged: 105)
+2026-05-18 00:39:29,101  INFO        SSCL backbone trunks    : 45 / 30 matched (15-min headway)
+2026-05-18 00:39:29,106  INFO        Route types             : Urban=308  Peri_Urban=25  Regional_District=9
+2026-05-18 00:39:29,107  INFO        Priority bands          : HP=134  MP=82  LP=21  (Social: 53)
+2026-05-18 00:39:29,107  INFO        Total fleet             : 1016 buses (HPV: 52  MPV: 811  LPV: 153)
+2026-05-18 00:39:29,107  INFO        Displaced operator permits (105 total — absorbed into trunk network):
+2026-05-18 00:39:29,107  INFO          Private Minibus                : 70
+2026-05-18 00:39:29,107  INFO          LPV / Tempo                    : 32
+2026-05-18 00:39:29,107  INFO          HPV Bus                        : 3
+2026-05-18 00:39:29,107  INFO        NOTE: Operator absorption or buyback recommendations needed before plan submission. See Displaced_Operator_Class column.
+2026-05-18 00:39:29,107  INFO        Trunk vehicle split     : Route_KM-bracketed (<12km: 100%% MPV | 12-22km: 50/50 | 22+km: 85%% HPV)  + SSCL empirical table for backbone routes (v3.2)
+2026-05-18 00:39:29,107  INFO        Feeder vehicle split    : 100%% MPV (city bus / unknown), 30/70 HPV/MPV (regular/MPS), 100%% LPV (LPV category)
+2026-05-18 00:39:29,107  INFO        Network pop.            : 1,158,399 residents  (69.78% of CMP 2024 total: 1,660,000)
+2026-05-18 00:39:29,107  INFO        Jenks engine            : jenkspy
+2026-05-18 00:39:29,107  INFO        Outputs:
+2026-05-18 00:39:29,107  INFO          Kashmir_Route_Frequency_Plan_v3.xlsx          4-sheet workbook
+2026-05-18 00:39:29,107  INFO          Master_Transit_Map_Kashmir_v3.html            sidebar + KPI map
+2026-05-18 00:39:29,107  INFO          Rationalisation_Log_Kashmir_v3.csv            full audit log
+2026-05-18 00:39:29,107  INFO          Passenger_Impact_Kashmir_v3.csv               passenger impact
+2026-05-18 00:39:29,107  INFO          Rationalised_Routes_Kashmir_v3.csv            operational CSV
+2026-05-18 00:39:29,107  INFO          Rationalised_Routes_Kashmir_v3.geojson        GeoJSON network
+2026-05-18 00:39:29,107  INFO      ======================================================================

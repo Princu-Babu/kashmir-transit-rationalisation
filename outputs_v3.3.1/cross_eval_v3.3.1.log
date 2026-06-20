@@ -1,0 +1,48 @@
+Data sources:
+  Ridership : .\Ridership Data.csv
+  Buses     : .\Route Wise deployed Buses.csv
+  Hourly    : .\Hourly Passenger Count.csv
+  Engine out: .\Rationalised_Routes_Kashmir_v3.csv
+
+=== CHALO vs Engine Cross-Evaluation (v3.3 — 12-month average) ===
+
+--- Level 1: System-Wide Totals (12-month daily averages) ---
+CHALO Daily Pax   (SSCL 30 routes, 12-mo avg): ~31,869
+CHALO Daily Operated KM:                       ~18,362
+CHALO Daily Trips:                             ~855
+
+NOTE: All CHALO metrics above are SSCL-only (30 e-bus routes).
+      Full-network engine metrics are shown separately for context.
+
+Engine Fleet — Full network: 1016 buses  |  SSCL-only: 132 buses
+(Full-network includes private minibuses + JKRTC + MPS — not directly comparable to SSCL's 98)
+Engine Daily Trips — Full: ~23,019  |  SSCL-only: ~5,760
+Engine Daily KM    — Full: ~245,842  |  SSCL-only: ~106,696
+
+Engine Implied Daily Pax — SSCL routes only (9% mode share, 1.6 trips/day): ~6,688
+CHALO Observed Daily Pax (SSCL):  ~31,869
+  → Ratio engine/CHALO: 0.21×  (1.0 = perfect, <1.5 = good)
+
+Full-network theoretical daily demand (all 227 routes, 9% mode share): ~14,760
+  (This is NOT comparable to CHALO — CHALO covers only the 30 SSCL routes.)
+
+--- Level 2: SSCL Route Fleet ---
+CHALO Total SSCL Fleet Deployed:     98 buses
+Engine SSCL Fleet Recommended:       132 buses
+  → Difference: +34 buses (+34.7%)
+
+--- Level 3: Temporal Shape ---
+CHALO Peak Hour:   9.0:00 with ~4346 pax
+CHALO Trough Hour: 6.0:00 with ~46 pax
+Engine currently uses flat headways — time-of-day multipliers are v4.
+
+--- Objective (sum of squared %% errors, SSCL-only vs CHALO) ---
+  SSCL fleet  : +34.7%
+  Daily KM    : +481.1%
+  Daily trips : +573.4%
+  Objective   : 561,389.1   (lower = closer to CHALO ground truth)
+
+--- Calibration Advice ---
+Engine SSCL fleet (132) is >15% above CHALO (98).
+  Try: raise SSCL_TRUNK_HEADWAY_MIN, lower STOP_PENALTY_MIN, or relax CONGESTION_CITY_CORE.
+Engine daily KM (full network) is >20% above CHALO SSCL KM — expected, since CHALO covers only 30 routes while engine covers 227.

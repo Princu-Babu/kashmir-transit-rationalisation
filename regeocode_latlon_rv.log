@@ -1,0 +1,111 @@
+[INFO] Geocoder backend: nominatim (OSM)
+==================================================
+SRINAGAR MINI-BUS GEOCODER STARTED
+==================================================
+[INFO] Loaded dataset with 15231 routes.
+[INFO] Filtered for 'SRINAGAR RTO'. Remaining routes: 1259
+[INFO] Found 93 unique locations.
+[INFO] Loaded 95 previously cached locations from disk.
+[INFO] Remaining locations to fetch: 24
+
+Processing 1/24: 'SCRAPED'
+  [FAILED] Could not place 'SCRAPED' (see geocode_failures.csv)
+Processing 2/24: 'KHUMANI CHOWK'
+  [FAILED] Could not place 'KHUMANI CHOWK' (see geocode_failures.csv)
+Processing 3/24: 'KHAYA'
+  [FAILED] Could not place 'KHAYA' (see geocode_failures.csv)
+Processing 4/24: 'BOHRIKADAL'
+  [FAILED] Could not place 'BOHRIKADAL' (see geocode_failures.csv)
+Processing 5/24: 'BONE JOINT HOSPITAL BARZALLA'
+  [FAILED] Could not place 'BONE JOINT HOSPITAL BARZALLA' (see geocode_failures.csv)
+Processing 6/24: 'TRC'
+  [OK] TRC -> 34.07470, 74.82470
+Processing 7/24: 'EASTERN AREA OF SRINAGAR CITY'
+  [FAILED] Could not place 'EASTERN AREA OF SRINAGAR CITY' (see geocode_failures.csv)
+Processing 8/24: 'SAKIDAFAR'
+  [FAILED] Could not place 'SAKIDAFAR' (see geocode_failures.csv)
+Processing 9/24: 'SCRAPPED'
+  [FAILED] Could not place 'SCRAPPED' (see geocode_failures.csv)
+Processing 10/24: 'JEHANGIR CHOWK'
+  [FAILED] Could not place 'JEHANGIR CHOWK' (see geocode_failures.csv)
+Processing 11/24: '90FEET'
+  [FAILED] Could not place '90FEET' (see geocode_failures.csv)
+Processing 12/24: 'LD HOSPITAL'
+  [OK] LD HOSPITAL -> 34.08220, 74.80590
+Processing 13/24: 'ILLAHIBAGH'
+  [FAILED] Could not place 'ILLAHIBAGH' (see geocode_failures.csv)
+Processing 14/24: 'GBS'
+  [FAILED] Could not place 'GBS' (see geocode_failures.csv)
+Processing 15/24: 'EXCROSSING'
+  [FAILED] Could not place 'EXCROSSING' (see geocode_failures.csv)
+Processing 16/24: 'CHUNTWALIWAR'
+  [FAILED] Could not place 'CHUNTWALIWAR' (see geocode_failures.csv)
+Processing 17/24: 'VIA SHALIMAR'
+  [FAILED] Could not place 'VIA SHALIMAR' (see geocode_failures.csv)
+Processing 18/24: 'MOMINABAD TENGPORA'
+  [FAILED] Could not place 'MOMINABAD TENGPORA' (see geocode_failures.csv)
+Processing 19/24: 'NALLAMAR ROAD'
+  [FAILED] Could not place 'NALLAMAR ROAD' (see geocode_failures.csv)
+Processing 20/24: 'LD'
+  [OK] LD -> 34.08220, 74.80590
+Processing 21/24: 'GADOORA'
+  [FAILED] Could not place 'GADOORA' (see geocode_failures.csv)
+Processing 22/24: 'BAGHAT SHORA'
+  [FAILED] Could not place 'BAGHAT SHORA' (see geocode_failures.csv)
+Processing 23/24: 'PARIMPORA'
+  [OK] PARIMPORA -> 34.11120, 74.74750
+Processing 24/24: 'EXB CROSSING'
+  [FAILED] Could not place 'EXB CROSSING' (see geocode_failures.csv)
+
+==================================================
+INITIATING RETRY FOR 20 FAILED LOCATIONS
+==================================================
+Retrying 1/20: 'SCRAPED'
+  [FAILED] Could not place 'SCRAPED' (see geocode_failures.csv)
+Retrying 2/20: 'KHUMANI CHOWK'
+  [FAILED] Could not place 'KHUMANI CHOWK' (see geocode_failures.csv)
+Retrying 3/20: 'KHAYA'
+  [FAILED] Could not place 'KHAYA' (see geocode_failures.csv)
+Retrying 4/20: 'BOHRIKADAL'
+  [FAILED] Could not place 'BOHRIKADAL' (see geocode_failures.csv)
+Retrying 5/20: 'BONE JOINT HOSPITAL BARZALLA'
+  [FAILED] Could not place 'BONE JOINT HOSPITAL BARZALLA' (see geocode_failures.csv)
+Retrying 6/20: 'EASTERN AREA OF SRINAGAR CITY'
+  [FAILED] Could not place 'EASTERN AREA OF SRINAGAR CITY' (see geocode_failures.csv)
+Retrying 7/20: 'SAKIDAFAR'
+  [FAILED] Could not place 'SAKIDAFAR' (see geocode_failures.csv)
+Retrying 8/20: 'SCRAPPED'
+  [FAILED] Could not place 'SCRAPPED' (see geocode_failures.csv)
+Retrying 9/20: 'JEHANGIR CHOWK'
+  [FAILED] Could not place 'JEHANGIR CHOWK' (see geocode_failures.csv)
+Retrying 10/20: '90FEET'
+  [FAILED] Could not place '90FEET' (see geocode_failures.csv)
+Retrying 11/20: 'ILLAHIBAGH'
+  [FAILED] Could not place 'ILLAHIBAGH' (see geocode_failures.csv)
+Retrying 12/20: 'GBS'
+  [FAILED] Could not place 'GBS' (see geocode_failures.csv)
+Retrying 13/20: 'EXCROSSING'
+  [FAILED] Could not place 'EXCROSSING' (see geocode_failures.csv)
+Retrying 14/20: 'CHUNTWALIWAR'
+  [FAILED] Could not place 'CHUNTWALIWAR' (see geocode_failures.csv)
+Retrying 15/20: 'VIA SHALIMAR'
+  [FAILED] Could not place 'VIA SHALIMAR' (see geocode_failures.csv)
+Retrying 16/20: 'MOMINABAD TENGPORA'
+  [FAILED] Could not place 'MOMINABAD TENGPORA' (see geocode_failures.csv)
+Retrying 17/20: 'NALLAMAR ROAD'
+  [FAILED] Could not place 'NALLAMAR ROAD' (see geocode_failures.csv)
+Retrying 18/20: 'GADOORA'
+  [FAILED] Could not place 'GADOORA' (see geocode_failures.csv)
+Retrying 19/20: 'BAGHAT SHORA'
+  [FAILED] Could not place 'BAGHAT SHORA' (see geocode_failures.csv)
+Retrying 20/20: 'EXB CROSSING'
+  [FAILED] Could not place 'EXB CROSSING' (see geocode_failures.csv)
+
+==================================================
+BUILDING FINAL EXISTING-ROUTES.CSV
+==================================================
+[INFO] Processing Complete!
+[INFO] Exported 335 routes where BOTH origin and destination were successfully geocoded.
+[INFO] Output saved to existing-routes.csv
+[AUDIT] 40 geocode failures written to geocode_failures.csv (resolve these manually — they are NOT in existing-routes.csv).
+[AUDIT] 924 of 1259 Srinagar-RTO permits dropped (no usable O/D geocode) → existing_routes_dropped.csv

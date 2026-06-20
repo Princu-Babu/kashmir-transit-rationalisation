@@ -1,0 +1,67 @@
+[INFO] Geocoder backend: nominatim (OSM)
+==================================================
+SRINAGAR MINI-BUS GEOCODER STARTED
+==================================================
+[INFO] Loaded dataset with 15231 routes.
+[INFO] Filtered for 'SRINAGAR RTO'. Remaining routes: 1259
+[INFO] Found 93 unique locations.
+[INFO] Loaded 102 previously cached locations from disk.
+[INFO] Remaining locations to fetch: 20
+
+Processing 1/20: 'EASTERN AREA OF SRINAGAR CITY'
+  [OK] EASTERN AREA OF SRINAGAR CITY -> 34.07238, 74.81516
+Processing 2/20: 'EXCROSSING'
+  [OK] EXCROSSING -> 34.08300, 74.79700
+Processing 3/20: 'JEHANGIR CHOWK'
+  [OK] JEHANGIR CHOWK -> 34.07189, 74.80491
+Processing 4/20: 'BOHRIKADAL'
+  [OK] BOHRIKADAL -> 34.09280, 74.81260
+Processing 5/20: 'SCRAPED'
+  [FAILED] Could not place 'SCRAPED' (see geocode_failures.csv)
+Processing 6/20: 'VIA SHALIMAR'
+  [OK] VIA SHALIMAR -> 34.15078, 74.87527
+Processing 7/20: 'BAGHAT SHORA'
+  [OK] BAGHAT SHORA -> 34.04198, 74.80241
+Processing 8/20: 'SCRAPPED'
+  [FAILED] Could not place 'SCRAPPED' (see geocode_failures.csv)
+Processing 9/20: 'KHUMANI CHOWK'
+  [OK] KHUMANI CHOWK -> 34.03118, 74.90479
+Processing 10/20: '90FEET'
+  [OK] 90FEET -> 34.04700, 74.80000
+Processing 11/20: 'GBS'
+  [OK] GBS -> 34.06860, 74.81000
+Processing 12/20: 'SAKIDAFAR'
+  [OK] SAKIDAFAR -> 34.11000, 74.80500
+Processing 13/20: 'GADOORA'
+  [OK] GADOORA -> 34.17517, 74.78275
+Processing 14/20: 'ILLAHIBAGH'
+  [OK] ILLAHIBAGH -> 34.15222, 74.81073
+Processing 15/20: 'KHAYA'
+  [OK] KHAYA -> 34.08347, 74.82229
+Processing 16/20: 'MOMINABAD TENGPORA'
+  [OK] MOMINABAD TENGPORA -> 34.22854, 74.78010
+Processing 17/20: 'NALLAMAR ROAD'
+  [OK] NALLAMAR ROAD -> 34.13392, 74.83674
+Processing 18/20: 'CHUNTWALIWAR'
+  [OK] CHUNTWALIWAR -> 34.09500, 74.80000
+Processing 19/20: 'EXB CROSSING'
+  [OK] EXB CROSSING -> 34.04700, 74.80000
+Processing 20/20: 'BONE JOINT HOSPITAL BARZALLA'
+  [OK] BONE JOINT HOSPITAL BARZALLA -> 34.05850, 74.79050
+
+==================================================
+INITIATING RETRY FOR 2 FAILED LOCATIONS
+==================================================
+Retrying 1/2: 'SCRAPED'
+  [FAILED] Could not place 'SCRAPED' (see geocode_failures.csv)
+Retrying 2/2: 'SCRAPPED'
+  [FAILED] Could not place 'SCRAPPED' (see geocode_failures.csv)
+
+==================================================
+BUILDING FINAL EXISTING-ROUTES.CSV
+==================================================
+[INFO] Processing Complete!
+[INFO] Exported 445 routes where BOTH origin and destination were successfully geocoded.
+[INFO] Output saved to existing-routes.csv
+[AUDIT] 4 geocode failures written to geocode_failures.csv (resolve these manually — they are NOT in existing-routes.csv).
+[AUDIT] 814 of 1259 Srinagar-RTO permits dropped (no usable O/D geocode) → existing_routes_dropped.csv

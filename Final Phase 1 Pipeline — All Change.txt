@@ -1,0 +1,62 @@
+Final Phase 1 Pipeline — All Changes Per Phase
+
+PHASE 1: DATA INGESTION
+Add:
+
+Route Typology Flag — Urban / Peri-urban / Inter-district on every route at ingestion
+Seasonal Operability Flag — Year-round / Seasonal / Winter-suspended from SSCL/local transport records
+Tourist Corridor Flag — binary tag for Gulmarg, Pahalgam, Sonamarg, Dal Lake, Mughal Road routes
+
+Keep as-is: OSRM routing, column aliasing, 3-tier POI classification, women-anchor boost, SSCL synthetic backbone
+
+PHASE 2: SPATIAL ANALYSIS
+Add:
+
+Tourist Population Multiplier — tourist-flagged corridor catchment population × 1.4, all others × 1.0
+Peak Cycle Time Multiplier — Urban base × 1.25, Peri-urban base × 1.15, Inter-district base × 1.05
+
+Keep as-is: 400m Euclidean buffer, 250m POI buffer, WorldPop raster, junction penalties, Union-Find clustering
+
+PHASE 2b: ROUTE CLASSIFICATION
+Add:
+
+Tourist CDI Multiplier — tourist-flagged route CDI × 1.3
+Chalo-anchored modal capture rate — Urban: Chalo-derived, Peri-urban: ×0.8, Inter-district: ×0.6
+CDI floor of 0.2 for HP classification regardless of Jenks output
+Inter-district routes serving district headquarters get LP→MP floor unconditionally
+
+Update:
+
+SSCL override kept, but add conflict flag where non-SSCL route CDI exceeds SSCL route CDI — surface for planner review, no auto-reclassification
+
+Keep as-is: Pop×0.5 + POI×0.5, Jenks Natural Breaks, women-anchor boost effect, existing social obligation floor
+
+PHASE 3: FLEET & FREQUENCY PLAN
+Update Fleet Formula:
+Fleet = CEIL((Peak Cycle Time + Layover) / Peak Headway) × 1.15
+
+Layover = 10% of peak cycle time
+Spare ratio = 15%
+Seasonal routes: fleet computed but flagged as seasonal allocation, not permanent procurement
+
+Update Vehicle Assignment:
+
+Primary by CDI class: HP→HPV (44), MP→MPV (22), LP→LPV (9)
+Secondary override: route KM > 22 and highway road type → upgrade one vehicle class
+
+Update Headway Table:
+ClassUrbanPeri-urbanInter-districtLP5 min8 min15 minMP10 min15 min30 minHP20 min30 min60 min
+
+PHASE 4: EXPORT & CARTOGRAPHY
+Add to existing outputs:
+
+Load ratio per route — (Catchment Pop × Modal Capture Rate) / (Fleet × Vehicle Capacity × Trips Per Day) — flagged green/amber/red
+Passenger Journey Time per route — 5.5 min + (Headway/2) + (Peak Cycle Time/2) — flag >45 min
+Route viability ratio — revenue proxy / cost proxy per route — flag subsidy-dependent routes
+Coverage gap GeoJSON layer — uncovered population clusters above 500 persons
+Equity output score per route
+Emissions proxy per route
+Seasonal route layer separately flagged on Folium map
+SSCL vs CDI conflict flags for planner review
+
+Keep as-is: 4-sheet XLSX, interactive Folium maps, GeoJSON network, CSV audit log, passenger impact report

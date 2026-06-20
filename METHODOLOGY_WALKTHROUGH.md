@@ -5,7 +5,8 @@ government source files to the final results**, with what was verified at each
 stage and an honest "does it make sense?" verdict. Companion to `AUDIT_FIX_LOG.md`
 (what was fixed) and `VERIFICATION_v3.3.8.md` (line-by-line re-checks).
 
-All numbers below were re-verified against the live v3.3.8 outputs on 2026-06-20.
+All numbers reflect the FINAL post-recovery network (172 active routes / 1,053
+buses), re-verified against the live v3.3.8 outputs on 2026-06-21.
 
 ---
 
@@ -14,7 +15,7 @@ Four government files feed one engine. Two are **plan inputs** (the permit dump 
 the JKRTC timetable become candidate routes), one is the **calibration anchor**
 (SSCL ridership), and one is **corroboration only** (the Smart City e-bus list).
 The engine geocodes them, routes them on real roads, scores demand from open data,
-then sizes frequency and fleet. Final: **420 routes → 104 active → 670 buses**.
+then sizes frequency and fleet. Final: **620 routes → 172 active → 1,053 buses** (after village-geocode recovery).
 
 ---
 
@@ -47,26 +48,25 @@ rejection** + spelling aliases + **gazetteer pins** for mis-placed hubs (e.g.
 Parimpora, which OSM put 4.6 km off); `arcgis` made optional with a Nominatim/OSM
 backend so the re-geocode can run anywhere.
 
-**Verified:** `existing-routes.csv` = **401 routes, 0 centroid-collapse, 0
+**Verified:** `existing-routes.csv` = **614 routes, 0 centroid-collapse, 0
 zero-length**; unresolved names logged to `geocode_failures*.csv` (nothing dropped
 silently). Spot-checked towns within ~1 km of truth.
 
-**Verdict: ✅ this is the fix that makes the whole plan legitimate.** Residue: ~21
-minor localities still need manual coding (transparent, in the reject file).
+**Verdict: ✅ this is the fix that makes the whole plan legitimate.** Residue: only 2 void permit markers (SCRAPED/SCRAPPED) excluded; the ~110 rural
+villages OSM couldn't place were recovered via kashmir_gazetteer.csv (GAZETTEER_RECOVERY.md).
 
 ## STAGE 2 — Ingestion + SSCL backbone injection
-401 geocoded routes − 11 outside the study box + **30 hardcoded SSCL/CHALO trunks**
-= **420 routes**. SSCL fleet (98 buses) matches the SSCL sheet's "New Deployment"
+614 geocoded routes − some outside the study box + **30 hardcoded SSCL/CHALO trunks**
+= **620 routes**. SSCL fleet (98 buses) matches the SSCL sheet's "New Deployment"
 column route-by-route. **Verdict: ✅** — the backbone is a published government
 commitment, correctly treated as a fixed input.
 
 ## STAGE 3 — Real road geometry (OSRM) + study-area clip
 Each route routed on real OSM roads via OSRM; +8-min Jhelum-bridge penalty, 2.2×
 downtown congestion; clipped to the valley; classified Urban/Peri/Regional by
-length. Fixed a bug that silently discarded via-waypoints (now 257/401 routed via
-their waypoints).
+length. Fixed a bug that silently discarded via-waypoints (now routed via their waypoints).
 
-**Verified:** lengths physically sane — median 14.4 km, longest Srinagar→Qazigund
+**Verified:** lengths physically sane — median 19.7 km, longest Srinagar→Qazigund
 71 km; **implied round-trip speeds 15–40 km/h** (median 16 — correct for congested
 Srinagar). No 1.5 km "trunk" artifacts. **Verdict: ✅.**
 
@@ -89,7 +89,7 @@ trunks, ~48 buses → one 7-bus service at load 0.12). Fixed population apportio
 so the active plan sums to the network total.
 
 **Verdict: ✅ mechanics; ⚠ one design choice** — after the overrides (SSCL HP-lock,
-bonuses, social floors), **55/104 routes (just over half) are "High Priority,"** so
+bonuses, social floors), **65/172 routes (~38%) are "High Priority,"** so
 the band loses discriminating power. Not a bug; rebalance thresholds with the RTO
 if bands must drive phasing.
 
@@ -99,7 +99,7 @@ Fleet = `⌈cycle ÷ headway⌉ × 1.15`, floored 2 urban / 1 regional. Trunks 5
 big/medium, feeders 100% medium.
 
 **Verified independently:** fleet formula **reproduces 100%** of routes;
-HPV+MPV+LPV = Fleet for all 104. Totals: **670 buses, +12% over ~600 today, ~0.42
+HPV+MPV+LPV = Fleet for all 172. Totals: **1,053 buses, +76% over ~600 today, ~0.66
 buses/1,000 served** — a redistribution of an over-concentrated fleet, not a build-out.
 
 **Verdict: ✅ the most solid part** — textbook (Vuchic), reproduces exactly,
@@ -121,10 +121,10 @@ outcome.
 ## STAGE 8 — Coverage — *the metric corrected hardest*
 **Fixed (F-V9):** the old "coverage %" divided served population by the Srinagar
 urban-area figure (1.66 M), but the study area holds **5.1 M people (WorldPop)** —
-so "95.7%" was inflated ~3×. **Honest figure: 1,588,964 residents within 400 m =
-31.1% of the 5.1 M study-area population.**
+so "95.7%" was inflated ~3×. **Honest figure: 1,930,660 residents within 400 m =
+37.8% of the 5.1 M study-area population** (after recovering the rural JKRTC routes).
 
-**Verdict: ✅ 31% is defensible** (≈ the full Srinagar urban core + district reach;
+**Verdict: ✅ 38% is defensible** (≈ the full Srinagar urban core + district reach;
 the rest of the valley is rural, beyond walking range). **Do NOT reinstate 95.7%** —
 it would not survive a census/WorldPop cross-check.
 
@@ -133,8 +133,8 @@ it would not survive a census/WorldPop cross-check.
 corridor, load-sanity, route-code uniqueness); CSV/workbooks/maps/decks/dashboard;
 per-route disposition file accounting for every input.
 
-**Verified:** QC 8/8 pass, all 104 active route codes unique, **0 UNMATCHED
-anywhere**, every one of 420 inputs accounted for. **Verdict: ✅.**
+**Verified:** QC 8/8 pass, all 172 active route codes unique, **0 UNMATCHED
+anywhere**, every one of 620 inputs accounted for. **Verdict: ✅.**
 
 ---
 
@@ -143,7 +143,7 @@ anywhere**, every one of 420 inputs accounted for. **Verdict: ✅.**
 
 - ✅ **Solid:** source fidelity, geocoding (now correct), road geometry, fleet
   sizing (100% reproducible), SSCL calibration (0.99× CHALO), QC + audit trail.
-  The scrutinised core — **670 buses, +12%, 15–35 min frequency** — holds up.
+  The scrutinised core — **1,053 buses, +76%, 15–35 min frequency** — holds up.
 - ⚠ **Frame, don't fix:** (1) economics are weak by design (3.9% recovery) → sell
   on access/equity, never farebox; (2) coverage is 31% of the study area → the
   honest number, don't oversell; (3) half the routes are "High Priority" → rebalance
