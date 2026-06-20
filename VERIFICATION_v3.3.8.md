@@ -142,13 +142,19 @@ loss; F-V5: SMART CITY list is Kashmir e-bus data, not Jammu). Remaining real
 issues are **minor-to-medium and fixable** (below). The plan is materially sound;
 the weakest area is demand/load (static model).
 
-## Remediation plan R-V (open)
+## Remediation plan R-V — ✅ ALL DONE (re-released 2026-06-20)
 | ID | Fix | Value | Status |
 |---|---|---|---|
-| R-V1 | F-V6: re-normalise Population_Served over the ACTIVE set after clustering (or credit merged routes' pop to their trunk) so the plan's column sums to the cover figure. Fully closes audit Finding 9 / Output #2. | HIGH (credibility) | ☐ TODO |
-| R-V2 | F-V3: pin "Parimpora" (and verify other top hubs) in geocode_common gazetteer to its true bus-stand coord (~34.111, 74.748) — fixes 98 routes' origin. | MED-HIGH | ☐ TODO |
-| R-V3 | F-V4a: special-case TRC→Airport so the in-valley airport link is kept despite the MTS skip. | LOW (1 route) | ☐ TODO |
-| R-V4 | F-V4b: parse depot "A - B" route pairs so local depot routes get their true origin (Anantnag→X) instead of Srinagar→X. | LOW-MED (~dozen) | ☐ TODO |
+| R-V1 | F-V6: `reconcile_active_population()` rescales active Population_Served to the dedup union + zeros merged rows. VALIDATED: Σ active 1,588,967 ≈ union 1,588,964 (1.01×). Finding 9 / Output #2 fully closed. | HIGH | ✅ DONE |
+| R-V2 | F-V3: `GAZETTEER` in geocode_common pins Parimpora (34.1112,74.7475) + LD/Airport/TRC. VALIDATED: all 98 Parimpora-origin routes now at the true bus-stand coord. | MED-HIGH | ✅ DONE |
+| R-V3 | F-V4a: TRC→Airport kept (fixed a NaN-concat bug in the keep-filter). VALIDATED: 1 airport route now in the plan. | LOW | ✅ DONE |
+| R-V4 | F-V4b: depot "A - B" pairs split in both extraction+build loops. VALIDATED: e.g. Bandipora-Soura → local Bandipora↔Soura, not Srinagar→Bandipora. | LOW-MED | ✅ DONE |
+
+**Post-R-V headline (re-released):** 420 routes / **133 active** / **fleet 817**
+(HPV 76 / MPV 627 / LPV 114) / **coverage 95.72%** (1,588,964) / median route
+14.4 km / SSCL 348 / headways 15-20-35 / route codes 130/130 unique / QC 8/8 pass
+/ active Population_Served reconciles to cover. Decks + pretty workbook + dashboard
+all regenerated; both repos pushed.
 
 ## Change journal (newest first)
 - 2026-06-19: V7 done + overall verdict + R-V remediation plan. VERIFICATION COMPLETE.

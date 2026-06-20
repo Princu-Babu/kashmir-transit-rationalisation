@@ -154,16 +154,19 @@ _route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
 
 ## 6. Current numbers (v3.3.8, the live plan — audit-remediated)
 
-- 613 permits → re-geocoded district-aware → **419 routes** (389 permit-derived
-  + 30 synthetic SSCL); **136 active** (Trunk 42 / Feeder 94 / Merged 283)
-- **Total fleet 855** = HPV 73 / MPV 644 / LPV 138
+- 613 permits → re-geocoded district-aware → **420 routes** (390 permit-derived
+  + 30 synthetic SSCL); **133 active** (Trunk 45 / Feeder 88 / Merged 287)
+- **Total fleet 817** = HPV 76 / MPV 627 / LPV 114
 - 30 CHALO SSCL routes → 38 trunks (incl. 8 absorbed duplicate permits); SSCL fleet 348
 - **Headways present: ONLY 15 / 20 / 35 min** (ceiling preserved from v3.3.7)
-- Route types: Urban 62 / Peri_Urban 59 / Regional_District 15 (median route 16.5 km
+- Route types: Urban 76 / Peri_Urban 42 / Regional_District 15 (median route 14.4 km
   — genuinely valley-wide now, not a Srinagar-city plan)
-- **Network coverage 94.74% of 1.66M (deduplicated 1,572,627 residents)** — up from
+- **Network coverage 95.72% of 1.66M (deduplicated 1,588,964 residents)** — up from
   69.78% in v3.3.7 because the re-geocode spread routes across the real valley
-- **~0.54 buses / 1000 residents** (peer band: BMTC 0.51, Chandigarh CTU 0.65)
+- **~0.51 buses / 1000 residents** (peer band: BMTC 0.51, Chandigarh CTU 0.65)
+- v3.3.8 R-V re-verification fixes: Parimpora hub pinned, TRC→Airport link kept,
+  depot "A-B" pairs split, active Population_Served reconciled to the cover figure
+  (Σ active ≈ union — audit Finding 9 fully closed). See `VERIFICATION_v3.3.8.md`.
 - **QC 8/8 passing** + QC-Geocode clean (0 centroid endpoints), route codes unique
 - Calibration vs CHALO Apr 2026: per-route SSCL fleet **+24.9%** vs headway-scaled
   CHALO (within ±25% band; rose from +9.7% because corrected geometry routes SSCL
