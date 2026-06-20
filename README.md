@@ -3,7 +3,7 @@
   <img src="https://img.shields.io/badge/Kashmir_Fork-Jun_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/Active_Routes-133-6A1B9A?style=for-the-badge" alt="Routes"/>
-  <img src="https://img.shields.io/badge/Coverage-95.7%25-2E7D32?style=for-the-badge" alt="Coverage"/>
+  <img src="https://img.shields.io/badge/Walkshed_Coverage-31%25-2E7D32?style=for-the-badge" alt="Coverage"/>
 </p>
 
 # 🚌 Kashmir Valley Transit Rationalisation Engine v3.3.8
@@ -12,7 +12,7 @@
 
 Built for the Principal Secretary of Transport, J&K — this engine ingests 613 registered route permits (minibuses, e-buses, MPS buses, JKRTC city/regional services), geocodes them district-aware, clips to the **Srinagar Valley study area**, and produces a rationalised frequency plan. In **v3.3.8** the corrected input yields **420 routes** (390 permit-derived + 30 synthetic SSCL/CHALO e-bus trunk injections), of which **133 are active** (the rest consolidated into trunks/representatives). Results are overlaid against WorldPop population rasters and OpenStreetMap Points of Interest to generate fleet allocation, headway schedules, and interactive maps.
 
-> **✅ v3.3.8 — independent audit remediation (June 2026).** A prior audit found the endpoint geocoder had collapsed **118 valley place names onto a single Srinagar coordinate**, silently deleting ~290 routes and making the "Kashmir Valley" plan effectively a Srinagar-city plan. v3.3.8 re-geocodes every endpoint **district-aware with Srinagar-centroid rejection** (0 collapsed endpoints, down from 391), deduplicates duplicate permits, fixes the population apportionment, and adds input-QA + per-route disposition logging. Net effect vs v3.3.7: **fleet 1,009 → 817**, **population coverage 69.8% → 95.7%**, the network now genuinely reaches the valley districts. Full detail: [`AUDIT_FIX_LOG.md`](AUDIT_FIX_LOG.md).
+> **✅ v3.3.8 — independent audit remediation (June 2026).** A prior audit found the endpoint geocoder had collapsed **118 valley place names onto a single Srinagar coordinate**, silently deleting ~290 routes and making the "Kashmir Valley" plan effectively a Srinagar-city plan. v3.3.8 re-geocodes every endpoint **district-aware with Srinagar-centroid rejection** (0 collapsed endpoints, down from 391), deduplicates duplicate permits, fixes the population apportionment, and adds input-QA + per-route disposition logging. Net effect vs v3.3.7: **fleet 1,009 → 817**, and the network now genuinely reaches the valley districts. A subsequent re-verification ([`VERIFICATION_v3.3.8.md`](VERIFICATION_v3.3.8.md)) also **corrected the coverage metric**: the old "coverage %" divided the served population by the *Srinagar-UA planning figure* (1.66M), inflating it ~3×. Measured honestly against the **5.1M people in the study area (WorldPop)**, the 400m walksheds reach **1.59M residents ≈ 31%** — which is effectively the entire Srinagar urban core plus district-town reach (most of the remaining valley population is rural and beyond walking range of any fixed-route network). The demand model was also re-anchored to CHALO's published ridership (the prior scalar under-counted demand ~2×). Full detail: [`AUDIT_FIX_LOG.md`](AUDIT_FIX_LOG.md) + [`VERIFICATION_v3.3.8.md`](VERIFICATION_v3.3.8.md).
 
 ---
 
@@ -640,7 +640,7 @@ An external verification audit found the JKRTC/permit geocoding had **collapsed 
 | Total / active routes | 342 / 207 | 420 / **133** | dedup + no bogus zero-length routes |
 | Total fleet | 1,009 | **817** | duplicate over-fleeting removed |
 | HPV / MPV / LPV | 80 / 807 / 122 | **76 / 627 / 114** | |
-| **Population coverage** | 1.16M (69.8%) | **1.59M (95.7%)** | network now reaches the valley |
+| **Walkshed coverage** (of 5.1M study area) | 1.16M (22.7%) | **1.59M (31.1%)** | corrected denominator (was vs 1.66M Srinagar-UA) |
 | Median route length | 8.7 km | **14.4 km** | no longer a Srinagar-city plan |
 | Urban / Peri / Regional | 173 / 25 / 9 | **76 / 42 / 15** | genuine inter-district reach |
 | Headway values present | 15 / 20 / 35 | **15 / 20 / 35** | ceiling preserved |
@@ -698,5 +698,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.3.8 — June 2026 (audit-remediated + re-verified: district-aware geocoding · 95.7% coverage · 817 buses)</i>
+  <i>Engine v3.3.8 — June 2026 (audit-remediated + re-verified: district-aware geocoding · 1.59M residents / 31% study-area walkshed · 817 buses)</i>
 </p>

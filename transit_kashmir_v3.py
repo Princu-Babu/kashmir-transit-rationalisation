@@ -512,7 +512,14 @@ PHASE4_TRIP_RATE             = 1.6
 #     this engine's overlap_metric (CHALO only sees SSCL, not full network)
 #   - peak-vs-mean reconciliation
 # Recalibrate when CHALO yearly totals shift more than ±15%.
-PHASE4_CORRIDOR_CAPTURE_SCALE = 0.18
+# v3.3.8 (F-V8 re-verification): the district-aware RE-GEOCODE changed every
+# route's walkshed catchment, which drifted the calibration — at 0.18 the model
+# reproduced only 0.54× of CHALO's published SSCL ridership (17.3k vs 31.9k/day),
+# i.e. it under-counted demand ~2× network-wide and made the economics read far
+# worse than reality. Re-fitted to the published anchor: 11,632,326 trips/yr ÷
+# 365 = 31,869/day across the SSCL trunks → scale 0.18 × (31,869/17,258) ≈ 0.33.
+# (Affects Daily_Demand / Load_Ratio / economics only — NOT fleet/headway/bands.)
+PHASE4_CORRIDOR_CAPTURE_SCALE = 0.33
 PHASE4_SERVICE_HOURS         = 16
 PHASE4_FARE_INR              = 10.0    # avg single-trip fare proxy (post free-fare)
 PHASE4_OPERATING_COST_PER_KM = 65.0    # INR/km diesel minibus all-in
@@ -1803,6 +1810,38 @@ def compute_population(gdf: gpd.GeoDataFrame, raster_path: str) -> gpd.GeoDataFr
     return gdf
 
 
+_STUDY_AREA_POP_CACHE: Dict[str, int] = {}
+
+
+def study_area_population(raster_path: str) -> int:
+    """Total WorldPop population inside the study-area raster — the correct
+    denominator for 'network coverage %'.
+
+    F-V9 (re-verification): the v3.3.8 network is valley-wide, so coverage must
+    be measured against the people who actually live in the study area (~5.1M
+    from the raster), NOT the Srinagar CMP planning figure (CMP_TOTAL_POPULATION
+    = 1.66M) which describes only the urban core and inflates coverage ~3×
+    (1.59M/1.66M = 96% vs the honest 1.59M/5.1M ≈ 31%).
+    """
+    if raster_path in _STUDY_AREA_POP_CACHE:
+        return _STUDY_AREA_POP_CACHE[raster_path]
+    total = 0
+    if Path(raster_path).exists():
+        try:
+            import rasterio
+            with rasterio.open(raster_path) as src:
+                arr = src.read(1).astype("float64")
+                nd = src.nodata
+                mask = arr > 0
+                if nd is not None:
+                    mask &= (arr != nd)
+                total = int(arr[mask].sum())
+        except Exception as exc:  # noqa: BLE001
+            log.warning("  study_area_population: %s", exc)
+    _STUDY_AREA_POP_CACHE[raster_path] = total
+    return total
+
+
 def compute_network_population_total(gdf: gpd.GeoDataFrame,
                                       raster_path: str) -> int:
     """Deduplicated network population via dissolved catchment union."""
@@ -1818,10 +1857,16 @@ def compute_network_population_total(gdf: gpd.GeoDataFrame,
     stats     = rasterstats.zonal_stats(
         [dissolved], raster_path, stats=["sum"], nodata=nodata, geojson_out=False)
     val    = stats[0].get("sum") if stats else None
-    result = min(2_000_000, max(0, int(val))) if val is not None else 0
-    pct    = min(100.0, result / CMP_TOTAL_POPULATION * 100) if CMP_TOTAL_POPULATION else 0.0
-    log.info("  Deduplicated network population: %s  (%.2f%% of CMP %d total: %s)",
-             f"{result:,}", pct, CMP_REFERENCE_YEAR, f"{CMP_TOTAL_POPULATION:,}")
+    # F-V9: no artificial 2M clamp (a Srinagar-era cap that would truncate a
+    # valley-wide union). Coverage % is now against the true study-area
+    # population, not the Srinagar CMP figure.
+    result = max(0, int(val)) if val is not None else 0
+    sap    = study_area_population(raster_path)
+    pct    = (result / sap * 100) if sap else 0.0
+    log.info("  Deduplicated network population: %s  (%.2f%% of the %s residents "
+             "living in the study area; Srinagar CMP %d planning ref: %s)",
+             f"{result:,}", pct, f"{sap:,}", CMP_REFERENCE_YEAR,
+             f"{CMP_TOTAL_POPULATION:,}")
     return result
 
 
@@ -4228,7 +4273,8 @@ def build_master_map(gdf: gpd.GeoDataFrame,
     tot_fleet  = int(active["Fleet_Required"].sum())
     tot_hpv    = int(active["HPV_Count"].sum())
     tot_mpv    = int(active["MPV_Count"].sum())
-    pop_pct    = min(100.0, net_pop / CMP_TOTAL_POPULATION * 100)
+    _sap       = study_area_population(raster_path)
+    pop_pct    = (net_pop / _sap * 100) if _sap else 0.0   # F-V9: study-area denominator
 
     routes_js = json.dumps(routes_data)
     pois_js   = json.dumps(pois_data)
@@ -4299,7 +4345,7 @@ def build_master_map(gdf: gpd.GeoDataFrame,
   <div class="section">
     <h3>Population Coverage</h3>
     <div class="stat-row"><span class="sk">Residents served</span><span class="sv">{net_pop:,}</span></div>
-    <div class="stat-row"><span class="sk">% of Srinagar UA 2024</span><span class="sv" style="color:#1A237E">{pop_pct:.1f}%</span></div>
+    <div class="stat-row"><span class="sk">% of study-area population</span><span class="sv" style="color:#1A237E">{pop_pct:.1f}%</span></div>
     <div class="pop-bar-bg"><div class="pop-bar" style="width:{min(100,pop_pct):.1f}%"></div></div>
     <div style="margin-top:6px">
       <div class="stat-row"><span class="sk">HPV (12m buses)</span><span class="sv">{tot_hpv}</span></div>
@@ -5882,9 +5928,12 @@ def main() -> None:
              "+ SSCL empirical table capped at 50%% HPV (v3.3.7 — neither class a majority)")
     log.info("  Feeder vehicle split    : 100%% MPV (city bus / unknown), "
              "30/70 HPV/MPV (regular/MPS), 100%% LPV (LPV category)")
-    log.info("  Network pop.            : %s residents  (%.2f%% of CMP %d total: %s)",
+    log.info("  Network pop.            : %s residents  (%.2f%% of the %s in the "
+             "study area; Srinagar CMP %d ref: %s)",
              f"{net_pop:,}",
-             min(100.0, net_pop / CMP_TOTAL_POPULATION * 100),
+             (net_pop / study_area_population(RASTER_PATH) * 100)
+             if study_area_population(RASTER_PATH) else 0.0,
+             f"{study_area_population(RASTER_PATH):,}",
              CMP_REFERENCE_YEAR,
              f"{CMP_TOTAL_POPULATION:,}")
     log.info("  Jenks engine            : %s",

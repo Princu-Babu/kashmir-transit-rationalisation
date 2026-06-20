@@ -156,7 +156,34 @@ the weakest area is demand/load (static model).
 / active Population_Served reconciles to cover. Decks + pretty workbook + dashboard
 all regenerated; both repos pushed.
 
+## Deeper logical-error & government-fit review (round 2)
+Found two further logical errors beyond V1–V7, both fixed:
+
+### F-V8 — demand model mis-calibrated after the re-geocode ⚠ → FIXED
+`PHASE4_CORRIDOR_CAPTURE_SCALE = 0.18` was fit against the OLD collapsed geometry.
+After re-geocoding, the model reproduced only **0.54× of CHALO's published SSCL
+ridership** (17.3k vs 31.9k/day) — i.e. it under-counted demand ~2× network-wide,
+making cost recovery read 2.1% and flagging 101/133 routes subsidy-risk (an
+artifact, not reality). Per the engine's own "recalibrate if CHALO shifts ±15%"
+rule, re-fit to the published anchor (11,632,326 trips ÷ 365 = 31,869/day) →
+**scale 0.18 → 0.33**. Affects demand/Load/economics only, NOT fleet/headway/bands.
+
+### F-V9 — coverage % inflated ~3× (wrong denominator) ⚠ CRITICAL → FIXED
+The headline "coverage %" divided the valley-wide served population (1.59M) by
+the **Srinagar-UA planning figure (CMP_TOTAL_POPULATION = 1.66M)** — explicitly
+"Srinagar UA + peri-urban" per the code comment. But the WorldPop raster clipped
+to the study bbox holds **5,105,699 residents**. So "95.7% coverage" should be
+**~31% of the study-area population** (1.59M / 5.1M). The metric even clamped at
+100% and net_pop was capped at 2M (a Srinagar-era artifact). FIX: `study_area_
+population()` computes the true denominator from the raster; coverage now ~31%;
+2M clamp removed; per-route "% of Srinagar UA" kept as a labelled planning ref;
+buses/1000 now measured per 1,000 SERVED (peer-comparable). Decks/README/dashboard
+relabelled. **This was the highest government-credibility risk — a 95.7% claim
+would not survive a census/WorldPop cross-check.**
+
 ## Change journal (newest first)
+- 2026-06-20: Round-2 review — F-V8 (demand recalibration 0.18→0.33) + F-V9
+  (coverage denominator fix, ~95.7%→~31%); both fixed, re-released.
 - 2026-06-19: V7 done + overall verdict + R-V remediation plan. VERIFICATION COMPLETE.
 - 2026-06-19: V6 done. Fixes sound, route lengths plausible; F-V6 apportionment
   active-sum residual (active Pop_Served 0.38× cover).

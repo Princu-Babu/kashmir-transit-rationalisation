@@ -638,7 +638,7 @@ def load_stats(csv_path: Path):
         fleet=1009, hpv=80, mpv=807, lpv=122, hp=130, mp=54, lp=23,
         hw15=45, hw20=85, hw35=77, sscl_fleet=362, sscl_matched=45,
         social=87, tourist=69, op_pmb=100, op_lpv=34, op_hpv=1,
-        per_1000=0.61, coverage=69.78,
+        per_1000=0.51, coverage=31.1, net_pop=1588964,
     )
     if not csv_path.exists():
         return defaults
@@ -670,15 +670,20 @@ def load_stats(csv_path: Path):
         out["op_pmb"] = int(d.get("Private Minibus", 0))
         out["op_lpv"] = int(d.get("LPV / Tempo", 0))
         out["op_hpv"] = int(d.get("HPV Bus", 0))
-    out["per_1000"] = out["fleet"] / 1660.0
-    out["coverage"] = 69.78
+    # F-V9: honest coverage = served ÷ study-area population (WorldPop ~5.1M),
+    # not the Srinagar-UA planning figure. per_1000 = buses per 1,000 served.
+    out["net_pop"] = (int(act["Population_Served"].sum())
+                      if "Population_Served" in act.columns else 1588964)
+    STUDY_AREA_POP = 5_105_699
+    out["per_1000"] = out["fleet"] / (out["net_pop"] / 1000.0)
+    out["coverage"] = out["net_pop"] / STUDY_AREA_POP * 100.0
     return out
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--outdir", default="outputs_v3.3.7")
-    parser.add_argument("--engine-csv", default="outputs_v3.3.7/Rationalised_Routes_Kashmir_v3.csv")
+    parser.add_argument("--outdir", default="outputs_v3.3.8")
+    parser.add_argument("--engine-csv", default="outputs_v3.3.8/Rationalised_Routes_Kashmir_v3.csv")
     args = parser.parse_args()
     stats = load_stats(Path(args.engine_csv))
     os.makedirs(args.outdir, exist_ok=True)

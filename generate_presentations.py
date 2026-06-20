@@ -1,5 +1,5 @@
 """
-generate_presentations.py — v3.3.7
+generate_presentations.py — v3.3.8
 
 Builds two visual PowerPoint briefings from the live engine output:
 
@@ -22,7 +22,7 @@ dedicated bibliography slide.
 
 Usage
 -----
-  python generate_presentations.py --outdir outputs_v3.3.7
+  python generate_presentations.py --outdir outputs_v3.3.8
 """
 
 import argparse
@@ -75,8 +75,9 @@ class EngineStats:
     sscl_fleet_chalo: int = 98
     sscl_demand_engine: int = 34545
     sscl_demand_chalo:  int = 31869
-    net_pop:        int = 1158399
-    cmp_pop:        int = 1660000
+    net_pop:        int = 1588964
+    cmp_pop:        int = 1660000        # Srinagar UA + peri-urban (CMP planning ref)
+    study_area_pop: int = 5105699        # WorldPop total in the study-area bbox (F-V9)
     social:         int = 87
     tourist:        int = 69
     operator_pmb:   int = 100
@@ -88,11 +89,15 @@ class EngineStats:
 
     @property
     def buses_per_1000(self) -> float:
-        return self.total_fleet / (self.cmp_pop / 1000.0)
+        # buses per 1,000 people SERVED (network catchment) — comparable to the
+        # peer-city urban figures (BMTC 0.51 etc.).
+        return self.total_fleet / (self.net_pop / 1000.0)
 
     @property
     def coverage_pct(self) -> float:
-        return 100.0 * self.net_pop / self.cmp_pop
+        # F-V9: honest coverage = served ÷ study-area population (~5.1M), NOT the
+        # Srinagar-UA planning figure (which inflated this ~3×).
+        return 100.0 * self.net_pop / self.study_area_pop
 
     @property
     def current_fleet(self) -> int:
@@ -115,6 +120,8 @@ def load_stats(csv_path: str) -> EngineStats:
 
     s.total_routes  = len(df)
     s.active_routes = len(act)
+    if "Population_Served" in act.columns:
+        s.net_pop = int(act["Population_Served"].sum())   # reconciled to the union (F-V6)
     s.trunk_routes  = int((df["Action_Taken"] == "UPGRADED_TO_TRUNK").sum())
     s.feeder_routes = int((df["Action_Taken"] == "RETAINED_AS_FEEDER").sum())
     s.merged_routes = int((df["Action_Taken"] == "MERGED_INTO_TRUNK").sum())
@@ -330,7 +337,7 @@ def add_title_slide(prs, title, subtitle, tag, color=NAVY):
     foot = slide.shapes.add_textbox(Inches(5.15), Inches(6.55), Inches(7.7), Inches(0.7))
     tf = foot.text_frame; tf.word_wrap = True
     _runs(tf.paragraphs[0],
-          "Engine v3.3.7  •  May 2026  •  Phase-1 plan  •  35-min headway ceiling  •  "
+          "Engine v3.3.8  •  June 2026  •  Phase-1 plan  •  35-min headway ceiling  •  "
           "balanced 50/50 trunk fleet  •  fully open-data & reproducible",
           11, MID_GREY, italic=True)
 
@@ -392,7 +399,7 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
 
     add_title_slide(
         prs, title="Kashmir Valley\nTransit Engine",
-        subtitle=("Technical Briefing — v3.3.7\n\nOpen-data pipeline, methodology, "
+        subtitle=("Technical Briefing — v3.3.8\n\nOpen-data pipeline, methodology, "
                   "formulas and literature backing, for the engineering and data-review audience."),
         tag="TECHNICAL BRIEFING", color=NAVY)
 
@@ -402,7 +409,7 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
     add_kpi_cards(s, [
         (f"{stats.total_routes}", "permits in scope", NAVY),
         ("33.5–34.5°N", "Srinagar Valley bbox", TEAL),
-        (f"{stats.cmp_pop/1e6:.2f}M", "study-area residents", PURPLE),
+        (f"{stats.study_area_pop/1e6:.2f}M", "study-area residents", PURPLE),
         ("4", "open data sources", GREEN),
     ], top=1.2)
     add_body_text(s, [
@@ -544,8 +551,8 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
     s = add_blank_slide(prs)
     add_title_bar(s, "Reproducible & versioned")
     add_body_text(s, [
-        "Deliverables (outputs_v3.3.7/):",
-        "  • Kashmir_Route_Frequency_Plan_v3.3.7_RTO.xlsx (9-sheet) + _RTO_Pretty.xlsx (bus schedule)",
+        "Deliverables (outputs_v3.3.8/):",
+        "  • Kashmir_Route_Frequency_Plan_v3.3.8_RTO.xlsx (9-sheet) + _RTO_Pretty.xlsx (bus schedule)",
         "  • Master_Transit_Map_Kashmir_v3.html + 192 per-route maps",
         "  • Rationalised_Routes_Kashmir_v3.csv / .geojson  ·  Rationalisation_Log  ·  Passenger_Impact",
         "",
@@ -712,8 +719,8 @@ def create_gov_deck(stats: EngineStats, output_path: str) -> None:
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="Generate v3.3.7 technical + government briefings.")
-    parser.add_argument("--outdir", default="outputs_v3.3.7")
+    parser = argparse.ArgumentParser(description="Generate v3.3.8 technical + government briefings.")
+    parser.add_argument("--outdir", default="outputs_v3.3.8")
     parser.add_argument("--engine-csv", default=None)
     args = parser.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
