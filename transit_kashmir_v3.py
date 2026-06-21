@@ -3832,14 +3832,50 @@ def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     stops["_lat"] = pd.to_numeric(stops["Latitude"], errors="coerce")
     stops["_lon"] = pd.to_numeric(stops["Longitude"], errors="coerce")
     svalid = stops.dropna(subset=["_lat", "_lon"]).reset_index(drop=True)
+    # Reliable district (tehsil) centres — used to pick the CORRECT district for
+    # endpoints beyond the surveyed stop network. v3.3.9 audit found (a) the
+    # 189-stop master has no stops in several rural corridors (NE Ganderbal —
+    # Kangan/Manigam/Gund), so a raw nearest-stop snap lands 11–22 km away on a
+    # WRONG-district stop and collapses distinct towns onto one code (the SRSR…A/B
+    # problem); and (b) the master's own STOP COORDINATES are unreliable for some
+    # stops (AIRPORT recorded ~80 km south of the real airport, PARIMPORA ~18 km
+    # off) — so a tehsil centroid computed FROM the master would itself be polluted.
+    # We therefore key the district on authoritative district-HQ coordinates, not
+    # the master's coordinates. (The categorical name-matched codes are unaffected —
+    # they use Stop_Name + the master's Tehsil/Sector/Stop, which are correct.)
+    _RELIABLE_TEHSIL_CENTRE = {
+        "SR": (34.0830, 74.7970), "BG": (34.0140, 74.7190),
+        "GB": (34.2270, 74.7750), "AN": (33.7300, 75.1480),
+        "KG": (33.6450, 75.0190), "SP": (33.7170, 74.8310),
+        "PW": (33.8740, 74.8990), "BR": (34.1980, 74.3640),
+        "BP": (34.4180, 74.6430), "KW": (34.5260, 74.2550),
+    }
+    _rt_codes = list(_RELIABLE_TEHSIL_CENTRE)
+    _rt_lat = {k: v[0] for k, v in _RELIABLE_TEHSIL_CENTRE.items()}
+    _rt_lon = {k: v[1] for k, v in _RELIABLE_TEHSIL_CENTRE.items()}
+    OFF_NETWORK_KM = 3.0
+
+    def _coord_pair(lat, lon):
+        # Two deterministic 2-digit indices (10–99) from the endpoint coordinate so
+        # distinct off-network terminals get distinct sector+stop (no spurious A/B).
+        sec  = (int(round(lat * 100) + round(lon * 100)) % 90) + 10
+        stop = (int(round(lat * 1000) + round(lon * 1000) * 7) % 90) + 10
+        return f"{sec:02d}", f"{stop:02d}"
 
     def _nearest_stop(lat, lon):
         if lat is None or lon is None:
             return None
         d2 = ((svalid["_lat"] - lat) * 111.0) ** 2 + ((svalid["_lon"] - lon) * 92.0) ** 2
-        row = svalid.loc[d2.idxmin()]
-        return (str(row["Tehsil_Code"]).strip()[:2].upper(),
-                f"{int(row['Sector_ID']):02d}", f"{int(row['Stop_No']):02d}")
+        i = d2.idxmin()
+        if float(d2[i]) ** 0.5 <= OFF_NETWORK_KM:
+            row = svalid.loc[i]
+            return (str(row["Tehsil_Code"]).strip()[:2].upper(),
+                    f"{int(row['Sector_ID']):02d}", f"{int(row['Stop_No']):02d}")
+        # OFF-NETWORK: district from the authoritative HQ centres + coord sector/stop.
+        teh = min(_rt_codes, key=lambda k:
+                  ((_rt_lat[k] - lat) * 111.0) ** 2 + ((_rt_lon[k] - lon) * 92.0) ** 2)
+        sec, stop = _coord_pair(lat, lon)
+        return (teh, sec, stop)
 
     def _ends(r):
         g = r.get("geometry")

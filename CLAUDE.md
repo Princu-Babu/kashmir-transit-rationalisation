@@ -99,9 +99,26 @@ version bumps. (These are `_`-prefixed helper scripts, committed to the engine r
 - Deterministic 12-char code: `<TehsilO><TehsilD><SectorO><SectorD><StopO><StopD>`
   e.g. `PWSP08091215` = Pulwama→Shopian, sector 08→09, stop 12→15.
 - Match cascade: exact → compact → suffix-stripped → substring → fuzzy 0.85.
-- Engine result: **313/342 matched from the stops master, 29 backfilled from the
-  dashboard routes.json (by Route_ID), 0 remaining UNMATCHED.** So every export is
-  fully coded. `_sync_dashboard.py` then sees **embedded 342 / TMP 0**.
+- **v3.3.9 coordinate-fallback fix (off-network endpoints):** when a name isn't in
+  the master, the fallback finds the nearest master stop — but the master has NO
+  stops in some rural corridors (NE Ganderbal: Kangan/Manigam/Gund), so the old
+  fallback snapped 11–22 km to a WRONG-district stop (Kangan/Manigam coded SR;
+  collapsed to one SRSR…A/B code). Now: for endpoints >3 km from any stop, the
+  district (tehsil) comes from authoritative district-HQ centres (`_RELIABLE_
+  TEHSIL_CENTRE`, NOT the master's centroids — the master's own coords are
+  unreliable: AIRPORT ~80 km off, PARIMPORA ~18 km off) + a coordinate-derived
+  sector/stop so distinct terminals get distinct codes. Kangan/Manigam now correct
+  GB + distinct; letter-suffixes 8→6.
+- **Letter suffix (A/B):** appended only when 2+ active routes resolve to the SAME
+  stop-pair — the standard bus "5A/5B" convention. The 6 remaining are legitimate
+  (each pair's dests <3.1 km from the same stop: Hazratbal/Naseem Bagh, Budgam-town,
+  Narbal-area). NO dash form (a `-NN` suffix was used pre-v3.3.8; now letters only).
+- Engine result (v3.3.9): **594/615 name-matched from the stops master, 21
+  coordinate-fallback (off-network district-corrected), 0 UNMATCHED, 0 dashes, 0
+  duplicate active codes.** All 172 active codes valid `^4-letter+8-digit(+letter)$`
+  and identical across CSV/GeoJSON/dashboard/pretty workbook. Known residual:
+  `Srinagar→Gund` keeps the Budgam Gund code (two villages named Gund). The master's
+  bad coords (above) should be corrected in the next RTO master revision.
 - `generate_route_codes.py` is kept as a standalone tool (produces
   `Routes_with_Codes.xlsx`); the engine ported its matching cascade.
 - When the RTO ships an updated stops master, drop it in `E:\kash`, re-run the

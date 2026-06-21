@@ -149,6 +149,43 @@ all 172 & code-clean, stale v3.3.8 downloads purged. Engine QC 8/8.
   their CORRECT district centre now, labelled `district_centre(<district>)`) —
   honest "approximate, don't drop" policy per the brief; disclose as indicative.
 
+## G. Route-code investigation (the "A / B" question) — 🔴 FOUND → ✅ FIXED
+
+The 12-char code is `<TehsilO><TehsilD><SectorO><SectorD><StopO><StopD>`, built by
+name-matching the route's origin/dest to the 189-stop master, with a coordinate
+nearest-stop fallback for names not in the master. A trailing **letter (A/B)** is
+appended only when two active routes resolve to the *same* stop-pair.
+
+**What was wrong.** The master has **no stops in several rural corridors** (NE
+Ganderbal — Kangan/Manigam/Gund, parts of Pulwama). For those, the old fallback
+snapped to the nearest stop **even if 11–22 km away in the wrong district**, so:
+- `Batamaloo→Kangan` and `Batamaloo→Manigam` (both Ganderbal) were coded **SR**
+  (Srinagar) and collapsed onto the *same* code → `SRSR10100955A/B`.
+- `Srinagar→Gund` (Ganderbal) coded via a **Pulwama** stop; `…Pampore` via a
+  Srinagar stop; etc. (14 endpoints with a wrong-district letter.)
+
+**Also found (government data-quality flag).** The master's own **coordinates are
+unreliable for some stops** — `AIRPORT` is recorded ~80 km south of the real
+airport, `PARIMPORA` ~18 km off. This does **not** affect the name-matched codes
+(594/615 — they use Stop_Name + the master's categorical Tehsil/Sector/Stop, which
+are correct), but it polluted any coordinate-based logic. **Flag to the RTO for the
+next master revision.**
+
+**Fix.** For off-network endpoints the fallback now takes the district from
+**authoritative district-HQ coordinates** (not the master's corrupted centroids)
+and a **coordinate-derived sector+stop** so distinct terminals get distinct codes.
+Result: Kangan→`SRGB1042…`, Manigam→`SRGB1038…` (correct district GB, **distinct**);
+Pampore→`…PW…`; Safapora→`…GB…`. Letter-suffixes **8 → 6**, and the remaining 6
+(3 pairs) are *legitimate* — each pair's two destinations are 0.4–3.1 km from the
+**same** stop (Hazratbal/Naseem Bagh adjacent; both Budgam-town; both Narbal-area)
+— the standard bus "5A/5B" convention, not an error.
+
+**Verified:** 172/172 codes valid `^4-letter+8-digit(+letter)$`, **0 dashes, 0
+duplicates, 0 UNMATCHED**, identical across CSV / GeoJSON / dashboard / pretty
+workbook (8/8 cross-artefact checks). One documented residual: `Srinagar→Gund`
+keeps the **Budgam** Gund code (two villages named Gund; name-match wins and the
+master coords are too unreliable to safely auto-override).
+
 ## Status — ✅ COMPLETE
 - [x] Source completeness, inter-state exclusion verified
 - [x] Bug #1 (SSCL false trunks) fixed + unit-tested
