@@ -682,8 +682,8 @@ def load_stats(csv_path: Path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--outdir", default="outputs_v3.3.8")
-    parser.add_argument("--engine-csv", default="outputs_v3.3.8/Rationalised_Routes_Kashmir_v3.csv")
+    parser.add_argument("--outdir", default="outputs_v3.3.9")
+    parser.add_argument("--engine-csv", default="outputs_v3.3.9/Rationalised_Routes_Kashmir_v3.csv")
     args = parser.parse_args()
     stats = load_stats(Path(args.engine_csv))
     os.makedirs(args.outdir, exist_ok=True)

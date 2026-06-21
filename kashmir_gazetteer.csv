@@ -22,26 +22,26 @@ CHOWGUND,33.73,75.148,district_centre(Anantnag),Anantnag
 CHUNTWALIWAR,34.095,74.8,srinagar_pin,Srinagar
 DARDPORA,34.50927,74.08367,nominatim,Budgam
 DEVSUR,33.63956,75.09258,arcgis,Anantnag
-DHPORA,34.083,74.797,district_centre(Srinagar),Srinagar
+DHPORA,33.645,75.019,manual_pin,Kulgam
 EASTERN AREA OF SRINAGAR CITY,34.07238,74.81516,photon+arcgis,Srinagar
 EXB CROSSING,34.047,74.8,srinagar_pin,Srinagar
 EXCROSSING,34.083,74.797,district_centre(Srinagar),Srinagar
 FATHGATH,34.198,74.364,district_centre(Baramulla),Baramulla
 GADOORA,34.17517,74.78275,arcgis,Srinagar
 GAGULDARA,34.014,74.719,district_centre(Budgam),Budgam
-GARKOTE,34.083,74.797,district_centre(Srinagar),Srinagar
+GARKOTE,34.198,74.364,district_centre(Baramulla),Baramulla
 GAZRIYAL,34.014,74.719,district_centre(Budgam),Budgam
 GBS,34.0686,74.81,srinagar_pin,Srinagar
 GULABAGH,34.18015,74.81681,arcgis,Srinagar
-HAFTNAR,34.083,74.797,district_centre(Srinagar),Srinagar
-HARMAN,34.083,74.797,district_centre(Srinagar),Srinagar
+HAFTNAR,33.73,75.148,district_centre(Anantnag),Anantnag
+HARMAN,33.717,74.831,district_centre(Shopian),Shopian
 HEFF,33.79577,74.97337,arcgis,Pulwama
-IJARA,34.083,74.797,district_centre(Srinagar),Srinagar
+IJARA,34.198,74.364,district_centre(Baramulla),Baramulla
 ILLAHIBAGH,34.15222,74.81073,arcgis,Srinagar
 ISGANDERPORA,34.0258,74.56759,arcgis,Budgam
 JEHANGIR CHOWK,34.07189,74.80491,photon,Srinagar
 KACHOO,34.198,74.364,district_centre(Baramulla),Baramulla
-KAMALKOTE,34.083,74.797,district_centre(Srinagar),Srinagar
+KAMALKOTE,34.084,74.047,manual_pin,Baramulla
 KAPRIN,33.66922,74.90409,nominatim,Srinagar
 KAPRUN,33.73,75.148,district_centre(Anantnag),Anantnag
 KAPWARA,34.526,74.255,district_centre(Kupwara),Kupwara
@@ -52,24 +52,24 @@ KHAG,33.9986,74.53099,nominatim,Budgam
 KHAYA,34.08347,74.82229,photon,Srinagar
 KHERUM,33.73,75.148,district_centre(Anantnag),Anantnag
 KHOOR,34.58195,74.13176,nominatim,Budgam
-KHULL AHMADABAD,34.083,74.797,district_centre(Srinagar),Srinagar
+KHULL AHMADABAD,33.645,75.019,district_centre(Kulgam),Kulgam
 KHUMANI CHOWK,34.03118,74.90479,photon,Srinagar
 KOIL,33.87541,74.94956,nominatim,Srinagar
-KUPWARA DAY,34.083,74.797,district_centre(Srinagar),Srinagar
-KUPWRA,34.083,74.797,district_centre(Srinagar),Srinagar
+KUPWARA DAY,34.526,74.255,manual_pin,Kupwara
+KUPWRA,34.526,74.255,manual_pin,Kupwara
 LAMMER,33.73,75.148,district_centre(Anantnag),Anantnag
 LETTAR,33.874,74.899,district_centre(Pulwama),Pulwama
 LETTER,33.874,74.899,district_centre(Pulwama),Pulwama
 LOOLPORA,33.85783,74.68835,arcgis,Budgam
-MAIDANAN,34.083,74.797,district_centre(Srinagar),Srinagar
-MALANGAM,34.083,74.797,district_centre(Srinagar),Srinagar
+MAIDANAN,34.198,74.364,district_centre(Baramulla),Baramulla
+MALANGAM,34.418,74.643,district_centre(Bandipora),Bandipora
 MATIGAWRAN,33.73,75.148,district_centre(Anantnag),Anantnag
 MAWAN,33.73,75.148,district_centre(Anantnag),Anantnag
 MILYAAL,34.014,74.719,district_centre(Budgam),Budgam
 MIRPORA BUDGAM,34.04173,74.6206,nominatim,Srinagar
 MOMINABAD TENGPORA,34.22854,74.7801,photon+arcgis,Srinagar
 NALLAMAR ROAD,34.13392,74.83674,photon,Srinagar
-NAMBIA,34.083,74.797,district_centre(Srinagar),Srinagar
+NAMBIA,34.198,74.364,district_centre(Baramulla),Baramulla
 NARISTAN,34.014,74.719,district_centre(Budgam),Budgam
 NARWARA BUDGAM,34.03684,74.62461,photon,Budgam
 NEHAMA,33.63458,74.89535,nominatim,Srinagar
@@ -77,8 +77,8 @@ NEW KHANDA,33.9154,74.88252,photon,Srinagar
 PAKHERPORA,33.81517,74.76419,nominatim,Budgam
 PARIWAN,33.663,74.92412,nominatim,Srinagar
 PASTHOON,33.99229,75.07585,arcgis,Budgam
-PEHILPORA,34.083,74.797,district_centre(Srinagar),Srinagar
-PHALGAM,33.73,75.148,district_centre(Anantnag),Anantnag
+PEHILPORA,34.198,74.364,district_centre(Baramulla),Baramulla
+PHALGAM,34.0149,75.3318,manual_pin,Anantnag
 PINGLISH,33.91329,75.13216,nominatim,Budgam
 RASOO,34.10539,74.8097,photon,Srinagar
 RATNIPURA,33.91694,74.94821,arcgis,Srinagar
@@ -90,12 +90,12 @@ SANGERWANI,33.7977,74.72726,arcgis,Pulwama
 SEDOW,33.66425,74.78482,nominatim,Srinagar
 SHANGLIPORA,33.95583,74.49961,arcgis,Budgam
 SHEIKHPORA KAKUTHAL,34.014,74.719,district_centre(Budgam),Budgam
-TANGDAR,34.014,74.719,district_centre(Budgam),Budgam
+TANGDAR,34.648,74.13,manual_pin,Kupwara
 TARTHPORA,34.014,74.719,district_centre(Budgam),Budgam
 TRAL DADSUR,34.014,74.719,district_centre(Budgam),Budgam
 TREHGAM KUP,34.51731,74.17418,photon+arcgis,Srinagar
 UTTERSOO,33.70776,75.30214,nominatim,Anantnag
-VAILO,34.083,74.797,district_centre(Srinagar),Srinagar
+VAILO,33.73,75.148,district_centre(Anantnag),Anantnag
 VIA SHALIMAR,34.15078,74.87527,photon+arcgis,Srinagar
 VIJIPOPRA,34.28118,74.6115,arcgis,Budgam
 WASOORA,33.8261,74.9724,arcgis,Pulwama

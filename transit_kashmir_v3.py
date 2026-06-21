@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.8
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.9
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -1536,16 +1536,57 @@ def _fuzzy_match_score(a: str, b: str) -> float:
     return SequenceMatcher(None, a_clean, b_clean).ratio()
 
 
+# Generic place-name tokens that must NOT, on their own, anchor an SSCL match.
+# These appear in many unrelated terminal names ("… Srinagar", "… Chowk",
+# "… Bus Stand") so a raw character-ratio match on them produces geographically
+# impossible upgrades (see _terminal_matches_cmp docstring).
+_CMP_GENERIC_TOKENS = {
+    "srinagar", "sgr", "kashmir", "jkrtc", "chowk", "crossing", "stand",
+    "bus", "stop", "road", "colony", "hospital", "station", "bypass", "loop",
+    "circular", "downtown", "city", "district", "court", "new", "old", "via",
+    "near", "main", "town", "centre", "center", "office", "depot", "terminal",
+}
+
+
+def _cmp_tokens(name: str) -> set:
+    """Meaningful (non-generic, >=4 char) word tokens from a terminal name."""
+    import re as _re
+    toks = _re.split(r"[^a-z0-9]+", str(name).lower())
+    return {t for t in toks if len(t) >= 4 and t not in _CMP_GENERIC_TOKENS}
+
+
 def _terminal_matches_cmp(dataset_terminal: str, cmp_terminal: str) -> bool:
     """
-    Returns True if `dataset_terminal` fuzzy-matches `cmp_terminal` above the
-    CMP_FUZZY_THRESHOLD.  Also returns True if the CMP terminal name appears
-    as a substring inside the dataset terminal name (case-insensitive) —
-    this catches common abbreviations (e.g. "BC Road Bus Stand" ↔ "B.C. Road Bus Terminal").
+    True only when the dataset terminal genuinely refers to the same place as the
+    SSCL terminal.
+
+    Hardened (v3.3.9 audit fix): the previous implementation returned True on a
+    0.45 character-ratio OR a raw substring, which mis-matched any route merely
+    *ending in* a generic word. e.g. "Srinagar" (8 chars) scores 0.52 against
+    "District Court Srinagar" (23 chars), so every "X to Srinagar" permit was
+    falsely upgraded to SSCL-12, and weak collisions like "tangmarg"↔"rangreth"
+    cleared 0.45 — producing 11 geographically-impossible SSCL trunks (Anantnag→
+    Srinagar tagged SSCL-12, Anantnag→Shopian tagged SSCL-05, …).
+
+    Now requires a STRONG full-string fuzzy match (>=0.80) OR a shared *meaningful*
+    token (>=4 chars, not a generic place word), with close spelling variants of
+    such tokens allowed (>=0.85, e.g. "Batamaloo"/"Batamallo"). This still catches
+    the documented "Hazratbal" ↔ "… via Hazratbal" partial case (shared token)
+    while rejecting generic-word and noise matches.
     """
-    score  = _fuzzy_match_score(dataset_terminal, cmp_terminal)
-    substr = cmp_terminal.lower().strip() in dataset_terminal.lower().strip()
-    return score >= CMP_FUZZY_THRESHOLD or substr
+    ds = str(dataset_terminal).lower().strip()
+    cm = str(cmp_terminal).lower().strip()
+    if not ds or not cm:
+        return False
+    # 1. exact / near-exact full-string match
+    if _fuzzy_match_score(ds, cm) >= 0.80:
+        return True
+    # 2. shared meaningful token (whole word), incl. close spelling variants
+    ds_tok, cm_tok = _cmp_tokens(ds), _cmp_tokens(cm)
+    if ds_tok & cm_tok:
+        return True
+    return any(_fuzzy_match_score(a, b) >= 0.85
+               for a in cm_tok for b in ds_tok)
 
 
 def inject_cmp_trunk_routes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -1610,6 +1651,14 @@ def inject_cmp_trunk_routes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
         matched_idx = []
         for idx, row in gdf.iterrows():
+            # The synthetic backbone row ALWAYS self-matches, regardless of the
+            # terminal matcher (v3.3.9: the hardened matcher can't anchor on SSCL
+            # names that are entirely generic words — e.g. SSCL-11 "Old City Loop
+            # Downtown Srinagar" — so without this every one of the 30 government
+            # backbone routes must still be guaranteed an upgrade).
+            if str(gdf.at[idx, "Route_ID"]).strip() == cmp_id:
+                matched_idx.append(idx)
+                continue
             ds_start = _get_terminal(row, "start")
             ds_end   = _get_terminal(row, "end")
 
@@ -1629,6 +1678,17 @@ def inject_cmp_trunk_routes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                 # overwriting the synthetic's own CMP_Route_ID (e.g. SSCL-24
                 # synthetic claimed by SSCL-06 because both start at Pantha Chowk).
                 is_self_route = (str(gdf.at[idx, "Route_ID"]).strip() == cmp_id)
+                # Length sanity (v3.3.9 audit fix): a real permit can only BE an
+                # SSCL corridor if its routed length is comparable to the SSCL
+                # nominal km. Backstops any residual terminal false-positive
+                # (e.g. a 59 km Anantnag→Srinagar permit can't be the 11 km
+                # SSCL-12). The synthetic backbone (self-routes) bypasses this.
+                if not is_self_route and "Route_KM" in gdf.columns:
+                    ds_km  = gdf.at[idx, "Route_KM"]
+                    cmp_km = float(cmp_route.get("km", 0) or 0)
+                    if pd.notna(ds_km) and ds_km > 0 and cmp_km > 0 \
+                       and not (0.45 <= float(ds_km) / cmp_km <= 2.2):
+                        continue
                 existing_id   = str(gdf.at[idx, "CMP_Route_ID"]).strip()
                 if existing_id and existing_id != cmp_id and not is_self_route:
                     # First-match wins: don't overwrite a CMP_Route_ID already set by
@@ -4970,7 +5030,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws1.cell(row=7, column=2, value="Srinagar / Kashmir Valley").font = Font(name="Segoe UI", bold=True, color=TEAL, size=14)
     
     gen_date = datetime.datetime.now().strftime("%d %b %Y")
-    ws1.cell(row=9, column=2, value=f"Version: v3.3.8  |  Generated: {gen_date}").font = subtitle_font
+    ws1.cell(row=9, column=2, value=f"Version: v3.3.9  |  Generated: {gen_date}").font = subtitle_font
     ws1.cell(row=10, column=2, value="Engine: SSCL/CHALO Backbone Injection | Kashmir Geographic Recentre").font = subtitle_font
     
     summary_text = (f"This plan details the rationalised public transport network for Srinagar and the Kashmir Valley. "
@@ -5170,7 +5230,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws3.page_margins.right = 0.4
     ws3.page_margins.top = 0.6
     ws3.page_margins.bottom = 0.6
-    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.3.8"
+    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.3.9"
     ws3.oddHeader.center.size = 12
     ws3.oddFooter.right.text  = "Page &P of &N"
     
@@ -5442,7 +5502,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws8.cell(row=2, column=2, value="Calibration & Sources").font = title_font
     
     calib_data = [
-        ("Engine Version", "v3.3.8 (Kashmir Fork)"),
+        ("Engine Version", "v3.3.9 (Kashmir Fork)"),
         ("Date Generated", gen_date),
         ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 35 min | Regional: 35 min | SSCL: 15 min (35-min ceiling — v3.3.7)"),
         ("CHALO Calibration Scorecard", "Matched to Apr 2026 ridership data"),
@@ -5938,7 +5998,7 @@ def main() -> None:
     qc_route_codes(gdf)             # audit Output #1: route-code uniqueness gate
     export_csv(gdf, file_map, ROUTES_OUT_CSV)
     export_xlsx(gdf, out_path=ROUTES_OUT_XLSX, net_pop=net_pop)
-    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.8_RTO.xlsx", net_pop=net_pop)
+    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.9_RTO.xlsx", net_pop=net_pop)
     export_passenger_impact(gdf, PASSENGER_IMPACT_CSV)
     export_geojson(gdf, ROUTES_GEOJSON)
     # Per-route disposition trail covering every input row (audit Rec 8).

@@ -7,3 +7,7 @@ geocode_cache.*.json
 .claude/
 __pycache__/
 *.pyc
+# one-off audit backups / rendered scratch
+*.pre-district-fix.csv
+*.pre-district-fix.json
+_pdf_pages/
