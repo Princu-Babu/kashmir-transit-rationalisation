@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.3.9
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.4.0
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -3777,160 +3777,67 @@ def _load_dashboard_route_codes() -> Dict[str, str]:
 
 
 def assign_route_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """v3.3.7: compute a deterministic Route_Code for every route from the
-    master stops file and attach it to the GeoDataFrame so all downstream
-    exports carry codes. Endpoints not in the master are backfilled from the
-    official codes already published in the dashboard routes.json."""
-    log.info("Assigning Route_Code from master stops file…")
+    """Assign a deterministic 12-char Route_Code to every route and export the
+    canonical stop master.
+
+    v4 ("geo-canonical", 2026-06-21): the old name-match-against-a-hand-built-
+    master logic is replaced by route_code_system.py, which builds the stop
+    registry FROM the engine's own geocoded route endpoints (one source of truth,
+    exact route->stop linkage) and resolves District + Tehsil(=Sector) by
+    point-in-polygon against authoritative OSM admin boundaries. See
+    ROUTE_CODE_METHODOLOGY.md. Code = <Do><Dd><So><Sd><No><Nd> (12 chars);
+    a trailing letter (A/B) marks a genuine same-stop-pair collision only.
+    """
+    log.info("Assigning Route_Code (v4 geo-canonical: OSM district/tehsil + endpoint registry)…")
     gdf = gdf.copy()
-    stops_path = _resolve_stops_master()
-    if stops_path is None:
-        log.warning("  Kashmir_Stops_Sectored_V2.csv not found — Route_Code left blank.")
+    try:
+        import route_code_system as rcs
+        admin = rcs.load_admin()
+    except Exception as exc:  # pragma: no cover - missing module/boundaries
+        log.warning("  route_code_system/boundaries unavailable (%s) — Route_Code left blank.", exc)
         gdf["Route_Code"] = ""
         return gdf
 
-    stops = pd.read_csv(stops_path)
-    stops["Sector_ID"] = pd.to_numeric(stops["Sector_ID"], errors="coerce").fillna(0).astype(int)
-    stops["Stop_No"]   = pd.to_numeric(stops["Stop_No"], errors="coerce").fillna(0).astype(int)
-    stops["_clean"]    = stops["Stop_Name"].astype(str).str.upper().str.strip()
-    stops["_compact"]  = stops["_clean"].apply(_rc_compact)
-
-    def _stop_info(stop_name):
-        if not stop_name:
-            return None
-        name = stop_name.strip()
-        name_compact = _rc_compact(name)
-        name_sc = _rc_compact(_rc_strip_noise(name))
-        m = stops[stops["_clean"] == name]
-        if m.empty and name_compact:
-            m = stops[stops["_compact"] == name_compact]
-        if m.empty and name_sc:
-            m = stops[stops["_compact"] == name_sc]
-        if m.empty and name_sc:
-            m = stops[stops["_compact"].str.contains(name_sc, regex=False, na=False)]
-        if m.empty and name_sc:
-            m = stops[stops["_compact"].apply(lambda s: s in name_sc and len(s) >= 4)]
-        if m.empty and name_sc:
-            close = difflib.get_close_matches(name_sc, stops["_compact"].tolist(), n=1, cutoff=0.85)
-            if close:
-                m = stops[stops["_compact"] == close[0]]
-        if m.empty:
-            ms = _MANUAL_STOPS.get(name_compact) or _MANUAL_STOPS.get(name.upper())
-            if ms:
-                return (ms[0][:2].upper(), f"{ms[1]:02d}", f"{ms[2]:02d}")
-            return None
-        row = m.iloc[0]
-        return (str(row["Tehsil_Code"]).strip()[:2].upper(),
-                f"{int(row['Sector_ID']):02d}", f"{int(row['Stop_No']):02d}")
-
-    # Coordinate-based nearest-stop fallback (v3.3.8): the name matcher can't place
-    # recovered villages / Srinagar features, and the old dashboard-code backfill
-    # propagated STALE codes (from the collapsed era) — producing WRONG codes that
-    # collided with correctly-matched routes. Instead, when the name doesn't match
-    # the master, derive the tehsil/sector/stop from the master stop NEAREST to the
-    # route's actual geocoded endpoint. Deterministic, location-based, distinct.
-    stops["_lat"] = pd.to_numeric(stops["Latitude"], errors="coerce")
-    stops["_lon"] = pd.to_numeric(stops["Longitude"], errors="coerce")
-    svalid = stops.dropna(subset=["_lat", "_lon"]).reset_index(drop=True)
-    # Reliable district (tehsil) centres — used to pick the CORRECT district for
-    # endpoints beyond the surveyed stop network. v3.3.9 audit found (a) the
-    # 189-stop master has no stops in several rural corridors (NE Ganderbal —
-    # Kangan/Manigam/Gund), so a raw nearest-stop snap lands 11–22 km away on a
-    # WRONG-district stop and collapses distinct towns onto one code (the SRSR…A/B
-    # problem); and (b) the master's own STOP COORDINATES are unreliable for some
-    # stops (AIRPORT recorded ~80 km south of the real airport, PARIMPORA ~18 km
-    # off) — so a tehsil centroid computed FROM the master would itself be polluted.
-    # We therefore key the district on authoritative district-HQ coordinates, not
-    # the master's coordinates. (The categorical name-matched codes are unaffected —
-    # they use Stop_Name + the master's Tehsil/Sector/Stop, which are correct.)
-    _RELIABLE_TEHSIL_CENTRE = {
-        "SR": (34.0830, 74.7970), "BG": (34.0140, 74.7190),
-        "GB": (34.2270, 74.7750), "AN": (33.7300, 75.1480),
-        "KG": (33.6450, 75.0190), "SP": (33.7170, 74.8310),
-        "PW": (33.8740, 74.8990), "BR": (34.1980, 74.3640),
-        "BP": (34.4180, 74.6430), "KW": (34.5260, 74.2550),
-    }
-    _rt_codes = list(_RELIABLE_TEHSIL_CENTRE)
-    _rt_lat = {k: v[0] for k, v in _RELIABLE_TEHSIL_CENTRE.items()}
-    _rt_lon = {k: v[1] for k, v in _RELIABLE_TEHSIL_CENTRE.items()}
-    OFF_NETWORK_KM = 3.0
-
-    def _coord_pair(lat, lon):
-        # Two deterministic 2-digit indices (10–99) from the endpoint coordinate so
-        # distinct off-network terminals get distinct sector+stop (no spurious A/B).
-        sec  = (int(round(lat * 100) + round(lon * 100)) % 90) + 10
-        stop = (int(round(lat * 1000) + round(lon * 1000) * 7) % 90) + 10
-        return f"{sec:02d}", f"{stop:02d}"
-
-    def _nearest_stop(lat, lon):
-        if lat is None or lon is None:
-            return None
-        d2 = ((svalid["_lat"] - lat) * 111.0) ** 2 + ((svalid["_lon"] - lon) * 92.0) ** 2
-        i = d2.idxmin()
-        if float(d2[i]) ** 0.5 <= OFF_NETWORK_KM:
-            row = svalid.loc[i]
-            return (str(row["Tehsil_Code"]).strip()[:2].upper(),
-                    f"{int(row['Sector_ID']):02d}", f"{int(row['Stop_No']):02d}")
-        # OFF-NETWORK: district from the authoritative HQ centres + coord sector/stop.
-        teh = min(_rt_codes, key=lambda k:
-                  ((_rt_lat[k] - lat) * 111.0) ** 2 + ((_rt_lon[k] - lon) * 92.0) ** 2)
-        sec, stop = _coord_pair(lat, lon)
-        return (teh, sec, stop)
-
-    def _ends(r):
-        g = r.get("geometry")
+    def _ends(geom):
         try:
-            cs = list(g.coords)
-            return (cs[0][1], cs[0][0]), (cs[-1][1], cs[-1][0])   # (lat,lon) O, D
+            cs = list(geom.coords)
+            return (cs[0][1], cs[0][0]), (cs[-1][1], cs[-1][0])
         except Exception:
             return (None, None), (None, None)
 
-    codes: List[str] = []
-    n_namematch = n_coordfb = 0
-    for _, r in gdf.iterrows():
-        o, d = _rc_extract_origin_dest(r.get("Route_Name", ""))
-        oi, di = _stop_info(o), _stop_info(d)
-        if not (oi and di):
-            (olat, olon), (dlat, dlon) = _ends(r)
-            if oi is None:
-                oi = _nearest_stop(olat, olon)
-            if di is None:
-                di = _nearest_stop(dlat, dlon)
-            if oi and di:
-                n_coordfb += 1
-        else:
-            n_namematch += 1
-        codes.append(f"{oi[0]}{di[0]}{oi[1]}{di[1]}{oi[2]}{di[2]}" if (oi and di) else "UNMATCHED")
-    matched = n_namematch
-    final_codes = codes
+    routes, valid_idx = [], []
+    for pos, (_, r) in enumerate(gdf.iterrows()):
+        (olat, olon), (dlat, dlon) = _ends(r.get("geometry"))
+        if olat is None or dlat is None:
+            continue
+        valid_idx.append(pos)
+        routes.append({
+            "route_name": r.get("Route_Name", ""),
+            "o_lat": olat, "o_lon": olon, "d_lat": dlat, "d_lon": dlon,
+            "active": (r.get("Action_Taken") != "MERGED_INTO_TRUNK"),
+        })
 
-    # Uniqueness (audit Output #1): when 2+ ACTIVE routes still share a stop-pair
-    # code, append a clean trailing LETTER variant (A/B/C — the standard "5A/5B"
-    # bus convention), NOT a dash-number. Deterministic by route name. Merged
-    # (non-active) rows keep the base code (not shown in the plan).
-    from collections import Counter, defaultdict
-    active_flags = (gdf["Action_Taken"] != "MERGED_INTO_TRUNK").tolist()
-    names = gdf["Route_Name"].astype(str).tolist()
-    code_counts = Counter(c for c, a in zip(final_codes, active_flags)
-                          if a and c not in ("", "UNMATCHED"))
-    groups = defaultdict(list)
-    for i, (c, a) in enumerate(zip(final_codes, active_flags)):
-        if a and code_counts.get(c, 0) > 1:
-            groups[c].append(i)
-    suffix: Dict[int, str] = {}
-    for c, idxs in groups.items():
-        for rank, i in enumerate(sorted(idxs, key=lambda j: names[j])):
-            suffix[i] = chr(ord("A") + rank) if rank < 26 else f"Z{rank}"
-    unique_codes = [(c + suffix[i]) if i in suffix else c
-                    for i, c in enumerate(final_codes)]
-    n_disambiguated = len(suffix)
-    backfilled = n_coordfb
-    gdf["Route_Code"] = unique_codes
-    remaining = sum(1 for c in unique_codes if c == "UNMATCHED")
-    log.info("  Route_Code: %d/%d name-matched · %d coordinate-fallback (nearest "
-             "master stop) · %d remaining UNMATCHED · %d letter-disambiguated "
-             "(no dash).", matched, len(codes), backfilled, remaining, n_disambiguated)
+    codes, master, stats = rcs.assign(routes, admin)
+
+    out = [""] * len(gdf)
+    for k, pos in enumerate(valid_idx):
+        out[pos] = codes[k]
+    gdf["Route_Code"] = out
+
+    try:
+        master.to_csv("Kashmir_Stops_Master_v4.csv", index=False, encoding="utf-8-sig")
+    except Exception as exc:  # pragma: no cover
+        log.warning("  could not write Kashmir_Stops_Master_v4.csv (%s)", exc)
+
+    log.info("  Route_Code v4: %d endpoints -> %d unique names -> %d canonical stops "
+             "across %d districts / %d tehsil-sectors; %d active routes coded, "
+             "%d letter-disambiguated (genuine same-stop-pair). Master -> "
+             "Kashmir_Stops_Master_v4.csv.",
+             stats["endpoints"], stats["unique_names"], stats["canonical_stops"],
+             stats["districts_used"], stats["sectors_used"], stats["active_routes"],
+             stats["letter_suffixed"])
     return gdf
+
 
 
 # Acronyms / station codes that must stay uppercase when we title-case names.
@@ -5066,7 +4973,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws1.cell(row=7, column=2, value="Srinagar / Kashmir Valley").font = Font(name="Segoe UI", bold=True, color=TEAL, size=14)
     
     gen_date = datetime.datetime.now().strftime("%d %b %Y")
-    ws1.cell(row=9, column=2, value=f"Version: v3.3.9  |  Generated: {gen_date}").font = subtitle_font
+    ws1.cell(row=9, column=2, value=f"Version: v3.4.0  |  Generated: {gen_date}").font = subtitle_font
     ws1.cell(row=10, column=2, value="Engine: SSCL/CHALO Backbone Injection | Kashmir Geographic Recentre").font = subtitle_font
     
     summary_text = (f"This plan details the rationalised public transport network for Srinagar and the Kashmir Valley. "
@@ -5266,7 +5173,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws3.page_margins.right = 0.4
     ws3.page_margins.top = 0.6
     ws3.page_margins.bottom = 0.6
-    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.3.9"
+    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.4.0"
     ws3.oddHeader.center.size = 12
     ws3.oddFooter.right.text  = "Page &P of &N"
     
@@ -5538,7 +5445,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws8.cell(row=2, column=2, value="Calibration & Sources").font = title_font
     
     calib_data = [
-        ("Engine Version", "v3.3.9 (Kashmir Fork)"),
+        ("Engine Version", "v3.4.0 (Kashmir Fork)"),
         ("Date Generated", gen_date),
         ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 35 min | Regional: 35 min | SSCL: 15 min (35-min ceiling — v3.3.7)"),
         ("CHALO Calibration Scorecard", "Matched to Apr 2026 ridership data"),
@@ -6034,7 +5941,7 @@ def main() -> None:
     qc_route_codes(gdf)             # audit Output #1: route-code uniqueness gate
     export_csv(gdf, file_map, ROUTES_OUT_CSV)
     export_xlsx(gdf, out_path=ROUTES_OUT_XLSX, net_pop=net_pop)
-    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.3.9_RTO.xlsx", net_pop=net_pop)
+    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.4.0_RTO.xlsx", net_pop=net_pop)
     export_passenger_impact(gdf, PASSENGER_IMPACT_CSV)
     export_geojson(gdf, ROUTES_GEOJSON)
     # Per-route disposition trail covering every input row (audit Rec 8).

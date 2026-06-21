@@ -1,5 +1,5 @@
 """
-generate_presentations.py — v3.3.9
+generate_presentations.py — v3.4.0
 
 Builds two visual PowerPoint briefings from the live engine output:
 
@@ -22,7 +22,7 @@ dedicated bibliography slide.
 
 Usage
 -----
-  python generate_presentations.py --outdir outputs_v3.3.9
+  python generate_presentations.py --outdir outputs_v3.4.0
 """
 
 import argparse
@@ -337,7 +337,7 @@ def add_title_slide(prs, title, subtitle, tag, color=NAVY):
     foot = slide.shapes.add_textbox(Inches(5.15), Inches(6.55), Inches(7.7), Inches(0.7))
     tf = foot.text_frame; tf.word_wrap = True
     _runs(tf.paragraphs[0],
-          "Engine v3.3.9  •  June 2026  •  Phase-1 plan  •  35-min headway ceiling  •  "
+          "Engine v3.4.0  •  June 2026  •  Phase-1 plan  •  35-min headway ceiling  •  "
           "balanced 50/50 trunk fleet  •  fully open-data & reproducible",
           11, MID_GREY, italic=True)
 
@@ -399,7 +399,7 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
 
     add_title_slide(
         prs, title="Kashmir Valley\nTransit Engine",
-        subtitle=("Technical Briefing — v3.3.9\n\nOpen-data pipeline, methodology, "
+        subtitle=("Technical Briefing — v3.4.0\n\nOpen-data pipeline, methodology, "
                   "formulas and literature backing, for the engineering and data-review audience."),
         tag="TECHNICAL BRIEFING", color=NAVY)
 
@@ -551,8 +551,8 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
     s = add_blank_slide(prs)
     add_title_bar(s, "Reproducible & versioned")
     add_body_text(s, [
-        "Deliverables (outputs_v3.3.9/):",
-        "  • Kashmir_Route_Frequency_Plan_v3.3.9_RTO.xlsx (9-sheet) + _RTO_Pretty.xlsx (bus schedule)",
+        "Deliverables (outputs_v3.4.0/):",
+        "  • Kashmir_Route_Frequency_Plan_v3.4.0_RTO.xlsx (9-sheet) + _RTO_Pretty.xlsx (bus schedule)",
         "  • Master_Transit_Map_Kashmir_v3.html + 192 per-route maps",
         "  • Rationalised_Routes_Kashmir_v3.csv / .geojson  ·  Rationalisation_Log  ·  Passenger_Impact",
         "",
@@ -719,8 +719,8 @@ def create_gov_deck(stats: EngineStats, output_path: str) -> None:
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="Generate v3.3.9 technical + government briefings.")
-    parser.add_argument("--outdir", default="outputs_v3.3.9")
+    parser = argparse.ArgumentParser(description="Generate v3.4.0 technical + government briefings.")
+    parser.add_argument("--outdir", default="outputs_v3.4.0")
     parser.add_argument("--engine-csv", default=None)
     args = parser.parse_args()
     os.makedirs(args.outdir, exist_ok=True)

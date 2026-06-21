@@ -85,44 +85,43 @@ version bumps. (These are `_`-prefixed helper scripts, committed to the engine r
 
 ---
 
-## 3. Route_Code generation (baked into the engine — v3.3.7)
+## 3. Route_Code system — v4 "geo-canonical" (`route_code_system.py`)
 
-- **v3.3.7: route codes are now computed INSIDE the engine** (`assign_route_codes`
-  in transit_kashmir_v3.py, called in main() before export). The operational CSV
-  carries a `Route_Code` column (right after Route_Name), so the RTO workbook AND
-  the pretty bus-schedule workbook show codes natively. This fixed the blank
-  Route Code column in the pretty workbook (the engine CSV never used to carry
-  codes — they were bolted on later by the dashboard sync).
-- Source: `Kashmir_Stops_Sectored_V2.csv` (master stops, 187 stops: Master_Stop_Code,
-  Stop_Name, Sector_ID, Latitude, Longitude, Stop_No, Tehsil_Code). Lives in
-  `E:\kash` (engine resolves it via cwd → script-dir).
-- Deterministic 12-char code: `<TehsilO><TehsilD><SectorO><SectorD><StopO><StopD>`
-  e.g. `PWSP08091215` = Pulwama→Shopian, sector 08→09, stop 12→15.
-- Match cascade: exact → compact → suffix-stripped → substring → fuzzy 0.85.
-- **v3.3.9 coordinate-fallback fix (off-network endpoints):** when a name isn't in
-  the master, the fallback finds the nearest master stop — but the master has NO
-  stops in some rural corridors (NE Ganderbal: Kangan/Manigam/Gund), so the old
-  fallback snapped 11–22 km to a WRONG-district stop (Kangan/Manigam coded SR;
-  collapsed to one SRSR…A/B code). Now: for endpoints >3 km from any stop, the
-  district (tehsil) comes from authoritative district-HQ centres (`_RELIABLE_
-  TEHSIL_CENTRE`, NOT the master's centroids — the master's own coords are
-  unreliable: AIRPORT ~80 km off, PARIMPORA ~18 km off) + a coordinate-derived
-  sector/stop so distinct terminals get distinct codes. Kangan/Manigam now correct
-  GB + distinct; letter-suffixes 8→6.
-- **Letter suffix (A/B):** appended only when 2+ active routes resolve to the SAME
-  stop-pair — the standard bus "5A/5B" convention. The 6 remaining are legitimate
-  (each pair's dests <3.1 km from the same stop: Hazratbal/Naseem Bagh, Budgam-town,
-  Narbal-area). NO dash form (a `-NN` suffix was used pre-v3.3.8; now letters only).
-- Engine result (v3.3.9): **594/615 name-matched from the stops master, 21
-  coordinate-fallback (off-network district-corrected), 0 UNMATCHED, 0 dashes, 0
-  duplicate active codes.** All 172 active codes valid `^4-letter+8-digit(+letter)$`
-  and identical across CSV/GeoJSON/dashboard/pretty workbook. Known residual:
-  `Srinagar→Gund` keeps the Budgam Gund code (two villages named Gund). The master's
-  bad coords (above) should be corrected in the next RTO master revision.
-- `generate_route_codes.py` is kept as a standalone tool (produces
-  `Routes_with_Codes.xlsx`); the engine ported its matching cascade.
-- When the RTO ships an updated stops master, drop it in `E:\kash`, re-run the
-  engine → codes regenerate natively → `_sync_dashboard.py` propagates them.
+**Full methodology: `ROUTE_CODE_METHODOLOGY.md`. This replaced the old
+name-match-against-a-hand-built-master approach entirely (v3.4.0).**
+
+- **Why rebuilt:** the old logic fuzzy-matched terminal NAMES against
+  `Kashmir_Stops_Sectored_V2.csv`, which had unreliable coords (AIRPORT ~80 km
+  off, PARIMPORA ~18 km off), undeduped spelling variants, and wrong district
+  tags (LALCHOWK→Anantnag). That produced wrong-district codes and spurious A/B.
+- **New foundations:** (1) COORDINATES from the engine's own geocoded route
+  endpoints — the stop registry is built FROM them, so route→stop linkage is
+  EXACT (no fuzzy matching). (2) ADMIN GEOGRAPHY from authoritative OSM
+  boundaries: District = `kashmir_districts_osm.geojson` (admin_level 5, 10
+  districts); Tehsil = `kashmir_tehsils_osm.geojson` (admin_level 6, 39 tehsils).
+  Every stop's District + Tehsil(=Sector) come from POINT-IN-POLYGON. Both
+  geojsons are committed (fetched once from OSM Overpass + osm2geojson).
+- **Code (unchanged 12-char format):** `<Do><Dd><So><Sd><No><Nd>` — 2-letter
+  origin+dest District, 2-digit origin+dest Sector, 2-digit origin+dest Stop.
+  Display `SRGB-0102-0305`. District codes: SR BG GB BR BP PW SP AN KG KW.
+- **Pipeline (deterministic):** endpoints → one coord per normalised name →
+  150 m FIXED-ANCHOR proximity merge (no chaining — running-centroid had merged
+  LD+TRC 2 km apart) → district+tehsil by point-in-polygon → sectors numbered
+  1..N over the district's full alphabetical tehsil list (STABLE) → stops
+  alphabetical within (district,sector). Re-runs are byte-identical.
+- **Letter suffix (A/B):** only when 2+ active routes share the SAME canonical
+  origin AND dest stop (true "5A/5B"). v3.4.0 result: **4 letter-suffixed, all
+  legit** (Khull Ahmadabad/Kulgam — a village approximated to its district town;
+  "By Pass"/"Bypass" — a spelling-duplicate corridor). NO dashes.
+- **Outputs:** `Kashmir_Stops_Master_v4.csv` (126 canonical stops: Master_Stop_Code,
+  Stop_Name, District, Tehsil, Tehsil_Code, Sector_ID, Stop_No, Lat/Lon, N_Endpoints)
+  + Route_Code on every route. Verified: 172/172 valid `^4L+8D(+letter)$`, 0
+  dashes/dups/UNMATCHED, identical across CSV/GeoJSON/dashboard/pretty workbook,
+  and EVERY master stop's district == independent point-in-polygon (0 mismatches).
+- **To refresh boundaries** (rare): re-fetch admin_level 5 & 6 within `IN-JK` from
+  OSM Overpass, assemble with `osm2geojson`, overwrite the two `*_osm.geojson`.
+- `generate_route_codes.py` and `Kashmir_Stops_Sectored_V2.csv` are now RETIRED
+  for code generation (kept only for reference / diffing).
 
 ---
 
@@ -141,7 +140,8 @@ version bumps. (These are `_`-prefixed helper scripts, committed to the engine r
 | v3.3.6 | RTO Kashmir asks r1 | SSCL_HPV_SHARE_CAP=0.60 (more MPV on HPV-dominated trunks); LP headway 60→35 min; route-code generator integrated |
 | v3.3.7 | RTO Kashmir asks r2 | 35-min headway CEILING (HEADWAY_MAX_MIN=35 — regional 60/90, MPS 45, "regular" 60 all eliminated → headways now only 15/20/35); SSCL_HPV_SHARE_CAP 0.60→0.50 + long-haul bracket 0.60→0.50 (neither class a trunk majority); dashboard download cleanup; _sync_dashboard auto-copies RTO+Pretty workbooks and purges stale ones |
 | v3.3.8 | Independent audit remediation | Re-geocoded district-aware via Nominatim (`geocode_common.py`; `arcgis` now optional) — eliminated the 118-name Srinagar-centroid collapse (0 centroid endpoints, was 391/416). `parse_via` format fix; duplicate-permit consolidation (Finding 8); apportionment normalised to the dedup union (Finding 9); input-QA gate + per-route disposition trail; new QC checks (geocode/dup-corridor/load/route-code uniqueness); LPV_Count in CSV; route-code uniqueness suffix. Outcome: fleet 1,009→855, coverage 69.8%→94.7%, median route 8.7→16.5 km. See `AUDIT_FIX_LOG.md`. |
-| **v3.3.9** | **Government-screening source re-audit (CURRENT)** | **Re-checked the plan against the original Kashmir source files. (1) SSCL FALSE-TRUNK BUG: `_terminal_matches_cmp` matched on a 0.45 char-ratio + raw substring, so 11 conventional JKRTC permits (Anantnag→Srinagar, Tangmarg, Haftnar→Anantnag…) were mis-labelled SSCL e-bus trunks — fake `CMP_Route_ID`, 15-min headway, ~115 inflated buses. Rewrote the matcher (strong fuzzy ≥0.80 OR shared meaningful non-generic token) + length-sanity guard; synthetic backbone force-self-matches. Result: CMP trunks 41→30 (exactly the SSCL backbone), 0 false trunks. (2) GEOCODE DISTRICT COLLAPSE: `_build_gazetteer` defaulted unknown districts to Srinagar → 15 villages from 6 districts on one Srinagar point; fixed via depot→district map (`_fix_gazetteer_districts.py`) + real pins (Pahalgam etc.). Outcome: fleet 1,053→1,005 (165/751/89), SSCL fleet 398→283, coverage 37.81% unchanged. 24/24 QA pass. See `AUDIT_2026-06-21_SOURCE_RECHECK.md`.** |
+| v3.3.9 | Government-screening source re-audit | Re-checked the plan against the original Kashmir source files. (1) SSCL FALSE-TRUNK BUG: `_terminal_matches_cmp` matched on a 0.45 char-ratio + raw substring, so 11 conventional JKRTC permits (Anantnag→Srinagar, Tangmarg, Haftnar→Anantnag…) were mis-labelled SSCL e-bus trunks — fake `CMP_Route_ID`, 15-min headway, ~115 inflated buses. Rewrote the matcher (strong fuzzy ≥0.80 OR shared meaningful non-generic token) + length-sanity guard; synthetic backbone force-self-matches. Result: CMP trunks 41→30 (exactly the SSCL backbone), 0 false trunks. (2) GEOCODE DISTRICT COLLAPSE: `_build_gazetteer` defaulted unknown districts to Srinagar → 15 villages from 6 districts on one Srinagar point; fixed via depot→district map (`_fix_gazetteer_districts.py`) + real pins (Pahalgam etc.). Outcome: fleet 1,053→1,005 (165/751/89), SSCL fleet 398→283, coverage 37.81% unchanged. 24/24 QA pass. See `AUDIT_2026-06-21_SOURCE_RECHECK.md`. |
+| **v3.4.0** | **Route-code system rebuilt — "geo-canonical" (CURRENT)** | **Completely reimagined route codes (the user flagged codes/coords/stops as the core structural problem). The old name-match-against-`Kashmir_Stops_Sectored_V2.csv` is REPLACED by `route_code_system.py`, which builds the stop registry FROM the engine's own geocoded route endpoints (one coordinate source of truth; EXACT route→stop linkage, no fuzzy matching) and resolves District + Tehsil(=Sector) by POINT-IN-POLYGON against authoritative OSM admin boundaries (`kashmir_districts_osm.geojson` admin_level 5; `kashmir_tehsils_osm.geojson` admin_level 6). The old master's bad coords (AIRPORT 80 km off, PARIMPORA 18 km off) and wrong district tags are gone by construction. Stops deduped by name→one coord then 150 m fixed-anchor proximity merge (no chaining). New authoritative registry `Kashmir_Stops_Master_v4.csv` (126 canonical stops, District/Tehsil/Sector/Stop + reliable coords). Result: 172/172 codes valid, 0 dashes/dups/UNMATCHED, only 4 letter-suffixed (all legit), and EVERY stop's district matches independent point-in-polygon (0 mismatches). Plan unchanged (172/1,005/30 SSCL/37.81%). Full method in `ROUTE_CODE_METHODOLOGY.md`. (Open item, pre-existing: 3 Kupwara routes are dropped by the study-bbox clip — no active KW routes; flagged separately.)** |
 
 ---
 
@@ -170,7 +170,7 @@ _route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
 
 ---
 
-## 6. Current numbers (v3.3.9, the live plan — source re-audited)
+## 6. Current numbers (v3.4.0, the live plan — route codes rebuilt)
 
 - 613 permits → re-geocoded district-aware + **village-geocode recovery** (kashmir_
   gazetteer.csv) → **615 routes**; **172 active** (Trunk 32 / Feeder 140 / Merged 443)
