@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.4.1-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.4.1"/>
+  <img src="https://img.shields.io/badge/Engine-v3.4.2-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.4.2"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-Jun_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/Active_Routes-186-6A1B9A?style=for-the-badge" alt="Routes"/>
   <img src="https://img.shields.io/badge/Walkshed_Coverage-35%25-2E7D32?style=for-the-badge" alt="Coverage"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.4.1
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.4.2
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -19,6 +19,8 @@ Built for the Principal Secretary of Transport, J&K — this engine ingests 613 
 > **✅ v3.4.0 — route-code system rebuilt, "geo-canonical" (June 2026).** The route-code logic was completely reimagined to fix the core structural weakness (codes / coordinates / stops). The old approach fuzzy-matched terminal *names* against a hand-built stops master whose coordinates were unreliable (AIRPORT recorded ~80 km off, PARIMPORA ~18 km off) and whose district tags were wrong. v3.4.0 replaces it with [`route_code_system.py`](route_code_system.py): the stop registry is built **from the engine's own geocoded route endpoints** (one coordinate source of truth, so route→stop linkage is *exact* — no fuzzy matching), and every stop's **District and Tehsil (= Sector) are decided by point-in-polygon against authoritative OpenStreetMap administrative boundaries** ([`kashmir_districts_osm.geojson`](kashmir_districts_osm.geojson) admin_level 5, [`kashmir_tehsils_osm.geojson`](kashmir_tehsils_osm.geojson) admin_level 6). A new authoritative registry [`Kashmir_Stops_Master_v4.csv`](outputs_v3.4.0/Kashmir_Stops_Master_v4.csv) (126 canonical stops) carries reliable coordinates + the full District→Tehsil→Stop hierarchy. Result: **172/172 codes valid, 0 dashes, 0 duplicates, 0 UNMATCHED, only 4 legitimate A/B suffixes**, and *every* stop's district matches an independent point-in-polygon check (0 mismatches). The plan is unchanged (172 routes / 1,005 buses / 30 SSCL trunks / 37.8% coverage). Full methodology: [`ROUTE_CODE_METHODOLOGY.md`](ROUTE_CODE_METHODOLOGY.md).
 
 > **✅ v3.4.1 — once-and-for-all system audit: full-division bbox + double-count crackdown (June 2026).** A system-wide reconciliation (not another symptom fix) found two structural defects that earlier output-focused audits had missed. **(1)** The study bounding box was clipped to `lat[33.50,34.50] lon[74.40,75.20]` and the population raster pre-cropped to it — silently dropping/truncating **~29 legitimate routes** (Kupwara, Handwara, Tangdar, Gurez — and even Baramulla town & Uri, whose centres sit just west of the box) and shrinking the coverage denominator to the in-box 5.1M. The box is now the full **10-district division**, the raster is re-cropped from the all-India WorldPop layer, and the coverage denominator is the **10-district union population (6.58M)** by point-in-polygon. **(2)** Routes are sized on a *round-trip* cycle, so keeping both `A→B` and `B→A` as active routes **double-counted** ~10 corridors' fleet (Srinagar↔Kupwara, Srinagar↔Uri, …); corridor consolidation is now **undirected**. A complete **funnel reconciliation** (engine in = out = 644, 0 unexplained loss) and a **10-class bug crackdown** confirm nothing else is hiding. Net: **172→186 active routes, 1,005→1,144 buses, 9→10 districts (Kupwara recovered), 2.32M served / 35.2% of the 6.58M division, 0 true reverse-duplicates.** Full detail: [`SYSTEM_AUDIT_2026-06-22.md`](SYSTEM_AUDIT_2026-06-22.md).
+
+> **✅ v3.4.2 — route-level methodology audit + Hybrid demand-responsive rural sizing (June 2026).** A per-route check of all 186 active routes confirmed every route's *direction/geometry* is sound (speeds 15–40 km/h; the high-circuity routes are legitimate via-hub permitted corridors). It also showed the textbook constant-headway fleet rule — fine for the dense Srinagar core — **over-provisions the long rural lifelines**: the flat 35-min ceiling (an urban-intended RTO ask) gave every Regional route a uniform ~55 trips/day regardless of demand (a 121 km Tangdar lifeline = 13 buses for ~270 riders), tying up 481 buses (42% of the fleet) at 11% median load, while a few busy inter-district corridors were starved. Fix (Hybrid): Urban + Peri-Urban keep 15/20/35 min; **Regional_District lifelines are now sized by demand** (headway bucketed to 35/60/90/120 min with a 2-hourly lifeline floor — a *recommended year-round* level the RTO can reduce at execution). Net: rural Regional fleet **481 → 261**, total **1,144 → 924 buses** (+91% → **+54%** over today's ~600); Tangdar 13→5, Kupwara 11→4, Handwara 9→3; Urban/Peri-Urban and the SSCL backbone unchanged. Tourism/seasonality modelling was deliberately left year-round. Full detail: [`ROUTE_LEVEL_AUDIT_2026-06-22.md`](ROUTE_LEVEL_AUDIT_2026-06-22.md).
 
 ---
 
@@ -393,13 +395,13 @@ All **30 SSCL (Srinagar Smart City Limited) e-bus routes** from CHALO ridership 
 
 ### Fleet context: SSCL deployed vs engine-recommended
 
-The engine's total fleet recommendation of **1,005 buses** (v3.4.0, full network after village recovery) covers the entire 172-active-route rationalised network — not just the SSCL e-bus pilot. About **+68% over today's ~600 buses**, because the plan extends 15–35 min frequency valley-wide (incl. ~120 rural JKRTC corridors) on top of de-duplicating the over-served city corridors:
+The engine's total fleet recommendation of **924 buses** (v3.4.2, full 10-district division) covers the entire 186-active-route rationalised network — not just the SSCL e-bus pilot. About **+54% over today's ~600 buses**: city + feeder routes run 15–35 min, while long rural lifelines are demand-sized (35–120 min, ≥2-hourly) rather than a flat 35-min clock:
 
-| Segment | Currently deployed | Engine-recommended (v3.4.1) |
+| Segment | Currently deployed | Engine-recommended (v3.4.2) |
 |---|---|---|
 | SSCL e-buses (exactly the 30 published backbone routes) | **98** (CHALO data, Apr 2026) | **283** (demand-justified at 15-min headway) |
-| Private minibuses + JKRTC + MPS (142 active routes) | existing permits | **~722** (rationalised, valley-wide) |
-| **Total active network** | ~600 | **1,005** (HPV 165 / MPV 751 / LPV 89) |
+| Private minibuses + JKRTC + MPS (156 active routes) | existing permits | **641** (city 15–35 min; rural lifelines demand-sized) |
+| **Total active network** | ~600 | **924** (HPV 139 / MPV 703 / LPV 82) |
 
 The non-SSCL bulk is the rural JKRTC network (Anantnag/Baramulla/Kupwara/Pulwama/Bandipora district services) recovered via the gazetteer — long regional routes that need more buses per route, which is why the total lands near the original v3.3.7 figure but is now **honest** (real district-aware geocodes, de-duplicated, no centroid collapse). See `cross_evaluate.py` for the SSCL calibration.
 
@@ -728,5 +730,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.4.1 — June 2026 (system audit: full-division bbox + undirected de-dup; route codes geo-canonical: 172 routes · 1,005 buses · exactly 30 SSCL trunks · 1.93M residents / 38% study-area walkshed · no duplicate routes)</i>
+  <i>Engine v3.4.2 — June 2026 (Hybrid demand-responsive rural sizing; full-division bbox; undirected de-dup; geo-canonical codes: 172 routes · 1,005 buses · exactly 30 SSCL trunks · 1.93M residents / 38% study-area walkshed · no duplicate routes)</i>
 </p>

@@ -169,7 +169,7 @@ def build(prs, s):
     cards = [
         ("ACTIVE ROUTES", f"{s['active']}", "clear, non-overlapping lines", TEAL),
         ("TOTAL BUSES",   f"{s['fleet']:,}", "recommended for the network", GOLD),
-        ("LONGEST WAIT",  "35 min", "anywhere on the network", PURPLE),
+        ("CITY WAIT",  "≤35 min", "urban & feeder routes", PURPLE),
         ("RESIDENTS",     f"{s['coverage']:.0f}%", "covered within a short walk", GREEN),
     ]
     cw, cx, cy, gap = 2.7, 0.9, 3.4, 0.3
@@ -380,7 +380,7 @@ def build(prs, s):
     # ── 7 · How often buses run ──────────────────────────────────────────────
     sl = slide_blank(prs)
     slide_header(sl, "How often buses run", color=PURPLE,
-                 sub="Buses are spaced by wait time. No route in the plan waits longer than 35 minutes.")
+                 sub="Buses are spaced by wait time. City routes wait ≤35 min; long rural lifelines run a demand-matched 35–120 min.")
     bands = [
         ("Smart City electric backbone", 15, s['hw15'], TEAL, "the busiest corridors"),
         ("Main trunk lines", 20, s['hw20'], NAVY, "high-demand routes"),
@@ -408,7 +408,7 @@ def build(prs, s):
         add_text(sl, f"{n_routes} routes · {note}", base_x + strip_w + 0.2, y + 0.52, 1.9, 0.5,
                  size=9.5, color=GREY, italic=True)
     add_text(sl, "Earlier drafts allowed one-hour waits on lifeline routes; those have been removed — "
-                 "the longest wait anywhere is now 35 minutes.",
+                 "the longest city wait is now 35 minutes; rural lifelines are demand-sized.",
              0.3, 6.4, 12.5, 0.5, size=12, color=GREY, italic=True)
     footer(sl, "Slide 7  ·  Service frequency")
 
@@ -576,7 +576,7 @@ def build(prs, s):
     slide_header(sl, "What this plan is — and what it is not", color=NAVY)
     is_items = [
         f"{s['active']} active routes, ranked by demand and grouped into priority tiers",
-        "Buses sized for a published frequency — every 15, 20 or 35 minutes",
+        "City buses at 15/20/35 min; rural lifelines demand-sized (35–120 min)",
         "Anchored on the Smart City electric-bus routes, checked against their ridership",
         "An operator workbook with absorption and indicative compensation",
         "A fully reproducible analysis — every number traces back to its source",
@@ -682,8 +682,8 @@ def load_stats(csv_path: Path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--outdir", default="outputs_v3.4.1")
-    parser.add_argument("--engine-csv", default="outputs_v3.4.1/Rationalised_Routes_Kashmir_v3.csv")
+    parser.add_argument("--outdir", default="outputs_v3.4.2")
+    parser.add_argument("--engine-csv", default="outputs_v3.4.2/Rationalised_Routes_Kashmir_v3.csv")
     args = parser.parse_args()
     stats = load_stats(Path(args.engine_csv))
     os.makedirs(args.outdir, exist_ok=True)

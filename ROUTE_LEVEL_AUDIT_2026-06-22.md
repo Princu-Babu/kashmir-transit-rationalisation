@@ -1,5 +1,17 @@
 # Route-level methodology audit — does the textbook method fit Kashmir? (22 Jun 2026)
 
+> **OUTCOME (v3.4.2, implemented):** the user adopted the **Hybrid** option from §B —
+> Urban + Peri-Urban keep the 15/20/35-min clock-headways; **Regional_District
+> rural lifelines are now sized by demand** (`apply_regional_demand_headway`:
+> headway = current × target_load/load, bucketed to 35/60/90/120 min, with a
+> 2-hourly lifeline floor), then fleet→split→Phase-4 re-run. The SSCL backbone is
+> untouched. Tourism/seasonality modelling was deliberately **not** changed — the
+> plan ships year-round *recommended* fleet sizes the RTO can reduce at execution.
+> Effect: rural Regional fleet **481 → 261**, total **1,144 → 924** buses
+> (+91% → +54% over ~600); Tangdar 13→5, Kupwara 11→4, Handwara 9→3. Urban/
+> Peri-Urban unchanged. The findings below stand as the rationale.
+
+
 Scope: every one of the **186 active routes** (v3.4.1), checked individually for
 (a) whether its direction/geometry makes sense and (b) whether the textbook
 rationalisation method (constant-headway fleet sizing + open-data demand) is

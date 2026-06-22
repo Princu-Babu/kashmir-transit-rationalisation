@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.4.1
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.4.2
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -177,6 +177,21 @@ PERIURBAN_KM_THRESHOLD      = 40.0   # 15–40km = Peri-Urban, > 40km = Regional
 # (HEADWAY_MAX_MIN) so NO route in the plan waits longer than 35 minutes.
 HEADWAY_REGIONAL_HP_MIN     = 35     # Rural lifeline HP: was 60 (RTO ask)
 HEADWAY_REGIONAL_MP_MIN     = 35     # Rural lifeline MP: was 90 (RTO ask)
+
+# v3.4.2: HYBRID demand-responsive sizing for long rural Regional_District
+# lifelines ONLY (Urban + Peri-Urban keep the 15/20/35 clock-headways). The
+# route-level audit (ROUTE_LEVEL_AUDIT_2026-06-22.md) showed the flat 35-min
+# ceiling — an urban-intended RTO ask — over-provisions 100-km lifelines (a
+# 121-km Tangdar route at 35-min = 13 buses for ~270 riders, load 0.18) while a
+# few busy inter-district corridors are starved. For Regional routes the headway
+# is re-derived from demand (since daily capacity ∝ 1/headway → headway scales
+# with the current load toward REGIONAL_TARGET_LOAD), bucketed to a clean RTO set
+# and floored at a 2-hourly lifeline minimum; fleet is then recomputed. This is a
+# RECOMMENDED year-round size — the RTO may reduce further at execution.
+# (User decision 2026-06-22: "Hybrid — Regional only".)
+REGIONAL_DEMAND_SIZING      = True
+REGIONAL_TARGET_LOAD        = 0.55   # aim lifelines at a healthy ~55% load
+REGIONAL_HEADWAY_BUCKETS    = (35, 60, 90, 120)  # min; 120 = every-2-hours floor
 
 # ─── Directive 5: Population normalisation cap ────────────────────────────────
 POP_CAP_PERCENTILE          = 95     # Cap at 95th percentile before normalising
@@ -5015,7 +5030,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws1.cell(row=7, column=2, value="Srinagar / Kashmir Valley").font = Font(name="Segoe UI", bold=True, color=TEAL, size=14)
     
     gen_date = datetime.datetime.now().strftime("%d %b %Y")
-    ws1.cell(row=9, column=2, value=f"Version: v3.4.1  |  Generated: {gen_date}").font = subtitle_font
+    ws1.cell(row=9, column=2, value=f"Version: v3.4.2  |  Generated: {gen_date}").font = subtitle_font
     ws1.cell(row=10, column=2, value="Engine: SSCL/CHALO Backbone Injection | Kashmir Geographic Recentre").font = subtitle_font
     
     summary_text = (f"This plan details the rationalised public transport network for Srinagar and the Kashmir Valley. "
@@ -5215,7 +5230,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws3.page_margins.right = 0.4
     ws3.page_margins.top = 0.6
     ws3.page_margins.bottom = 0.6
-    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.4.1"
+    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.4.2"
     ws3.oddHeader.center.size = 12
     ws3.oddFooter.right.text  = "Page &P of &N"
     
@@ -5487,7 +5502,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws8.cell(row=2, column=2, value="Calibration & Sources").font = title_font
     
     calib_data = [
-        ("Engine Version", "v3.4.1 (Kashmir Fork)"),
+        ("Engine Version", "v3.4.2 (Kashmir Fork)"),
         ("Date Generated", gen_date),
         ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 35 min | Regional: 35 min | SSCL: 15 min (35-min ceiling — v3.3.7)"),
         ("CHALO Calibration Scorecard", "Matched to Apr 2026 ridership data"),
@@ -5528,6 +5543,44 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
 
     wb.save(out_path)
     log.info("  RTO-Ready XLSX written: 9 sheets with professional styling.")
+
+
+def apply_regional_demand_headway(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """v3.4.2: re-derive headways for Regional_District (non-SSCL) lifelines from
+    demand, replacing the flat 35-min ceiling on those routes only.
+
+    Uses the Load_Ratio from the preceding Phase-4 pass. Because daily capacity
+    ∝ 1/headway and demand is ~supply-stable, the headway that brings a route to
+    REGIONAL_TARGET_LOAD is ``headway × (target_load / load)``. The result is
+    clamped to [35, 120] min and bucketed to REGIONAL_HEADWAY_BUCKETS
+    (35/60/90/120) — 120 = an every-2-hours lifeline floor so even a zero-demand
+    rural route keeps a guaranteed service. Urban/Peri-Urban routes and the SSCL
+    backbone are untouched. The caller MUST re-run step8 → step9 →
+    zero_merged_route_fleet → compute_phase4_metrics so all KPIs stay consistent.
+    """
+    if not REGIONAL_DEMAND_SIZING:
+        return gdf
+    gdf = gdf.copy()
+    cmp = gdf.get("CMP_Trunk", pd.Series(False, index=gdf.index)).astype(bool)
+    mask = ((gdf["Route_Type"] == "Regional_District") & (~cmp)
+            & (gdf["Action_Taken"] != "MERGED_INTO_TRUNK"))
+    buckets = REGIONAL_HEADWAY_BUCKETS
+    lo, hi = buckets[0], buckets[-1]
+    changed = 0
+    for idx in gdf[mask].index:
+        load = float(gdf.at[idx, "Load_Ratio"] or 0.0)
+        h0   = float(gdf.at[idx, "Headway_Min"] or 35.0)
+        target_h = hi if load <= 0 else h0 * (REGIONAL_TARGET_LOAD / load)
+        target_h = min(max(target_h, lo), hi)
+        new_h = min(buckets, key=lambda b: abs(b - target_h))
+        if new_h != int(gdf.at[idx, "Headway_Min"]):
+            gdf.at[idx, "Headway_Min"] = int(new_h)
+            changed += 1
+    log.info("  Regional demand-sizing: re-headwayed %d/%d rural lifelines to "
+             "{35/60/90/120} min (target load %.0f%%, 2-hourly lifeline floor). "
+             "Urban/Peri-Urban + SSCL keep 15/20/35.",
+             changed, int(mask.sum()), REGIONAL_TARGET_LOAD * 100)
+    return gdf
 
 
 def compute_phase4_metrics(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -5954,7 +6007,16 @@ def main() -> None:
     gdf = step8_compute_fleet_required(gdf)  # v3: floor at MIN, no LPV downgrade
     gdf = step9_compute_vehicle_split(gdf)   # Route_KM-bracketed HPV (cap 50%) | Feeder 100% MPV | SSCL empirical
     gdf = zero_merged_route_fleet(gdf)
-    gdf = compute_phase4_metrics(gdf)        # v3.3 Phase-1 audit: derived KPIs
+    gdf = compute_phase4_metrics(gdf)        # pass 1 — derives demand/load
+    # v3.4.2: HYBRID demand-responsive sizing for Regional lifelines only, then
+    # re-run fleet → split → zero → phase4 so every KPI is consistent at the new
+    # demand-matched headways. (Urban/Peri-Urban + SSCL unchanged.)
+    if REGIONAL_DEMAND_SIZING:
+        gdf = apply_regional_demand_headway(gdf)
+        gdf = step8_compute_fleet_required(gdf)
+        gdf = step9_compute_vehicle_split(gdf)
+        gdf = zero_merged_route_fleet(gdf)
+        gdf = compute_phase4_metrics(gdf)    # pass 2 — consistent at new headways
 
     # ── QC ────────────────────────────────────────────────────────────────
     log.info("\n── QC CHECKS ────────────────────────────────────────────────────────")
@@ -5983,7 +6045,7 @@ def main() -> None:
     qc_route_codes(gdf)             # audit Output #1: route-code uniqueness gate
     export_csv(gdf, file_map, ROUTES_OUT_CSV)
     export_xlsx(gdf, out_path=ROUTES_OUT_XLSX, net_pop=net_pop)
-    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.4.1_RTO.xlsx", net_pop=net_pop)
+    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.4.2_RTO.xlsx", net_pop=net_pop)
     export_passenger_impact(gdf, PASSENGER_IMPACT_CSV)
     export_geojson(gdf, ROUTES_GEOJSON)
     # Per-route disposition trail covering every input row (audit Rec 8).
