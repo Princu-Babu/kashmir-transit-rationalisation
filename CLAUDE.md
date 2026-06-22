@@ -141,7 +141,8 @@ name-match-against-a-hand-built-master approach entirely (v3.4.0).**
 | v3.3.7 | RTO Kashmir asks r2 | 35-min headway CEILING (HEADWAY_MAX_MIN=35 — regional 60/90, MPS 45, "regular" 60 all eliminated → headways now only 15/20/35); SSCL_HPV_SHARE_CAP 0.60→0.50 + long-haul bracket 0.60→0.50 (neither class a trunk majority); dashboard download cleanup; _sync_dashboard auto-copies RTO+Pretty workbooks and purges stale ones |
 | v3.3.8 | Independent audit remediation | Re-geocoded district-aware via Nominatim (`geocode_common.py`; `arcgis` now optional) — eliminated the 118-name Srinagar-centroid collapse (0 centroid endpoints, was 391/416). `parse_via` format fix; duplicate-permit consolidation (Finding 8); apportionment normalised to the dedup union (Finding 9); input-QA gate + per-route disposition trail; new QC checks (geocode/dup-corridor/load/route-code uniqueness); LPV_Count in CSV; route-code uniqueness suffix. Outcome: fleet 1,009→855, coverage 69.8%→94.7%, median route 8.7→16.5 km. See `AUDIT_FIX_LOG.md`. |
 | v3.3.9 | Government-screening source re-audit | Re-checked the plan against the original Kashmir source files. (1) SSCL FALSE-TRUNK BUG: `_terminal_matches_cmp` matched on a 0.45 char-ratio + raw substring, so 11 conventional JKRTC permits (Anantnag→Srinagar, Tangmarg, Haftnar→Anantnag…) were mis-labelled SSCL e-bus trunks — fake `CMP_Route_ID`, 15-min headway, ~115 inflated buses. Rewrote the matcher (strong fuzzy ≥0.80 OR shared meaningful non-generic token) + length-sanity guard; synthetic backbone force-self-matches. Result: CMP trunks 41→30 (exactly the SSCL backbone), 0 false trunks. (2) GEOCODE DISTRICT COLLAPSE: `_build_gazetteer` defaulted unknown districts to Srinagar → 15 villages from 6 districts on one Srinagar point; fixed via depot→district map (`_fix_gazetteer_districts.py`) + real pins (Pahalgam etc.). Outcome: fleet 1,053→1,005 (165/751/89), SSCL fleet 398→283, coverage 37.81% unchanged. 24/24 QA pass. See `AUDIT_2026-06-21_SOURCE_RECHECK.md`. |
-| **v3.4.0** | **Route-code system rebuilt — "geo-canonical" (CURRENT)** | **Completely reimagined route codes (the user flagged codes/coords/stops as the core structural problem). The old name-match-against-`Kashmir_Stops_Sectored_V2.csv` is REPLACED by `route_code_system.py`, which builds the stop registry FROM the engine's own geocoded route endpoints (one coordinate source of truth; EXACT route→stop linkage, no fuzzy matching) and resolves District + Tehsil(=Sector) by POINT-IN-POLYGON against authoritative OSM admin boundaries (`kashmir_districts_osm.geojson` admin_level 5; `kashmir_tehsils_osm.geojson` admin_level 6). The old master's bad coords (AIRPORT 80 km off, PARIMPORA 18 km off) and wrong district tags are gone by construction. Stops deduped by name→one coord then 150 m fixed-anchor proximity merge (no chaining). New authoritative registry `Kashmir_Stops_Master_v4.csv` (126 canonical stops, District/Tehsil/Sector/Stop + reliable coords). Result: 172/172 codes valid, 0 dashes/dups/UNMATCHED, only 4 letter-suffixed (all legit), and EVERY stop's district matches independent point-in-polygon (0 mismatches). Plan unchanged (172/1,005/30 SSCL/37.81%). Full method in `ROUTE_CODE_METHODOLOGY.md`. (Open item, pre-existing: 3 Kupwara routes are dropped by the study-bbox clip — no active KW routes; flagged separately.)** |
+| v3.4.0 | Route-code system rebuilt — "geo-canonical" | Completely reimagined route codes. The old name-match-against-`Kashmir_Stops_Sectored_V2.csv` is REPLACED by `route_code_system.py`, which builds the stop registry FROM the engine's own geocoded route endpoints (EXACT route→stop linkage, no fuzzy matching) and resolves District + Tehsil(=Sector) by POINT-IN-POLYGON against OSM admin boundaries (`kashmir_districts_osm.geojson` admin_level 5; `kashmir_tehsils_osm.geojson` admin_level 6). New registry `Kashmir_Stops_Master_v4.csv`. 172/172 codes valid, 0 dashes/dups/UNMATCHED, 4 legit letter-suffixed, every stop's district == point-in-polygon. Full method in `ROUTE_CODE_METHODOLOGY.md`. |
+| **v3.4.1** | **Once-and-for-all system audit — bbox + double-count crackdown (CURRENT)** | **Root-caused why bugs kept recurring: every prior audit was output-focused and patched one symptom; none reconciled the INPUT funnel. (1) STUDY-BBOX was clipped to lat[33.50,34.50] lon[74.40,75.20] AND the population raster was pre-cropped to it — silently dropping/truncating ~29 routes (Kupwara/Handwara/Tangdar, even Baramulla town & Uri, SE Anantnag) and shrinking the coverage denominator to the in-box 5.1M. Extended bbox to the 10-district extent; re-cropped raster from `ind_ppp_2026_100m.tif`; `study_area_population` now clips by the 10-district UNION polygons → honest 6.58M. (2) REVERSE-DIRECTION DOUBLE-COUNTING: routes are sized on a round-trip cycle, so "A→B" + "B→A" both active double-counted the corridor (~10 pairs, e.g. Srinagar↔Kupwara). `consolidate_duplicate_permits` key made UNDIRECTED. Added a full FUNNEL RECONCILIATION (engine in=out=644, 0 unexplained) + a 10-class bug crackdown. Result: 172→186 active, 1,005→1,144 fleet, 9→10 districts (Kupwara recovered), coverage 2.32M/35.2% of 6.58M, 0 true reverse-dups, 30 SSCL. 9/9 QA pass. See `SYSTEM_AUDIT_2026-06-22.md`.** |
 
 ---
 
@@ -170,14 +171,21 @@ _route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
 
 ---
 
-## 6. Current numbers (v3.4.0, the live plan — route codes rebuilt)
+## 6. Current numbers (v3.4.1, the live plan — full-division bbox + double-count fix)
 
-- 613 permits → re-geocoded district-aware + **village-geocode recovery** (kashmir_
-  gazetteer.csv) → **615 routes**; **172 active** (Trunk 32 / Feeder 140 / Merged 443)
-- **Total fleet 1,005** = HPV 165 / MPV 751 / LPV 89 (+68% over current ~600 — the
-  full valley-wide network incl. ~120 rural JKRTC corridors recovered)
-- 30 CHALO SSCL routes → **exactly 30 SSCL trunks** (v3.3.9 fixed the fuzzy-match bug
-  that mislabelled 11 conventional JKRTC permits as SSCL trunks); SSCL fleet **283**
+- 613 permits → re-geocoded + village recovery → **644 engine routes**; **186 active**
+  (Trunk 32 / Feeder 154 / Merged 458). Engine in=out (644=186+458), 0 routes lost.
+- **Total fleet 1,144** = HPV 221 / MPV 839 / LPV 84 (+91% over current ~600 — full
+  10-district division incl. Kupwara/Baramulla/SE-Anantnag recovered by the bbox fix)
+- **v3.4.1 bbox extension:** study area was clipped to lat[33.50,34.50] lon[74.40,
+  75.20] (raster pre-cropped to it) → silently dropped ~29 routes + understated the
+  denominator. Extended to the 10-district extent; coverage denominator now the
+  **10-district UNION = 6,584,762** (point-in-polygon). Active routes now span all
+  **10 districts** (Kupwara recovered).
+- **v3.4.1 reverse-direction de-dup:** corridor consolidation made UNDIRECTED
+  (round-trip cycle ⇒ "A→B"+"B→A" was double-counting ~10 corridors); 0 true
+  reverse-pairs remain.
+- 30 CHALO SSCL routes → **exactly 30 SSCL trunks** (all active); SSCL fleet **283**
 - **v3.3.9 geocode fix:** `_build_gazetteer` had defaulted unknown-district names to
   Srinagar → 15 villages from 6 districts collapsed onto one Srinagar point. Now
   reassigned to the **correct depot district centre** (`_fix_gazetteer_districts.py`)
@@ -193,12 +201,12 @@ _route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
   identical Batamaloo→Pantha Chowk permit-trunks (~48 buses → one 7-bus service,
   load 0.12). Route codes: 0 duplicates, 0 duplicate names among active.
 - **Headways present: ONLY 15 / 20 / 35 min** (ceiling preserved from v3.3.7)
-- Route types: Urban 71 / Peri_Urban 46 / Regional_District 55 (median route 19.7 km
+- Median route 22.8 km (longest Srinagar→Tangdar 121 km — full-division reach)  (older: Urban/Peri/Regional split
   — genuinely valley-wide; 55 long regional/rural routes recovered)
-- **Network reaches 1,930,287 residents within 400m = 37.8% of the 5.1M study-area
-  population** (F-V9 fix: coverage is vs the WorldPop study-area total ~5,105,699,
-  NOT the 1.66M Srinagar-UA planning figure which inflated the old "95.7%" ~3×).
-- **~0.52 buses / 1000 residents SERVED** (1,005 / 1.930M; in the BMTC 0.51 peer band)
+- **Network reaches 2,317,958 residents within 400m = 35.2% of the 6.58M Kashmir-
+  Division population** (F-V9 fix: coverage is vs the WorldPop study-area total ~5,105,699,
+  NOT the 1.66M Srinagar-UA figure (old "95.7%") nor the old clipped 5.1M bbox total).
+- **~0.49 buses / 1000 residents SERVED** (1,144 / 2.318M; in the BMTC 0.51 peer band)
 - v3.3.8 R-V/round-2 re-verification fixes: Parimpora hub pinned, TRC→Airport link
   kept, depot "A-B" pairs split, active Population_Served reconciled to the cover
   (Finding 9 closed), demand re-anchored to CHALO (capture scale 0.18→0.33), coverage

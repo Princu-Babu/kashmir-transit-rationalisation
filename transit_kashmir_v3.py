@@ -1,5 +1,5 @@
 """
-transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.4.0
+transit_kashmir_v3.py  —  Srinagar / Kashmir Valley Transit Rationalisation Engine v3.4.1
 ================================================================================
 Principal Secretary of Transport / IAS Officer — Srinagar / Kashmir Valley
 Route Rationalisation Project | Forked from Jammu v3 | May 2026
@@ -303,15 +303,22 @@ POI_TIER3_RESIDENTIAL_ANCHOR = frozenset({
 POI_TIER3_CATEGORIES = POI_TIER3_TOURIST_ONLY | POI_TIER3_RESIDENTIAL_ANCHOR
 
 DEFAULT_POI_WEIGHT_V2       = POI_TIER2_WEIGHT   # Unmapped → Tier 2
-# ─── Bounding Box: Kashmir Valley reachable by SSCL network ─────────────────
-# Covers: Srinagar UA + Budgam + Ganderbal + Sumbal/Safapora + Pulwama +
-#         Anantnag (south) + Sopore/Baramulla outskirts (NW) + Tral (SE)
-# Excludes: Kupwara, Karnah, Gurez, Marwa/Warwan (handled separately as
-#           Regional_District lifelines flagged in main()).
-BOUNDS_MIN_LAT = 33.50
-BOUNDS_MAX_LAT = 34.50
-BOUNDS_MIN_LON = 74.40
-BOUNDS_MAX_LON = 75.20
+# ─── Bounding Box: full Kashmir Division (all 10 districts) ─────────────────
+# v3.4.1: extended from the old narrow box (33.50–34.50 / 74.40–75.20) to the
+# bounding rectangle of the 10 Kashmir-division district polygons + a small
+# margin. The old box silently clipped/dropped ~29 legitimate routes — not only
+# Kupwara/Handwara/Tangdar/Gurez but even Baramulla town & Uri (whose centres lie
+# just W of lon 74.40) and SE Anantnag (Shangus/Uttersoo) — and shrank the
+# coverage denominator to the in-box population only (5.1M) instead of the true
+# division population. Coverage is now measured against the 10-district UNION
+# (point-in-polygon, ~6.58M; see study_area_population). The earlier comment that
+# these areas were "handled separately as Regional_District lifelines" was never
+# true — they were dropped. Bounds = district-union extent (33.364–34.787 /
+# 73.750–75.595) padded ~0.06°.
+BOUNDS_MIN_LAT = 33.30
+BOUNDS_MAX_LAT = 34.85
+BOUNDS_MIN_LON = 73.70
+BOUNDS_MAX_LON = 75.65
 
 # Speed zones — Kashmir-specific (was Jammu zones)
 # Old city Srinagar (Downtown): narrow lanes, bridges, bazaars
@@ -1874,28 +1881,53 @@ _STUDY_AREA_POP_CACHE: Dict[str, int] = {}
 
 
 def study_area_population(raster_path: str) -> int:
-    """Total WorldPop population inside the study-area raster — the correct
-    denominator for 'network coverage %'.
+    """Population of the Kashmir Division — the correct denominator for
+    'network coverage %'.
 
-    F-V9 (re-verification): the v3.3.8 network is valley-wide, so coverage must
-    be measured against the people who actually live in the study area (~5.1M
-    from the raster), NOT the Srinagar CMP planning figure (CMP_TOTAL_POPULATION
-    = 1.66M) which describes only the urban core and inflates coverage ~3×
-    (1.59M/1.66M = 96% vs the honest 1.59M/5.1M ≈ 31%).
+    v3.4.1: measured as the WorldPop sum INSIDE the 10-district UNION
+    (point-in-polygon against kashmir_districts_osm.geojson, ~6.58M), NOT the
+    raster's full rectangular extent. Before v3.4.1 the raster was pre-cropped to
+    the narrow study bbox, so this silently returned only the in-box population
+    (5.1M) — understating the true division population and overstating coverage.
+    Falls back to the raster sum if the district polygons are unavailable.
+
+    F-V9 history: the denominator must be the people who actually live in the
+    division, NOT the Srinagar CMP urban-core figure (1.66M) which inflated
+    coverage ~3×.
     """
     if raster_path in _STUDY_AREA_POP_CACHE:
         return _STUDY_AREA_POP_CACHE[raster_path]
     total = 0
-    if Path(raster_path).exists():
+    # Preferred: clip the raster by the authoritative 10-district union polygons.
+    try:
+        import rasterio, json as _json
+        from rasterio.mask import mask as _rmask
+        from shapely.geometry import shape as _shape
+        dpath = None
+        for p in ("kashmir_districts_osm.geojson",
+                  os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "kashmir_districts_osm.geojson")):
+            if Path(p).exists():
+                dpath = p; break
+        if dpath and Path(raster_path).exists():
+            geoms = [f["geometry"] for f in _json.load(open(dpath, encoding="utf-8"))["features"]]
+            with rasterio.open(raster_path) as src:
+                out, _ = _rmask(src, geoms, crop=True, nodata=0)
+                arr = out[0].astype("float64")
+                total = int(arr[arr > 0].sum())
+    except Exception as exc:  # noqa: BLE001
+        log.warning("  study_area_population (district-union clip): %s", exc)
+    # Fallback: raster rectangular sum.
+    if total <= 0 and Path(raster_path).exists():
         try:
             import rasterio
             with rasterio.open(raster_path) as src:
                 arr = src.read(1).astype("float64")
                 nd = src.nodata
-                mask = arr > 0
+                m = arr > 0
                 if nd is not None:
-                    mask &= (arr != nd)
-                total = int(arr[mask].sum())
+                    m &= (arr != nd)
+                total = int(arr[m].sum())
         except Exception as exc:  # noqa: BLE001
             log.warning("  study_area_population: %s", exc)
     _STUDY_AREA_POP_CACHE[raster_path] = total
@@ -3306,10 +3338,20 @@ def consolidate_duplicate_permits(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         log.info("  No active routes to consolidate.")
         return gdf
 
-    key = (cands["Start_Lat"].round(4).astype(str) + "," +
-           cands["Start_Lon"].round(4).astype(str) + "->" +
-           cands["End_Lat"].round(4).astype(str) + "," +
-           cands["End_Lon"].round(4).astype(str))
+    # v3.4.1: UNDIRECTED corridor key. A route's Cycle_Time is a ROUND TRIP, so a
+    # single route already represents bidirectional service; keeping both "A→B" and
+    # "B→A" as separate active routes double-counts that corridor's fleet (the audit
+    # found ~10 such pairs, e.g. Srinagar↔Kupwara, Srinagar↔Uri, LD↔Pantha Chowk).
+    # Sorting the two endpoints collapses the reverse direction onto one service.
+    # Two routes share a key only if they share BOTH endpoints — i.e. genuinely the
+    # same corridor — so this never merges distinct corridors. (A real SSCL-* route
+    # is still never absorbed — see the rank/guard below.)
+    _o = (cands["Start_Lat"].round(4).astype(str) + "," +
+          cands["Start_Lon"].round(4).astype(str))
+    _d = (cands["End_Lat"].round(4).astype(str) + "," +
+          cands["End_Lon"].round(4).astype(str))
+    key = pd.Series([" | ".join(sorted([a, b])) for a, b in zip(_o, _d)],
+                    index=cands.index)
 
     _OP = {"minibus": "Private Minibus", "mini bus": "Private Minibus",
            "mpv": "Private Minibus", "mps": "MPS (Stage Carriage)",
@@ -4973,7 +5015,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws1.cell(row=7, column=2, value="Srinagar / Kashmir Valley").font = Font(name="Segoe UI", bold=True, color=TEAL, size=14)
     
     gen_date = datetime.datetime.now().strftime("%d %b %Y")
-    ws1.cell(row=9, column=2, value=f"Version: v3.4.0  |  Generated: {gen_date}").font = subtitle_font
+    ws1.cell(row=9, column=2, value=f"Version: v3.4.1  |  Generated: {gen_date}").font = subtitle_font
     ws1.cell(row=10, column=2, value="Engine: SSCL/CHALO Backbone Injection | Kashmir Geographic Recentre").font = subtitle_font
     
     summary_text = (f"This plan details the rationalised public transport network for Srinagar and the Kashmir Valley. "
@@ -5173,7 +5215,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws3.page_margins.right = 0.4
     ws3.page_margins.top = 0.6
     ws3.page_margins.bottom = 0.6
-    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.4.0"
+    ws3.oddHeader.center.text = "Kashmir Route-Level Plan v3.4.1"
     ws3.oddHeader.center.size = 12
     ws3.oddFooter.right.text  = "Page &P of &N"
     
@@ -5445,7 +5487,7 @@ def export_xlsx_rto(gdf: gpd.GeoDataFrame, out_path: str, net_pop: int) -> None:
     ws8.cell(row=2, column=2, value="Calibration & Sources").font = title_font
     
     calib_data = [
-        ("Engine Version", "v3.4.0 (Kashmir Fork)"),
+        ("Engine Version", "v3.4.1 (Kashmir Fork)"),
         ("Date Generated", gen_date),
         ("Headway Targets", "HP: 20 min | MP: 35 min | LP: 35 min | Regional: 35 min | SSCL: 15 min (35-min ceiling — v3.3.7)"),
         ("CHALO Calibration Scorecard", "Matched to Apr 2026 ridership data"),
@@ -5941,7 +5983,7 @@ def main() -> None:
     qc_route_codes(gdf)             # audit Output #1: route-code uniqueness gate
     export_csv(gdf, file_map, ROUTES_OUT_CSV)
     export_xlsx(gdf, out_path=ROUTES_OUT_XLSX, net_pop=net_pop)
-    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.4.0_RTO.xlsx", net_pop=net_pop)
+    export_xlsx_rto(gdf, out_path="Kashmir_Route_Frequency_Plan_v3.4.1_RTO.xlsx", net_pop=net_pop)
     export_passenger_impact(gdf, PASSENGER_IMPACT_CSV)
     export_geojson(gdf, ROUTES_GEOJSON)
     # Per-route disposition trail covering every input row (audit Rec 8).

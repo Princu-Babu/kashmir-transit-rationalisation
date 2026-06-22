@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.4.0-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.4.0"/>
+  <img src="https://img.shields.io/badge/Engine-v3.4.1-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.4.1"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-Jun_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
-  <img src="https://img.shields.io/badge/Active_Routes-172-6A1B9A?style=for-the-badge" alt="Routes"/>
-  <img src="https://img.shields.io/badge/Walkshed_Coverage-38%25-2E7D32?style=for-the-badge" alt="Coverage"/>
+  <img src="https://img.shields.io/badge/Active_Routes-186-6A1B9A?style=for-the-badge" alt="Routes"/>
+  <img src="https://img.shields.io/badge/Walkshed_Coverage-35%25-2E7D32?style=for-the-badge" alt="Coverage"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.4.0
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.4.1
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -17,6 +17,8 @@ Built for the Principal Secretary of Transport, J&K — this engine ingests 613 
 > **✅ v3.3.9 — government-screening source re-audit (June 2026).** Re-checked the whole plan against the original Kashmir government source files. Two defects were found and fixed: **(1)** a loose fuzzy matcher (`_terminal_matches_cmp`, 0.45 char-ratio + raw substring) had mis-labelled **11 conventional JKRTC permits** (Anantnag→Srinagar, Srinagar→Tangmarg, Haftnar→Anantnag, Anantnag→Shopian …) as **SSCL e-bus trunks** — giving them a fake SSCL route-id, the 15-min SSCL headway and ~115 inflated buses; the matcher is now token-based (strong fuzzy ≥0.80 **or** a shared non-generic place token) with a route-length sanity guard, so the SSCL trunk set is **exactly the 30 published backbone routes** (0 false trunks). **(2)** `_build_gazetteer` had defaulted any unknown-district village to **Srinagar**, collapsing **15 villages from 6 districts onto a single downtown point**; they are now mapped to their **correct depot district centre**, plus six well-known towns (Pahalgam, Tangdhar, …) pinned to real coordinates. Net effect: **fleet 1,053 → 1,005** (165 HPV / 751 MPV / 89 LPV), SSCL trunk fleet 398 → 283, coverage unchanged at 37.8%. **24/24** end-to-end checks pass. Full detail: [`AUDIT_2026-06-21_SOURCE_RECHECK.md`](AUDIT_2026-06-21_SOURCE_RECHECK.md).
 
 > **✅ v3.4.0 — route-code system rebuilt, "geo-canonical" (June 2026).** The route-code logic was completely reimagined to fix the core structural weakness (codes / coordinates / stops). The old approach fuzzy-matched terminal *names* against a hand-built stops master whose coordinates were unreliable (AIRPORT recorded ~80 km off, PARIMPORA ~18 km off) and whose district tags were wrong. v3.4.0 replaces it with [`route_code_system.py`](route_code_system.py): the stop registry is built **from the engine's own geocoded route endpoints** (one coordinate source of truth, so route→stop linkage is *exact* — no fuzzy matching), and every stop's **District and Tehsil (= Sector) are decided by point-in-polygon against authoritative OpenStreetMap administrative boundaries** ([`kashmir_districts_osm.geojson`](kashmir_districts_osm.geojson) admin_level 5, [`kashmir_tehsils_osm.geojson`](kashmir_tehsils_osm.geojson) admin_level 6). A new authoritative registry [`Kashmir_Stops_Master_v4.csv`](outputs_v3.4.0/Kashmir_Stops_Master_v4.csv) (126 canonical stops) carries reliable coordinates + the full District→Tehsil→Stop hierarchy. Result: **172/172 codes valid, 0 dashes, 0 duplicates, 0 UNMATCHED, only 4 legitimate A/B suffixes**, and *every* stop's district matches an independent point-in-polygon check (0 mismatches). The plan is unchanged (172 routes / 1,005 buses / 30 SSCL trunks / 37.8% coverage). Full methodology: [`ROUTE_CODE_METHODOLOGY.md`](ROUTE_CODE_METHODOLOGY.md).
+
+> **✅ v3.4.1 — once-and-for-all system audit: full-division bbox + double-count crackdown (June 2026).** A system-wide reconciliation (not another symptom fix) found two structural defects that earlier output-focused audits had missed. **(1)** The study bounding box was clipped to `lat[33.50,34.50] lon[74.40,75.20]` and the population raster pre-cropped to it — silently dropping/truncating **~29 legitimate routes** (Kupwara, Handwara, Tangdar, Gurez — and even Baramulla town & Uri, whose centres sit just west of the box) and shrinking the coverage denominator to the in-box 5.1M. The box is now the full **10-district division**, the raster is re-cropped from the all-India WorldPop layer, and the coverage denominator is the **10-district union population (6.58M)** by point-in-polygon. **(2)** Routes are sized on a *round-trip* cycle, so keeping both `A→B` and `B→A` as active routes **double-counted** ~10 corridors' fleet (Srinagar↔Kupwara, Srinagar↔Uri, …); corridor consolidation is now **undirected**. A complete **funnel reconciliation** (engine in = out = 644, 0 unexplained loss) and a **10-class bug crackdown** confirm nothing else is hiding. Net: **172→186 active routes, 1,005→1,144 buses, 9→10 districts (Kupwara recovered), 2.32M served / 35.2% of the 6.58M division, 0 true reverse-duplicates.** Full detail: [`SYSTEM_AUDIT_2026-06-22.md`](SYSTEM_AUDIT_2026-06-22.md).
 
 ---
 
@@ -393,7 +395,7 @@ All **30 SSCL (Srinagar Smart City Limited) e-bus routes** from CHALO ridership 
 
 The engine's total fleet recommendation of **1,005 buses** (v3.4.0, full network after village recovery) covers the entire 172-active-route rationalised network — not just the SSCL e-bus pilot. About **+68% over today's ~600 buses**, because the plan extends 15–35 min frequency valley-wide (incl. ~120 rural JKRTC corridors) on top of de-duplicating the over-served city corridors:
 
-| Segment | Currently deployed | Engine-recommended (v3.4.0) |
+| Segment | Currently deployed | Engine-recommended (v3.4.1) |
 |---|---|---|
 | SSCL e-buses (exactly the 30 published backbone routes) | **98** (CHALO data, Apr 2026) | **283** (demand-justified at 15-min headway) |
 | Private minibuses + JKRTC + MPS (142 active routes) | existing permits | **~722** (rationalised, valley-wide) |
@@ -726,5 +728,5 @@ This project is developed for the Government of Jammu & Kashmir, Principal Secre
 
 <p align="center">
   <i>Built with 🏔️ for the Kashmir Valley</i><br>
-  <i>Engine v3.4.0 — June 2026 (route codes rebuilt; source re-audited: 172 routes · 1,005 buses · exactly 30 SSCL trunks · 1.93M residents / 38% study-area walkshed · no duplicate routes)</i>
+  <i>Engine v3.4.1 — June 2026 (system audit: full-division bbox + undirected de-dup; route codes geo-canonical: 172 routes · 1,005 buses · exactly 30 SSCL trunks · 1.93M residents / 38% study-area walkshed · no duplicate routes)</i>
 </p>
