@@ -20,7 +20,7 @@ and fleet. It must be **government-presentable and defensible line by line.**
 | Engine | github.com/Princu-Babu/kashmir-transit-rationalisation | `E:\kash` |
 | Dashboard (Next.js) | github.com/GrostesqueChip/bus-sathi-dashboard | `E:\dash\bus-sathi-dashboard` |
 
-Current HEADs after v3.4.1: _(fill in after push — see git log)_. Both on `main`.
+Current HEADs after v3.4.1: engine `e3f216f`, dashboard `f103d61`. Both on `main`.
 
 ## 3. How to run (full detail in CLAUDE.md §0 + §2)
 - Python = conda env `D:\plotting\ana` (NOT system Python). Prepend PATH first.
