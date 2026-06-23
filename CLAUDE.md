@@ -143,7 +143,8 @@ name-match-against-a-hand-built-master approach entirely (v3.4.0).**
 | v3.3.9 | Government-screening source re-audit | Re-checked the plan against the original Kashmir source files. (1) SSCL FALSE-TRUNK BUG: `_terminal_matches_cmp` matched on a 0.45 char-ratio + raw substring, so 11 conventional JKRTC permits (Anantnag→Srinagar, Tangmarg, Haftnar→Anantnag…) were mis-labelled SSCL e-bus trunks — fake `CMP_Route_ID`, 15-min headway, ~115 inflated buses. Rewrote the matcher (strong fuzzy ≥0.80 OR shared meaningful non-generic token) + length-sanity guard; synthetic backbone force-self-matches. Result: CMP trunks 41→30 (exactly the SSCL backbone), 0 false trunks. (2) GEOCODE DISTRICT COLLAPSE: `_build_gazetteer` defaulted unknown districts to Srinagar → 15 villages from 6 districts on one Srinagar point; fixed via depot→district map (`_fix_gazetteer_districts.py`) + real pins (Pahalgam etc.). Outcome: fleet 1,053→1,005 (165/751/89), SSCL fleet 398→283, coverage 37.81% unchanged. 24/24 QA pass. See `AUDIT_2026-06-21_SOURCE_RECHECK.md`. |
 | v3.4.0 | Route-code system rebuilt — "geo-canonical" | Completely reimagined route codes. The old name-match-against-`Kashmir_Stops_Sectored_V2.csv` is REPLACED by `route_code_system.py`, which builds the stop registry FROM the engine's own geocoded route endpoints (EXACT route→stop linkage, no fuzzy matching) and resolves District + Tehsil(=Sector) by POINT-IN-POLYGON against OSM admin boundaries (`kashmir_districts_osm.geojson` admin_level 5; `kashmir_tehsils_osm.geojson` admin_level 6). New registry `Kashmir_Stops_Master_v4.csv`. 172/172 codes valid, 0 dashes/dups/UNMATCHED, 4 legit letter-suffixed, every stop's district == point-in-polygon. Full method in `ROUTE_CODE_METHODOLOGY.md`. |
 | v3.4.1 | Once-and-for-all system audit — bbox + double-count crackdown | Root-caused why bugs kept recurring (output-focused audits never reconciled the INPUT funnel). (1) STUDY-BBOX was clipped to lat[33.50,34.50] lon[74.40,75.20] + raster pre-cropped → dropped ~29 routes (Kupwara/Baramulla/SE-Anantnag) and shrank the denominator to 5.1M. Extended bbox to the 10-district extent; `study_area_population` clips by the 10-district UNION → 6.58M. (2) REVERSE-DIRECTION DOUBLE-COUNTING (round-trip cycle ⇒ A→B+B→A double-counted ~10 corridors) → `consolidate_duplicate_permits` key made UNDIRECTED. Full funnel reconciliation + 10-class crackdown. Result: 186 active, 1,144 fleet, 10 districts, 2.32M/35.2% of 6.58M. See `SYSTEM_AUDIT_2026-06-22.md`. |
-| **v3.4.2** | **Route-level audit — Hybrid demand-responsive rural sizing (CURRENT)** | **Per-route audit (`ROUTE_LEVEL_AUDIT_2026-06-22.md`): directions/geometry sound for all 186 (high-circuity = legit via-hub permits); but the flat 35-min ceiling (an urban RTO ask) over-provisioned the 71 rural Regional lifelines (481 buses at 0.11 median load — every lifeline got a uniform ~55 trips/day; a 121-km Tangdar route = 13 buses for ~270 riders) AND under-served 6 busy inter-district corridors. User decision: HYBRID — keep 15/20/35 for Urban+Peri-Urban; size Regional_District lifelines by DEMAND (`apply_regional_demand_headway`: headway = current × target_load/load, bucketed 35/60/90/120, ≥2-hourly lifeline floor), then re-run fleet→split→phase4. SSCL backbone untouched (15-min). Tourist/seasonal modelling deliberately NOT changed (plan gives year-round recommended sizes; RTO reduces at execution). Result: Regional fleet 481→261, TOTAL 1,144→**924** (139 HPV/703 MPV/82 LPV), +91%→**+54%** over ~600; Tangdar 13→5, Kupwara 11→4, Handwara 9→3; headways now city 15/20/35 + rural 35/60/90/120. 186 active / 30 SSCL / 35.2% coverage unchanged. QA green.** |
+| v3.4.2 | Route-level audit — Hybrid demand-responsive rural sizing | **Per-route audit (`ROUTE_LEVEL_AUDIT_2026-06-22.md`): directions/geometry sound for all 186 (high-circuity = legit via-hub permits); but the flat 35-min ceiling (an urban RTO ask) over-provisioned the 71 rural Regional lifelines (481 buses at 0.11 median load — every lifeline got a uniform ~55 trips/day; a 121-km Tangdar route = 13 buses for ~270 riders) AND under-served 6 busy inter-district corridors. User decision: HYBRID — keep 15/20/35 for Urban+Peri-Urban; size Regional_District lifelines by DEMAND (`apply_regional_demand_headway`: headway = current × target_load/load, bucketed 35/60/90/120, ≥2-hourly lifeline floor), then re-run fleet→split→phase4. SSCL backbone untouched (15-min). Tourist/seasonal modelling deliberately NOT changed (plan gives year-round recommended sizes; RTO reduces at execution). Result: Regional fleet 481→261, TOTAL 1,144→**924** (139 HPV/703 MPV/82 LPV), +91%→**+54%** over ~600; Tangdar 13→5, Kupwara 11→4, Handwara 9→3; headways now city 15/20/35 + rural 35/60/90/120. 186 active / 30 SSCL / 35.2% coverage unchanged. QA green. |
+| **v3.4.3** | **Rural wait cap 50 min + route-by-route OSRM verification (CURRENT)** | **User ask: rural waits must not exceed ~50 min. REGIONAL_HEADWAY_BUCKETS 35/60/90/120 → 35/40/45/50 (hard 50-min max). Fleet 924→1,044 (185/776/83, +74%); Tangdar 5→10 buses. Also built `_verify_routes.py` — a government-grade route-by-route feasibility check (LAYER1 coords vs OSM polygons; LAYER2 local-OSRM drivability + impossibility test; LAYER3 fleet/headway/load realism) → `route_verification_report.csv`. Result: 168 PASS / 18 REVIEW / 0 FAIL; all 18 REVIEW are known-benign (district-centre approximations, legit via-hub permits, known under-served corridors). Master plan: `MASTER_VERIFICATION_PLAN.md`.** |
 
 ---
 
@@ -172,13 +173,14 @@ _route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
 
 ---
 
-## 6. Current numbers (v3.4.2, the live plan — Hybrid demand-responsive rural sizing)
+## 6. Current numbers (v3.4.3, the live plan — rural wait capped at 50 min)
 
 - 613 permits → re-geocoded + village recovery → **644 engine routes**; **186 active**
   (Trunk 32 / Feeder 154 / Merged 458). Engine in=out (644=186+458), 0 routes lost.
-- **Total fleet 1,144 → 924 (v3.4.2)** = HPV 139 / MPV 703 / LPV 82 (+54% over current
-  ~600). v3.4.2 demand-sized the 71 rural Regional lifelines (481→261 buses): a 121-km
-  Tangdar route is now 5 buses (was 13). Urban+Peri-Urban + SSCL fleet unchanged.
+- **Total fleet 1,044 (v3.4.3)** = HPV 185 / MPV 776 / LPV 83 (+74% over current ~600).
+  Rural Regional lifelines demand-sized but capped at a 50-min max wait (v3.4.3 user
+  ask): Tangdar = 10 buses (was 13 at flat-35, 5 at the old 120-min cap). Urban+Peri
+  -Urban + SSCL fleet unchanged. (Fleet path: 1,144 flat-35 → 924 at 120-cap → 1,044 at 50-cap.)
 - **v3.4.1 bbox extension:** study area was clipped to lat[33.50,34.50] lon[74.40,
   75.20] (raster pre-cropped to it) → silently dropped ~29 routes + understated the
   denominator. Extended to the 10-district extent; coverage denominator now the
@@ -203,13 +205,13 @@ _route_km_hpv_share long-haul bracket (≥22 km) = 0.50 (was 0.60 in v3.3.6)
   identical Batamaloo→Pantha Chowk permit-trunks (~48 buses → one 7-bus service,
   load 0.12). Route codes: 0 duplicates, 0 duplicate names among active.
 - **Headways: city (Urban/Peri-Urban/SSCL) 15 / 20 / 35 min; rural Regional lifelines
-  demand-responsive 35 / 60 / 90 / 120 min (≥2-hourly floor) — v3.4.2 Hybrid sizing.**
+  demand-responsive 35 / 40 / 45 / 50 min — HARD 50-min max wait (v3.4.3 user ask).**
 - Median route 22.8 km (longest Srinagar→Tangdar 121 km — full-division reach)  (older: Urban/Peri/Regional split
   — genuinely valley-wide; 55 long regional/rural routes recovered)
 - **Network reaches 2,317,958 residents within 400m = 35.2% of the 6.58M Kashmir-
   Division population** (F-V9 fix: coverage is vs the WorldPop study-area total ~5,105,699,
   NOT the 1.66M Srinagar-UA figure (old "95.7%") nor the old clipped 5.1M bbox total).
-- **~0.40 buses / 1000 residents SERVED** (924 / 2.318M)
+- **~0.45 buses / 1000 residents SERVED** (1,044 / 2.318M)
 - v3.3.8 R-V/round-2 re-verification fixes: Parimpora hub pinned, TRC→Airport link
   kept, depot "A-B" pairs split, active Population_Served reconciled to the cover
   (Finding 9 closed), demand re-anchored to CHALO (capture scale 0.18→0.33), coverage

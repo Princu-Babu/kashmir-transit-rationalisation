@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.4.2-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.4.2"/>
+  <img src="https://img.shields.io/badge/Engine-v3.4.3-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.4.3"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-Jun_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/Active_Routes-186-6A1B9A?style=for-the-badge" alt="Routes"/>
   <img src="https://img.shields.io/badge/Walkshed_Coverage-35%25-2E7D32?style=for-the-badge" alt="Coverage"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.4.2
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.4.3
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
 
@@ -395,13 +395,13 @@ All **30 SSCL (Srinagar Smart City Limited) e-bus routes** from CHALO ridership 
 
 ### Fleet context: SSCL deployed vs engine-recommended
 
-The engine's total fleet recommendation of **924 buses** (v3.4.2, full 10-district division) covers the entire 186-active-route rationalised network — not just the SSCL e-bus pilot. About **+54% over today's ~600 buses**: city + feeder routes run 15–35 min, while long rural lifelines are demand-sized (35–120 min, ≥2-hourly) rather than a flat 35-min clock:
+The engine's total fleet recommendation of **1,044 buses** (v3.4.3, full 10-district division) covers the entire 186-active-route rationalised network — not just the SSCL e-bus pilot. About **+54% over today's ~600 buses**: city + feeder routes run 15–35 min, while long rural lifelines are demand-sized (35–120 min, ≥2-hourly) rather than a flat 35-min clock:
 
-| Segment | Currently deployed | Engine-recommended (v3.4.2) |
+| Segment | Currently deployed | Engine-recommended (v3.4.3) |
 |---|---|---|
 | SSCL e-buses (exactly the 30 published backbone routes) | **98** (CHALO data, Apr 2026) | **283** (demand-justified at 15-min headway) |
 | Private minibuses + JKRTC + MPS (156 active routes) | existing permits | **641** (city 15–35 min; rural lifelines demand-sized) |
-| **Total active network** | ~600 | **924** (HPV 139 / MPV 703 / LPV 82) |
+| **Total active network** | ~600 | **1,044** (HPV 185 / MPV 776 / LPV 83) |
 
 The non-SSCL bulk is the rural JKRTC network (Anantnag/Baramulla/Kupwara/Pulwama/Bandipora district services) recovered via the gazetteer — long regional routes that need more buses per route, which is why the total lands near the original v3.3.7 figure but is now **honest** (real district-aware geocodes, de-duplicated, no centroid collapse). See `cross_evaluate.py` for the SSCL calibration.
 

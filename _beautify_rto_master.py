@@ -25,14 +25,14 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 
-SRC = Path("E:/kash/outputs_v3.4.2/Kashmir_Route_Frequency_Plan_v3.4.2_RTO.xlsx")
-DST = Path("E:/kash/outputs_v3.4.2/Kashmir_Route_Frequency_Plan_v3.4.2_RTO_Pretty.xlsx")
+SRC = Path("E:/kash/outputs_v3.4.3/Kashmir_Route_Frequency_Plan_v3.4.3_RTO.xlsx")
+DST = Path("E:/kash/outputs_v3.4.3/Kashmir_Route_Frequency_Plan_v3.4.3_RTO_Pretty.xlsx")
 # Full CSV — has CMP_Trunk, Route_Type, Displaced_Operator_Class etc. that
 # the source XLSX strips out for the RTO-facing column subset.
-SRC_CSV = Path("E:/kash/outputs_v3.4.2/Rationalised_Routes_Kashmir_v3.csv")
+SRC_CSV = Path("E:/kash/outputs_v3.4.3/Rationalised_Routes_Kashmir_v3.csv")
 
 # Also write a copy to a convenient location for the meeting
-ALSO  = Path("C:/Users/Prash/Music/Kashmir_Route_Frequency_Plan_v3.4.2_RTO_Pretty.xlsx")
+ALSO  = Path("C:/Users/Prash/Music/Kashmir_Route_Frequency_Plan_v3.4.3_RTO_Pretty.xlsx")
 
 
 # ─── Theme (matches the other pretty workbook) ───────────────────────────────
@@ -218,7 +218,7 @@ def main():
 
     ws1.merge_cells("B4:G4")
     sub = ws1.cell(row=4, column=2,
-                    value=(f"Engine v3.4.2  ·  Generated "
+                    value=(f"Engine v3.4.3  ·  Generated "
                             f"{datetime.datetime.now():%d %b %Y}  ·  "
                             f"Phase-1 Conservative plan  ·  35-min headway ceiling"))
     sub.font = Font(name="Segoe UI", italic=True, color=GREY, size=12)

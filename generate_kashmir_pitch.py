@@ -380,7 +380,7 @@ def build(prs, s):
     # ── 7 · How often buses run ──────────────────────────────────────────────
     sl = slide_blank(prs)
     slide_header(sl, "How often buses run", color=PURPLE,
-                 sub="Buses are spaced by wait time. City routes wait ≤35 min; long rural lifelines run a demand-matched 35–120 min.")
+                 sub="Buses are spaced by wait time. City routes wait ≤35 min; long rural lifelines run a demand-matched 35–50 min.")
     bands = [
         ("Smart City electric backbone", 15, s['hw15'], TEAL, "the busiest corridors"),
         ("Main trunk lines", 20, s['hw20'], NAVY, "high-demand routes"),
@@ -576,7 +576,7 @@ def build(prs, s):
     slide_header(sl, "What this plan is — and what it is not", color=NAVY)
     is_items = [
         f"{s['active']} active routes, ranked by demand and grouped into priority tiers",
-        "City buses at 15/20/35 min; rural lifelines demand-sized (35–120 min)",
+        "City buses at 15/20/35 min; rural lifelines demand-sized (35–50 min)",
         "Anchored on the Smart City electric-bus routes, checked against their ridership",
         "An operator workbook with absorption and indicative compensation",
         "A fully reproducible analysis — every number traces back to its source",
@@ -682,8 +682,8 @@ def load_stats(csv_path: Path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--outdir", default="outputs_v3.4.2")
-    parser.add_argument("--engine-csv", default="outputs_v3.4.2/Rationalised_Routes_Kashmir_v3.csv")
+    parser.add_argument("--outdir", default="outputs_v3.4.3")
+    parser.add_argument("--engine-csv", default="outputs_v3.4.3/Rationalised_Routes_Kashmir_v3.csv")
     args = parser.parse_args()
     stats = load_stats(Path(args.engine_csv))
     os.makedirs(args.outdir, exist_ok=True)

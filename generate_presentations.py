@@ -1,5 +1,5 @@
 """
-generate_presentations.py — v3.4.2
+generate_presentations.py — v3.4.3
 
 Builds two visual PowerPoint briefings from the live engine output:
 
@@ -22,7 +22,7 @@ dedicated bibliography slide.
 
 Usage
 -----
-  python generate_presentations.py --outdir outputs_v3.4.2
+  python generate_presentations.py --outdir outputs_v3.4.3
 """
 
 import argparse
@@ -337,7 +337,7 @@ def add_title_slide(prs, title, subtitle, tag, color=NAVY):
     foot = slide.shapes.add_textbox(Inches(5.15), Inches(6.55), Inches(7.7), Inches(0.7))
     tf = foot.text_frame; tf.word_wrap = True
     _runs(tf.paragraphs[0],
-          "Engine v3.4.2  •  June 2026  •  Phase-1 plan  •  city 35-min ceiling, rural demand-sized  •  "
+          "Engine v3.4.3  •  June 2026  •  Phase-1 plan  •  city 35-min ceiling, rural demand-sized  •  "
           "balanced 50/50 trunk fleet  •  fully open-data & reproducible",
           11, MID_GREY, italic=True)
 
@@ -399,7 +399,7 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
 
     add_title_slide(
         prs, title="Kashmir Valley\nTransit Engine",
-        subtitle=("Technical Briefing — v3.4.2\n\nOpen-data pipeline, methodology, "
+        subtitle=("Technical Briefing — v3.4.3\n\nOpen-data pipeline, methodology, "
                   "formulas and literature backing, for the engineering and data-review audience."),
         tag="TECHNICAL BRIEFING", color=NAVY)
 
@@ -475,8 +475,8 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
         "to run a bus every h minutes on a route whose round trip takes C minutes you need ⌈C/h⌉ vehicles; "
         "the 15% spare ratio covers maintenance, breakdown rotation and depot reserve.",
         "Vuchic (2005); Ceder (2007); spare ratio per APTA practice.", top=1.25, accent=NAVY, height=1.6)
-    add_formula_card(s, "City headway ≤ 35 min  ·  SSCL 15  ·  HP trunks 20  ·  rural lifelines 35–120 min (by demand)",
-        "in the city no rider waits more than 35 min; long rural lifelines run a demand-matched 35–120 min (≥2-hourly), which the RTO can adjust at execution "
+    add_formula_card(s, "City headway ≤ 35 min  ·  SSCL 15  ·  HP trunks 20  ·  rural lifelines 35–50 min (by demand)",
+        "in the city no rider waits more than 35 min; long rural lifelines run a demand-matched 35–50 min (≥2-hourly), which the RTO can adjust at execution "
         "and SSCL's own published design frequency.",
         "TCQSM Quality-of-Service framework (TRB 2013).", top=3.05, accent=GREEN, height=1.6)
     add_body_text(s, [
@@ -551,8 +551,8 @@ def create_tech_deck(stats: EngineStats, output_path: str) -> None:
     s = add_blank_slide(prs)
     add_title_bar(s, "Reproducible & versioned")
     add_body_text(s, [
-        "Deliverables (outputs_v3.4.2/):",
-        "  • Kashmir_Route_Frequency_Plan_v3.4.2_RTO.xlsx (9-sheet) + _RTO_Pretty.xlsx (bus schedule)",
+        "Deliverables (outputs_v3.4.3/):",
+        "  • Kashmir_Route_Frequency_Plan_v3.4.3_RTO.xlsx (9-sheet) + _RTO_Pretty.xlsx (bus schedule)",
         "  • Master_Transit_Map_Kashmir_v3.html + 192 per-route maps",
         "  • Rationalised_Routes_Kashmir_v3.csv / .geojson  ·  Rationalisation_Log  ·  Passenger_Impact",
         "",
@@ -628,7 +628,7 @@ def create_gov_deck(stats: EngineStats, output_path: str) -> None:
     add_chart(s, XL_CHART_TYPE.COLUMN_CLUSTERED, [f"every {k} min" for k in sorted(hw)], "Routes",
               [hw[k] for k in sorted(hw)], left=6.9, top=1.35, w=5.85, h=4.6,
               title="How often a bus comes", colors=[GREEN, TEAL, GOLD])
-    add_note_band(s, "In the city no route waits longer than 35 min; long rural lifelines run a demand-matched 35–120 min (recommended — reducible at execution).")
+    add_note_band(s, "In the city no route waits longer than 35 min; long rural lifelines run a demand-matched 35–50 min (recommended — reducible at execution).")
     add_footer(s, "Slide 5  •  Frequency & fleet")
 
     # Trust / sources
@@ -719,8 +719,8 @@ def create_gov_deck(stats: EngineStats, output_path: str) -> None:
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="Generate v3.4.2 technical + government briefings.")
-    parser.add_argument("--outdir", default="outputs_v3.4.2")
+    parser = argparse.ArgumentParser(description="Generate v3.4.3 technical + government briefings.")
+    parser.add_argument("--outdir", default="outputs_v3.4.3")
     parser.add_argument("--engine-csv", default=None)
     args = parser.parse_args()
     os.makedirs(args.outdir, exist_ok=True)

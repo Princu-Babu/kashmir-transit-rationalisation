@@ -3,7 +3,7 @@
 Read this first in a new chat, then `CLAUDE.md` for the run mechanics. This file
 is the living state-of-the-world; `CLAUDE.md` is the operating manual.
 
-_Last updated: 2026-06-22 (v3.4.2 — Hybrid demand-responsive rural sizing)._
+_Last updated: 2026-06-23 (v3.4.3 — 50-min rural wait cap + route-by-route OSRM verification)._
 
 ---
 
@@ -20,7 +20,7 @@ and fleet. It must be **government-presentable and defensible line by line.**
 | Engine | github.com/Princu-Babu/kashmir-transit-rationalisation | `E:\kash` |
 | Dashboard (Next.js) | github.com/GrostesqueChip/bus-sathi-dashboard | `E:\dash\bus-sathi-dashboard` |
 
-Current HEADs: v3.4.2 (see git log; v3.4.1 was engine e3f216f / dash f103d61). Both on `main`.
+Current HEADs: v3.4.3 (see git log). Both on `main`.
 
 ## 3. How to run (full detail in CLAUDE.md §0 + §2)
 - Python = conda env `D:\plotting\ana` (NOT system Python). Prepend PATH first.
@@ -35,21 +35,22 @@ Current HEADs: v3.4.2 (see git log; v3.4.1 was engine e3f216f / dash f103d61). B
   reset the engine's version-label lines back a version mid-session — after
   bumping, `grep -nE "v3\.4\.0" transit_kashmir_v3.py` and re-fix before the run.
 
-## 4. CURRENT PLAN (v3.4.2) — the live numbers
+## 4. CURRENT PLAN (v3.4.3) — the live numbers
 - **186 active routes** (32 trunk / 154 feeder) from 644 engine routes
   (614 geocoded permits/JKRTC + 30 SSCL). Engine in = out (644 = 186 + 458 merged),
   **0 routes lost**.
-- **924 buses** = 139 HPV / 703 MPV / 82 LPV (+54% over today's ~600). v3.4.2
-  demand-sized the rural Regional lifelines (481→261 buses).
+- **1,044 buses** = 185 HPV / 776 MPV / 83 LPV (+74% over today's ~600). v3.4.2
+  demand-sized the rural Regional lifelines; v3.4.3 capped the rural wait at 50 min.
 - **Exactly 30 SSCL e-bus trunks** (the published CHALO backbone), all active.
 - Headways: city (Urban/Peri/SSCL) **15/20/35 min**; rural Regional lifelines
-  **demand-responsive 35/60/90/120 min** (≥2-hourly floor) — v3.4.2 Hybrid sizing.
+  **demand-responsive 35/40/45/50 min — HARD 50-min max wait** (v3.4.3 user ask).
 - Coverage: **2,317,958 residents within 400 m = 35.2%** of the **6,584,762**
   Kashmir-Division population (10-district union, point-in-polygon).
 - All **10 districts** now have active routes (Kupwara recovered in v3.4.1).
 - Median route 22.8 km; longest Srinagar→Tangdar 121 km.
-- Outputs in `outputs_v3.4.2/`. RTO hero file:
-  `Kashmir_Route_Frequency_Plan_v3.4.2_RTO_Pretty.xlsx`.
+- Outputs in `outputs_v3.4.3/`. RTO hero file:
+  `Kashmir_Route_Frequency_Plan_v3.4.3_RTO_Pretty.xlsx`. Route verification:
+  `outputs_v3.4.3/route_verification_report.csv` (168 PASS / 18 REVIEW / 0 FAIL).
 
 ## 5. Route-code system — v4 "geo-canonical" (`route_code_system.py`)
 The structural rebuild. Full method: `ROUTE_CODE_METHODOLOGY.md`, summary in
@@ -71,15 +72,16 @@ reconciled the **input funnel**, so each silent transform surfaced later as a
 | v3.3.9 | 11 false SSCL trunks (loose fuzzy matcher) + 15-village district-geocode collapse |
 | v3.4.0 | route codes rebuilt geo-canonically (old master coords bad: Airport 80 km off) |
 | v3.4.1 | bbox was clipped (dropped ~29 routes + cropped the 5.1M denominator) → extended to the 10-district division (6.58M); reverse-direction double-counting (A→B & B→A both active) → undirected consolidation; full funnel reconciliation (0 unexplained loss) + 10-class bug crackdown |
-| **v3.4.2** | **route-level audit: textbook constant-headway fits the city but over-provisions rural lifelines (121-km Tangdar = 13 buses for ~270 riders). HYBRID fix — Regional_District sized by demand (35/60/90/120, 2-hourly floor); Urban/Peri/SSCL unchanged. Fleet 1,144→924.** |
+| v3.4.2 | route-level audit: textbook constant-headway over-provisions rural lifelines. HYBRID fix — Regional_District sized by demand; Urban/Peri/SSCL unchanged. Fleet 1,144→924. |
+| **v3.4.3** | **rural wait capped at 50 min (was 120) → fleet 924→1,044. Built `_verify_routes.py` — government-grade route-by-route OSRM feasibility check (coords vs OSM polygons; local-OSRM drivability + impossibility test; fleet/headway/load realism). 168 PASS / 18 REVIEW / 0 FAIL, all REVIEW known-benign. See `MASTER_VERIFICATION_PLAN.md`.** |
 
 The v3.4.1 system audit is documented in `SYSTEM_AUDIT_2026-06-22.md` — it is the
 "once and for all" pass: every input row reconciles to the output, and every
 bug *class* (not just one symptom) was swept.
 
 ## 7. Open items / candidate next steps
-- **Kupwara/rural lifelines**: recovered (v3.4.1) and now demand-sized (v3.4.2) to
-  35/60/90/120-min with a 2-hourly floor — recommended year-round sizes. Gurez
+- **Kupwara/rural lifelines**: recovered (v3.4.1) and now demand-sized to
+  35/40/45/50-min (hard 50-min max wait, v3.4.3) — recommended year-round sizes. Gurez
   (its own tehsil) has no routed service yet; add if the RTO wants it.
 - **Seasonality/tourism** deliberately not modelled (user call): plan is year-round;
   RTO reduces buses at execution. Re-open if a summer/winter view is wanted later.
@@ -99,16 +101,17 @@ bug *class* (not just one symptom) was swept.
   `study_area_population` (district-union clip); `consolidate_duplicate_permits`
   (undirected key); `assign_route_codes` (calls route_code_system).
 - `route_code_system.py` — the route-code engine (v4).
+- `_verify_routes.py` — route-by-route OSRM feasibility/realism check → route_verification_report.csv.
 - `kashmir_districts_osm.geojson` / `kashmir_tehsils_osm.geojson` — OSM admin.
 - `kashmir_gazetteer.csv` — curated village coords (geocoding recovery).
 - Docs: `CLAUDE.md`, `ROUTE_CODE_METHODOLOGY.md`, `SYSTEM_AUDIT_2026-06-22.md`,
   `ROUTE_LEVEL_AUDIT_2026-06-22.md`, `AUDIT_2026-06-21_SOURCE_RECHECK.md`,
   `METHODOLOGY_WALKTHROUGH.md`, `AUDIT_FIX_LOG.md`, `FUNNEL_AUDIT.md`,
-  `GAZETTEER_RECOVERY.md`.
+  `GAZETTEER_RECOVERY.md`, `MASTER_VERIFICATION_PLAN.md` (route-by-route check + full plan).
 - Engine fleet-sizing: `apply_regional_demand_headway` (v3.4.2 Hybrid rural sizing)
   runs after the first Phase-4 pass; constants `REGIONAL_TARGET_LOAD` (0.55) +
-  `REGIONAL_HEADWAY_BUCKETS` (35/60/90/120) near the headway constants.
-- Desktop deliverables: `…\Desktop\Kashmir_Transit_v3.4.2_Deliverables\`.
+  `REGIONAL_HEADWAY_BUCKETS` (35/40/45/50; 50 = hard max wait) near the headway constants.
+- Desktop deliverables: `…\Desktop\Kashmir_Transit_v3.4.3_Deliverables\`.
 
 ## 9. Working agreements
 - Government work → strict uniformity, verify in detail, disclose approximations,
