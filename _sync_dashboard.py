@@ -22,8 +22,8 @@ try:
 except Exception:
     pass
 
-ENGINE_OUT = Path("E:/kash/outputs_v3.4.3")
-ENGINE_LOG = Path("E:/kash/engine_run_v3.4.3.log")
+ENGINE_OUT = Path("E:/kash/outputs_v3.4.4")
+ENGINE_LOG = Path("E:/kash/engine_run_v3.4.4.log")
 
 DASH_PUBLIC = Path("E:/dash/bus-sathi-dashboard/public/route-rationalization-kashmir")
 DASH_DATA   = DASH_PUBLIC / "data"
@@ -37,8 +37,9 @@ COPY_FILES = [
     "Passenger_Impact_Kashmir_v3.csv",
     "Rationalisation_Log_Kashmir_v3.csv",
     "Kashmir_Route_Frequency_Plan_v3.xlsx",
-    "Kashmir_Route_Frequency_Plan_v3.4.3_RTO.xlsx",
-    "Kashmir_Route_Frequency_Plan_v3.4.3_RTO_Pretty.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.4.4_RTO.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.4.4_RTO_Pretty.xlsx",
+    "Kashmir_Route_Verification_Appendix_v3.4.4_RTO.xlsx",
     "Routes_with_Codes.xlsx",
     "Master_Transit_Map_Kashmir_v3.html",
 ]
@@ -62,6 +63,8 @@ STALE_FILES = [
     "Kashmir_Route_Frequency_Plan_v3.4.1_RTO_Pretty.xlsx",
     "Kashmir_Route_Frequency_Plan_v3.4.2_RTO.xlsx",
     "Kashmir_Route_Frequency_Plan_v3.4.2_RTO_Pretty.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.4.3_RTO.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.4.3_RTO_Pretty.xlsx",
     "Formatted_Kashmir_Routes_Pretty.xlsx",
     "Formatted_Kashmir_Routes.xlsx",
     "generate_route_codes (1).py",

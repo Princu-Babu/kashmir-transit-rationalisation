@@ -1,0 +1,187 @@
+Batch,Model,Route_Code,Route_Name,O_lat,O_lon,D_lat,D_lon,Route_KM,Cycle_Min,Headway,Fleet,Type,Load,Tourist,CMP_Trunk
+R1,opus,ANSP01010106,Anantnagh to Shopian,33.74535,75.186081,33.719229,74.833266,43.843,131.5,35,5,Regional_District,1.535,False,False
+R1,opus,ANSR01020139,Anantnagh to Srinagar,33.74535,75.186081,34.07457,74.820502,59.305,177.9,50,5,Regional_District,0.112,False,False
+R1,opus,BPBR01010201,Bandipora to Baramulla,34.423075,74.63596,34.208735,74.342587,45.97,137.9,35,5,Regional_District,1.962,False,False
+R1,opus,BPSR01010209,Bandipora to Soura,34.423075,74.63596,34.137704,74.802102,51.094,153.3,35,6,Regional_District,1.277,False,False
+R1,opus,BPSR01020239,Bandipora to Srinagar,34.423075,74.63596,34.07457,74.820502,58.597,175.8,50,5,Regional_District,0.077,False,False
+R1,opus,BPSR01020139,Bankoot to Srinagar via Bandipora,34.41793,74.642941,34.07457,74.820502,60.768,182.3,50,5,Regional_District,0.082,False,False
+R1,opus,BRKW01030104,Baramula to Kupwra,34.208735,74.342587,34.52614,74.254895,46.645,139.9,35,5,Regional_District,1.026,False,False
+R1,opus,BRSR01020139,Baramulla to Srinagar,34.208735,74.342587,34.07457,74.820502,56.316,168.9,50,5,Regional_District,0.073,False,False
+R1,opus,SRPW02040501,Batamaloo to Dadsara Tral via Awantipora,34.068715,74.779627,33.930235,75.109996,43.869,131.6,15,11,Regional_District,0.36,False,True
+R1,opus,SRGB02020502,Batamaloo to Kangan via Hazratbal Manigam,34.068715,74.779627,34.239881,74.975622,55.703,167.1,15,14,Regional_District,0.404,False,True
+R1,opus,SRGB02020503,Batamaloo to Manigam,34.068715,74.779627,34.231314,74.953744,54.466,163.4,15,13,Regional_District,0.414,False,True
+R1,opus,BRSR06020139,Botingue to Srinagar,34.371767,74.489273,34.07457,74.820502,61.995,186.0,50,5,Regional_District,0.092,False,False
+R2,opus,KGSR02020139,Devsur to Srinagar,33.639414,75.094115,34.07457,74.820502,65.241,195.7,50,5,Regional_District,0.11,False,False
+R2,opus,BRSR01020239,Fathgath to Srinagar,34.1981,74.364653,34.07457,74.820502,56.5,169.5,50,5,Regional_District,0.072,False,False
+R2,opus,SPSR01020139,Harman to Srinagar,33.717153,74.831268,34.07457,74.820502,48.805,146.4,50,4,Regional_District,0.131,False,False
+R2,opus,SPSR01020239,Heff to Srinagar,33.795859,74.973311,34.07457,74.820502,40.635,121.9,50,4,Regional_District,0.095,False,False
+R2,opus,SRBG02022003,Jehangir Chowk to Budgam,34.071881,74.804719,34.006185,74.641626,45.581,136.7,50,4,Regional_District,0.098,False,False
+R2,opus,BRBR02010101,Kamalkote to Baramulla,34.085545,74.045409,34.208735,74.342587,45.819,137.5,35,5,Regional_District,0.767,False,False
+R2,opus,SPSR01020339,Kaprin to Srinagar,33.66973,74.904441,34.07457,74.820502,58.528,175.6,50,5,Regional_District,0.17,False,False
+R2,opus,KGSR03020339,Katrosoo to Srinagar,33.686656,74.994781,34.07457,74.820502,69.172,207.5,50,6,Regional_District,0.109,False,False
+R2,opus,KGSR03020239A,Khull Ahmadabad to Srinagar,33.645205,75.018914,34.07457,74.820502,66.828,200.5,50,6,Regional_District,0.105,False,False
+R2,opus,KGSR03020239B,Kulgam to Srinagar,33.64457,75.018745,34.07457,74.820502,67.019,201.1,50,6,Regional_District,0.106,False,False
+R2,opus,KWSR03020339,Kupwara to Srinagar,34.603824,74.23032,34.07457,74.820502,102.958,308.9,50,9,Regional_District,0.139,False,False
+R2,opus,ANSR01020239,Mawan to Srinagar,33.730216,75.14856,34.07457,74.820502,56.111,168.3,50,5,Regional_District,0.093,False,False
+R3,opus,KGSR01020139,Nehama to Srinagar,33.634388,74.895335,34.07457,74.820502,62.131,186.4,50,5,Regional_District,0.198,False,False
+R3,opus,SRBP02012703,Pantha Chowk to Safapora,34.044708,74.833526,34.376895,74.718101,60.631,181.9,15,15,Regional_District,0.237,False,True
+R3,opus,KGSR03020439,Pariwan to Srinagar,33.662974,74.924196,34.07457,74.820502,60.618,181.9,50,5,Regional_District,0.185,False,False
+R3,opus,PWSR03020839,Sangerwani to Srinagar,33.797611,74.727362,34.07457,74.820502,44.959,134.9,50,4,Regional_District,0.131,False,False
+R3,opus,SPSR01020539,Sedow to Srinagar,33.664237,74.784877,34.07457,74.820502,57.772,173.3,50,5,Regional_District,0.162,False,False
+R3,opus,ANSR06020139,Shangus to Srinagar,33.744937,75.346685,34.07457,74.820502,80.474,241.4,50,6,Regional_District,0.282,True,False
+R3,opus,SPSR01020639,Shopian to Srinagar,33.719229,74.833266,34.07457,74.820502,48.367,145.1,50,4,Regional_District,0.13,False,False
+R3,opus,KWSR03020539,Sogam to Srinagar,34.497043,74.37747,34.07457,74.820502,105.052,315.2,50,9,Regional_District,0.16,False,False
+R3,opus,BRSR06020239,Sopore to Srinagar,34.287026,74.462679,34.07457,74.820502,50.022,150.1,50,5,Regional_District,0.053,False,False
+R3,opus,SRBR02073901,Srinagar to Aboora,34.07457,74.820502,34.056918,74.536834,32.753,98.3,50,3,Regional_District,0.038,False,False
+R3,opus,SRBG02063901,Srinagar to Arizal,34.07457,74.820502,33.850294,74.564558,44.306,132.9,50,4,Regional_District,0.071,True,False
+R3,opus,SRBR02073902,Srinagar to Baderkote,34.07457,74.820502,34.041835,74.459012,42.864,128.6,50,4,Regional_District,0.062,True,False
+R4,opus,SRBG02023902,Srinagar to Badrun,34.07457,74.820502,34.034217,74.545671,33.307,99.9,50,3,Regional_District,0.038,False,False
+R4,opus,SRBG02013902,Srinagar to Beeru,34.07457,74.820502,34.014196,74.718705,15.277,45.8,50,2,Regional_District,0.012,False,False
+R4,opus,SRBG02043901,Srinagar to Charishreef,34.07457,74.820502,33.862393,74.769676,31.248,93.7,50,3,Regional_District,0.091,False,False
+R4,opus,SRBG02023904,Srinagar to Chewdara,34.07457,74.820502,34.026765,74.605522,28.163,84.5,50,3,Regional_District,0.029,False,False
+R4,opus,SRKW02013901,Srinagar to Chowkibal,34.07457,74.820502,34.52207,74.185035,94.972,284.9,50,7,Regional_District,0.144,False,False
+R4,opus,SRKW02033901,Srinagar to Dardpora,34.07457,74.820502,34.509274,74.083674,106.39,319.2,50,9,Regional_District,0.159,False,False
+R4,opus,SRBP02033901,Srinagar to Hajin,34.07457,74.820502,34.287194,74.620791,35.566,106.7,50,4,Regional_District,0.03,False,False
+R4,opus,SRKW02013902,Srinagar to Handwara,34.07457,74.820502,34.399395,74.283019,73.767,221.3,50,6,Regional_District,0.105,False,False
+R4,opus,SRBG02023905,Srinagar to Isganderpora,34.07457,74.820502,34.025543,74.567653,33.616,100.8,50,4,Regional_District,0.026,False,False
+R4,opus,SRBR02073903,Srinagar to Karhama,34.07457,74.820502,34.061943,74.51838,32.861,98.6,50,3,Regional_District,0.038,False,False
+R4,opus,SRSP02013904,Srinagar to Keller,34.07457,74.820502,33.762682,74.765946,50.376,151.1,50,5,Regional_District,0.114,False,False
+R4,opus,SRBG02023906,Srinagar to Khag,34.07457,74.820502,33.999215,74.529753,37.849,113.5,50,4,Regional_District,0.035,False,False
+R5,opus,SRKW02033902,Srinagar to Khoor,34.07457,74.820502,34.592901,74.136245,111.183,333.5,50,9,Regional_District,0.159,False,False
+R5,opus,SRKW02033904,Srinagar to Kupwara DAY,34.07457,74.820502,34.52614,74.254895,88.147,264.4,50,7,Regional_District,0.123,False,False
+R5,opus,SRBG02043902,Srinagar to Loolpora,34.07457,74.820502,33.856538,74.689486,38.921,116.8,50,4,Regional_District,0.105,False,False
+R5,opus,SRBG02023907,Srinagar to Mirpora Budgam,34.07457,74.820502,34.041268,74.620454,31.366,94.1,50,3,Regional_District,0.036,False,False
+R5,opus,SRBG02023909,Srinagar to Narwara Budgam,34.07457,74.820502,34.037344,74.624257,28.415,85.2,50,3,Regional_District,0.029,False,False
+R5,opus,SRBG02043903,Srinagar to Pakherpora,34.07457,74.820502,33.815188,74.764185,42.101,126.3,50,4,Regional_District,0.115,False,False
+R5,opus,SRPW02043902,Srinagar to Pasthoon,34.07457,74.820502,33.992068,75.075237,50.003,150.0,50,4,Regional_District,0.094,False,False
+R5,opus,SRPW02043903,Srinagar to Pinglish,34.07457,74.820502,33.913714,75.132226,43.953,131.9,50,4,Regional_District,0.07,False,False
+R5,opus,SRAN02033901,Srinagar to Qazigund,34.07457,74.820502,33.588827,75.158213,71.019,213.1,50,6,Regional_District,0.126,False,False
+R5,opus,SRPW02033906,Srinagar to Ratnipora,34.07457,74.820502,33.919274,74.94361,25.567,76.7,50,3,Regional_District,0.03,False,False
+R5,opus,SRBG02023910,Srinagar to Ratsun,34.07457,74.820502,34.058866,74.594398,28.474,85.4,50,3,Regional_District,0.028,False,False
+R5,opus,SRGB02033902,Srinagar to Safapora GBL,34.07457,74.820502,34.263978,74.67695,32.954,98.9,50,3,Regional_District,0.036,False,False
+R6,opus,SRGB02033903,Srinagar to Safapora Sumbal,34.07457,74.820502,34.254903,74.664049,30.51,91.5,50,3,Regional_District,0.03,False,False
+R6,opus,SRBG02023911,Srinagar to Shanglipora,34.07457,74.820502,33.971646,74.530845,42.037,126.1,50,4,Regional_District,0.045,False,False
+R6,opus,SRKW02033906,Srinagar to Tangdar,34.07457,74.820502,34.643054,74.149996,120.829,362.5,50,10,Regional_District,0.171,False,False
+R6,opus,SRBR02073904,Srinagar to Tangmarg,34.07457,74.820502,34.058254,74.422736,40.568,121.7,50,4,Regional_District,0.058,True,False
+R6,opus,SRPW02043904,Srinagar to Tral Nowdal,34.07457,74.820502,33.928106,75.106839,39.5,118.5,50,4,Regional_District,0.05,False,False
+R6,opus,SRKW02013903,Srinagar to Trehgam KUP,34.07457,74.820502,34.517519,74.174306,96.17,288.5,50,7,Regional_District,0.15,False,False
+R6,opus,SRBR02023902,Srinagar to URI Baramulla,34.07457,74.820502,34.145081,74.183855,77.618,232.9,50,6,Regional_District,0.131,False,False
+R6,opus,SRBP02033902,Srinagar to Vijipopra,34.07457,74.820502,34.27866,74.617075,34.662,104.0,50,4,Regional_District,0.028,False,False
+R6,opus,ANSR06020239,Uttersoo to Srinagar,33.707675,75.302146,34.07457,74.820502,73.746,221.2,50,6,Regional_District,0.23,True,False
+R6,opus,KGSR03020539,Yaripora to Srinagar,33.722227,75.01625,34.07457,74.820502,64.929,194.8,50,5,Regional_District,0.108,False,False
+R6,opus,BRSR05020139,Zaloora to Srinagar,34.380329,74.374921,34.07457,74.820502,63.129,189.4,50,5,Regional_District,0.084,False,False
+C1,sonnet,SRSR02020427,Batamallo to Pantha Chowk,34.069343,74.791812,34.028571,74.905785,17.436,87.2,35,4,Peri_Urban,0.085,False,False
+C1,sonnet,SRGB02010501,Batamaloo to Beehama Ganderbal via Hazratbal Zakura,34.068715,74.779627,34.238742,74.801989,26.584,132.9,15,11,Peri_Urban,0.251,False,True
+C1,sonnet,SRBG02020503,Batamaloo to Budgam Railway Station via Khumeni Chowk,34.068715,74.779627,33.990555,74.712541,15.685,78.4,15,7,Peri_Urban,0.177,False,True
+C1,sonnet,SRBG02030502,Batamaloo to Charesharief via Chadoora,34.068715,74.779627,33.881592,74.73756,29.633,148.2,15,12,Peri_Urban,1.119,False,True
+C1,sonnet,SRBG02060502,Batamaloo to Dc Office Budgam,34.068715,74.779627,33.990555,74.712541,15.685,78.4,15,7,Peri_Urban,0.177,False,True
+C1,sonnet,SRPW02030501,Batamaloo to Drussu Pulwama via Marwal,34.068715,74.779627,33.883537,74.926117,32.735,163.7,15,13,Peri_Urban,0.54,False,True
+C1,sonnet,SRPW02020501,Batamaloo to Khrew Bus Stand,34.068715,74.779627,34.040281,74.926779,18.186,90.9,15,9,Peri_Urban,0.117,False,True
+C1,sonnet,SRPW02020503,Batamaloo to Pinglena Pampore via Galandar,34.068715,74.779627,33.998932,74.940483,22.233,111.2,15,10,Peri_Urban,0.111,False,True
+C1,sonnet,SRSR02021523,GBS to LAL Chowk,34.068428,74.810015,34.071262,74.810527,20.326,101.6,35,4,Peri_Urban,0.044,False,False
+C1,sonnet,SRSR01020409,Hazratbal to Bone Joint Hospital Barzalla,34.127549,74.835646,34.057988,74.789692,15.276,76.4,20,5,Peri_Urban,0.058,False,False
+C1,sonnet,SRSR02022028,Jehangir Chowk to Panzinara,34.071881,74.804719,34.150911,74.700235,16.494,82.5,35,4,Peri_Urban,0.025,False,False
+C1,sonnet,SRPW02022104,Jkpdc Jehangir Chowk to Wadwan,34.077213,74.80362,34.020325,74.929229,15.202,76.0,15,7,Peri_Urban,0.027,False,True
+C1,sonnet,PWSR03020239,Koil to Srinagar,33.875484,74.949409,34.07457,74.820502,32.725,163.6,35,6,Peri_Urban,0.093,False,False
+C2,sonnet,SRBG02022203,LD to Budgam,34.081954,74.805892,34.006185,74.641626,21.784,108.9,35,5,Peri_Urban,0.042,False,False
+C2,sonnet,SRPW02022202,LD to Pampore,34.081954,74.805892,34.010891,74.912941,15.854,79.3,35,4,Peri_Urban,0.037,False,False
+C2,sonnet,SRSR02022529,Ma Road to Parimpora,34.040034,74.877958,34.111187,74.747451,18.669,93.3,35,4,Peri_Urban,0.031,False,False
+C2,sonnet,BGSR02020820,Narbal to Jehangir Chowk,34.090399,74.658247,34.071881,74.804719,21.634,108.2,35,5,Peri_Urban,0.072,False,False
+C2,sonnet,SRBG02022701,Pantha Chowk to Agri Kalan Kanihama via Bypass,34.044708,74.833526,34.100032,74.646582,23.59,118.0,15,10,Peri_Urban,0.107,False,True
+C2,sonnet,SRBG02022708,Pantha Chowk to Narbal Crossing via Sonwar Jehangir Chowk Qamarwari,34.044708,74.833526,34.111098,74.683892,19.752,98.8,15,9,Peri_Urban,0.084,False,True
+C2,sonnet,SRBR02042701,Pantha Chowk to Palhalan via Sangrama Sopore,34.044708,74.833526,34.18312,74.543746,36.463,182.3,15,15,Peri_Urban,0.147,False,True
+C2,sonnet,SRGB02032704,Pantha Chowk to Sumbal,34.044708,74.833526,34.264255,74.65946,35.736,178.7,15,14,Peri_Urban,0.191,False,True
+C2,sonnet,SRBG02022903,Parimpora to Budgam,34.111187,74.747451,34.006185,74.641626,31.385,156.9,35,6,Peri_Urban,0.05,False,False
+C2,sonnet,SRBG02032901,Parimpora to Chadora,34.111187,74.747451,33.943466,74.79875,25.752,128.8,35,5,Peri_Urban,0.161,False,False
+C2,sonnet,SRSR02012903,Parimpora to Harwan via Brein Nishat,34.111187,74.747451,34.151638,74.917667,23.249,116.2,15,10,Peri_Urban,0.192,True,True
+C2,sonnet,SRSR02012904,Parimpora to Hazratbal,34.111187,74.747451,34.127549,74.835646,16.104,80.5,35,4,Peri_Urban,0.109,False,False
+C2,sonnet,SRSR02022917,Parimpora to Humhama,34.111187,74.747451,34.020926,74.770771,16.99,84.9,35,4,Peri_Urban,0.035,False,False
+C3,sonnet,SRSR02022920,Parimpora to Jehangir Chowk,34.111187,74.747451,34.071881,74.804719,20.711,103.6,35,4,Peri_Urban,0.095,False,False
+C3,sonnet,SRSR02012907,Parimpora to Naseem Bagh via Noorbagh Gojwara Mill Stop,34.111187,74.747451,34.133405,74.838555,15.058,75.3,15,7,Peri_Urban,0.067,False,True
+C3,sonnet,SRPW02022902,Parimpora to Pampore,34.111187,74.747451,34.010891,74.912941,23.817,119.1,35,5,Peri_Urban,0.029,False,False
+C3,sonnet,SRSR02022927,Parimpora to Pantha Chowk,34.111187,74.747451,34.028571,74.905785,21.307,106.5,35,5,Peri_Urban,0.038,False,False
+C3,sonnet,SRSR02022932,Parimpora to Rangrath,34.111187,74.747451,34.013161,74.799413,19.812,99.1,35,4,Peri_Urban,0.073,False,False
+C3,sonnet,BRBR01020202,Pehilpora to URI via Baramulla,34.1981,74.364653,34.145081,74.183855,25.43,127.2,35,5,Peri_Urban,0.854,False,False
+C3,sonnet,ANAN05010101,Phalgam to Anantnagh,34.015555,75.327115,33.74535,75.186081,39.73,198.6,35,7,Peri_Urban,1.228,True,False
+C3,sonnet,PWSR03020539,Pulwama to Srinagar,33.875628,74.900457,34.07457,74.820502,28.043,140.2,35,6,Peri_Urban,0.088,False,False
+C3,sonnet,SRSR02023003,Qamarwari to Baghi Mehtab,34.094819,74.766082,34.016517,74.812674,16.223,81.1,35,4,Peri_Urban,0.179,False,False
+C3,sonnet,SRSR02023027,Qamarwari to Pathachowk,34.094819,74.766082,34.028571,74.905785,19.719,98.6,35,4,Peri_Urban,0.026,False,False
+C3,sonnet,SRSR01020813,Rangpora to Dalgate,34.161641,74.817634,34.081628,74.826887,15.533,77.7,20,5,Peri_Urban,0.054,False,False
+C3,sonnet,SRSR01020822,Rangpora to LD,34.161641,74.817634,34.081954,74.805892,21.916,109.6,35,5,Peri_Urban,0.054,False,False
+C3,sonnet,SRSR01010809,Rangpora to Soura,34.161641,74.817634,34.137704,74.802102,22.053,110.3,35,5,Peri_Urban,0.043,False,False
+C4,sonnet,SRGB01010902,Soura to Gadoora,34.137704,74.802102,34.176015,74.781487,17.862,89.3,35,4,Peri_Urban,0.76,False,False
+C4,sonnet,SRSR01020901,Soura to Railway Station,34.137704,74.802102,34.024163,74.847251,18.799,94.0,35,4,Peri_Urban,0.052,False,False
+C4,sonnet,SRKG02033901,Srinagar to Bugam,34.07457,74.820502,33.690119,75.025633,62.557,312.8,35,11,Peri_Urban,0.177,False,False
+C4,sonnet,SRGB02023901,Srinagar to Gund,34.07457,74.820502,34.257896,75.088684,57.421,287.1,35,11,Peri_Urban,0.443,False,False
+C4,sonnet,SRPW02033903,Srinagar to Lettar,34.07457,74.820502,33.874121,74.898327,28.413,142.1,35,6,Peri_Urban,0.091,False,False
+C4,sonnet,SRGB02034001,TRC to Central University Ganderbal via Karan Nagar Zoonimar 90ft Road,34.083498,74.808812,34.272563,74.824405,27.314,136.6,15,12,Peri_Urban,0.44,False,True
+C4,sonnet,SRPW02034005,TRC to Pulwama via Nowgam Kaanipora,34.083498,74.808812,33.871436,74.898398,29.364,146.8,15,12,Peri_Urban,0.159,False,True
+C4,sonnet,PWSR03020939,Wasoora to Srinagar,33.82621,74.971966,34.07457,74.820502,39.631,198.2,35,7,Peri_Urban,0.168,False,False
+C4,sonnet,SRSR02020223,Baghat Shora to Lalchowk,34.041705,74.802477,34.071262,74.810527,13.003,104.0,35,4,Urban,0.065,False,False
+C4,sonnet,SRSR02020525,Batamaloo Circular via Khonmoh,34.068715,74.779627,34.041631,74.881908,13.87,98.1,15,9,Urban,0.134,False,True
+C4,sonnet,SRSR02020501,Batamaloo to Arath,34.068715,74.779627,34.040934,74.846883,12.395,98.5,15,9,Urban,0.277,False,True
+C4,sonnet,SRBG02030501,Batamaloo to Chadoora Chowk via Jehangir Chowk,34.068715,74.779627,34.051336,74.712172,10.858,65.8,15,6,Urban,0.131,False,True
+C4,sonnet,SRSR02010504,Batamaloo to Hazratbal via Khanyar,34.068715,74.779627,34.132139,74.842167,12.926,103.4,15,9,Urban,0.051,False,True
+C5,sonnet,SRBG02010503,Batamaloo to Nasrullah Pora via Jehangir Chowk Rambagh Hyderpora,34.068715,74.779627,34.044025,74.73198,7.083,43.4,15,5,Urban,0.077,False,True
+C5,sonnet,SRSR02020541,Batamaloo to Womens College Batpora via Rainawari,34.068715,74.779627,34.087488,74.808297,4.508,36.1,15,4,Urban,0.075,False,True
+C5,sonnet,SRSR02020613,Batmaloo to Dalgate,34.079006,74.794454,34.081628,74.826887,5.366,42.9,20,4,Urban,0.008,False,False
+C5,sonnet,SRSR02011109,Chanapora to Soura,34.033985,74.808002,34.137704,74.802102,14.108,105.9,20,7,Urban,0.057,False,False
+C5,sonnet,BRBR01010201,Garkote to Baramulla,34.1981,74.364653,34.208735,74.342587,2.961,23.7,35,2,Urban,0.199,False,False
+C5,sonnet,SRSR01020422,Hazratbal to LD,34.127549,74.835646,34.081954,74.805892,9.286,74.3,35,4,Urban,0.079,False,False
+C5,sonnet,SRSR02022941,"Hazratbal, Lalbazar",34.111187,74.747451,34.087134,74.811433,8.808,70.5,35,4,Urban,0.057,False,False
+C5,sonnet,SRSR02021807,JVC to Batwara,34.085141,74.762209,34.05838,74.85221,14.66,117.3,35,5,Urban,0.029,False,False
+C5,sonnet,SRSR02022008,Jehangir Chowk to Bemina,34.071881,74.804719,34.07618,74.768237,6.545,52.4,35,3,Urban,0.019,False,False
+C5,sonnet,SRSR02022016,Jehangir Chowk to HMT,34.071881,74.804719,34.108505,74.74716,10.311,82.5,35,4,Urban,0.027,False,False
+C5,sonnet,SRSR02022018,Jehangir Chowk to JVC,34.071881,74.804719,34.085141,74.762209,7.723,61.8,35,3,Urban,0.045,False,False
+C5,sonnet,SRSR02012009,Jehangir Chowk to Soura,34.071881,74.804719,34.137704,74.802102,10.004,80.0,20,5,Urban,0.073,False,False
+C5,sonnet,SRSR02012208,LD Hospital to Pandach via Jehangir Chowk Dalgate Khanyar,34.081954,74.805892,34.161105,74.816704,10.884,87.1,15,7,Urban,0.167,False,True
+C6,sonnet,SRSR02022227,LD to Panthachowk,34.081954,74.805892,34.028571,74.905785,13.344,106.8,35,5,Urban,0.038,False,False
+C6,sonnet,SRSR02022229,LD to Parimpora,34.081954,74.805892,34.111187,74.747451,10.44,83.5,35,4,Urban,0.015,False,False
+C6,sonnet,SRSR01020522,Lalbazar to LD,34.125566,74.817375,34.081954,74.805892,9.308,74.5,20,5,Urban,0.1,False,False
+C6,sonnet,SRSR01020523,Lalbazar to Lalchowk,34.125566,74.817375,34.071262,74.810527,8.433,67.5,20,5,Urban,0.039,False,False
+C6,sonnet,SRSR01020529,Lalbazar to Parimpora,34.125566,74.817375,34.111187,74.747451,12.646,101.2,35,4,Urban,0.071,False,False
+C6,sonnet,SRSR01020530,Lalbazar to Qamarwari,34.125566,74.817375,34.094819,74.766082,8.695,69.6,20,5,Urban,0.09,False,False
+C6,sonnet,ANAN01010201,Lammer to Anantnagh,33.730216,75.14856,33.74535,75.186081,4.333,31.3,35,2,Urban,0.324,False,False
+C6,sonnet,SRSR02022420,Lawaypora to Jehangir Chowk,34.117297,74.698752,34.071881,74.804719,14.207,113.7,35,5,Urban,0.034,False,False
+C6,sonnet,SRSR02022537,Ma Road to Safakadal,34.040034,74.877958,34.09322,74.791695,13.244,106.0,35,5,Urban,0.045,False,False
+C6,sonnet,SRSR01020622,Malbagh to LD,34.144232,74.825477,34.081954,74.805892,11.428,91.4,20,6,Urban,0.165,False,False
+C6,sonnet,SRSR02022634,Old City Loop Downtown Srinagar,34.094215,74.81279,34.102708,74.808868,1.169,9.4,15,2,Urban,0.02,False,True
+C6,sonnet,SRSR02022728,Pantha Chowk to Panzinara,34.044708,74.833526,34.058576,74.763155,10.811,86.5,15,7,Urban,0.269,False,True
+C6,sonnet,SRSR02022919,Parimpora to Jawahairnagar,34.111187,74.747451,34.060665,74.811725,12.642,101.1,35,4,Urban,0.03,False,False
+C7,sonnet,SRSR02022935,Parimpora to Rawalpora,34.111187,74.747451,34.01977,74.799735,14.409,115.3,35,5,Urban,0.105,False,False
+C7,sonnet,SRSR02022938,Parimpora to Saidakadal,34.111187,74.747451,34.103619,74.827952,14.067,112.5,20,7,Urban,0.054,False,False
+C7,sonnet,SRSR02023013,Qamarwari to Dalgate,34.094819,74.766082,34.081628,74.826887,8.844,70.8,20,5,Urban,0.064,False,False
+C7,sonnet,SRSR02013004,Qamarwari to Hazratbal,34.094819,74.766082,34.127549,74.835646,14.081,112.6,35,5,Urban,0.094,False,False
+C7,sonnet,SRSR02023020,Qamarwari to Jehangir Chowk,34.094819,74.766082,34.071881,74.804719,12.659,101.3,35,4,Urban,0.021,False,False
+C7,sonnet,SRSR02023029,Qamarwari to Parimpora,34.094819,74.766082,34.111187,74.747451,14.577,116.6,35,5,Urban,0.022,False,False
+C7,sonnet,SRSR01020823,Rangpora to Lalchowk,34.161641,74.817634,34.071262,74.810527,13.983,111.7,20,7,Urban,0.119,False,False
+C7,sonnet,SRSR02023314,Rangreth to District Court Srinagar via Barzulla Jehangir Chowk,34.024711,74.790406,34.100536,74.797551,10.327,82.6,15,7,Urban,0.144,False,True
+C7,sonnet,SRSR02023720,Safakadal to Jehangir Chowk,34.09322,74.791695,34.071881,74.804719,3.149,25.2,20,3,Urban,0.02,False,False
+C7,sonnet,SRSR02023736,Safakadal to SMHS,34.09322,74.791695,34.086425,74.798484,6.257,50.1,35,3,Urban,0.034,False,False
+C7,sonnet,SRSR02023810,Saidakadal to Bypass,34.103619,74.827952,34.090936,74.760881,13.28,106.2,20,7,Urban,0.067,False,False
+C7,sonnet,SRSR01020904,Soura to Batamallo,34.137704,74.802102,34.069343,74.791812,11.366,90.9,20,6,Urban,0.056,False,False
+C7,sonnet,SRSR01020912,Soura to Chuntwaliwar,34.137704,74.802102,34.094606,74.800214,5.78,46.2,20,4,Urban,0.08,False,False
+C8,sonnet,SRSR01020913,Soura to Dalgate,34.137704,74.802102,34.081628,74.826887,11.745,94.0,20,6,Urban,0.072,False,False
+C8,sonnet,SRGB01010903,Soura to Ganderbal,34.137704,74.802102,34.192755,74.769753,9.86,78.9,35,4,Urban,0.64,False,False
+C8,sonnet,SRSR01010904,Soura to Hazratbal,34.137704,74.802102,34.127549,74.835646,8.337,66.7,35,3,Urban,0.293,False,False
+C8,sonnet,SRSR01020922,Soura to LD,34.137704,74.802102,34.081954,74.805892,10.099,80.8,20,6,Urban,0.077,False,False
+C8,sonnet,SRSR01020923,Soura to Lalchowk,34.137704,74.802102,34.071262,74.810527,9.494,76.0,20,5,Urban,0.037,False,False
+C8,sonnet,SRSR01020929,Soura to Parimpora,34.137704,74.802102,34.111187,74.747451,12.314,98.5,35,4,Urban,0.096,False,False
+C8,sonnet,SRSR01020930,Soura to Qamarwari,34.137704,74.802102,34.094819,74.766082,9.3,74.4,35,4,Urban,0.166,False,False
+C8,sonnet,SRSR01020936,Soura to SMHS,34.137704,74.802102,34.086425,74.798484,11.97,95.8,20,6,Urban,0.059,False,False
+C8,sonnet,SRSR02013901,Srinagar to Buchpora,34.07457,74.820502,34.150702,74.803112,9.37,75.0,20,5,Urban,0.06,False,False
+C8,sonnet,SRBG02023903,Srinagar to Budgam,34.07457,74.820502,34.006185,74.641626,23.639,189.1,35,7,Urban,0.054,False,False
+C8,sonnet,SRSR02023910A,Srinagar to By Pass,34.07457,74.820502,34.082926,74.796819,3.279,26.2,20,3,Urban,0.006,False,False
+C8,sonnet,SRSR02023910B,Srinagar to Bypass,34.07457,74.820502,34.090936,74.760881,8.341,66.7,20,5,Urban,0.021,False,False
+C8,sonnet,SRBG02033901,Srinagar to Chadoora,34.07457,74.820502,33.943466,74.79875,16.895,135.2,35,5,Urban,0.121,False,False
+C9,sonnet,SRGB02013903,Srinagar to Ganderbal,34.07457,74.820502,34.192755,74.769753,16.689,133.5,35,5,Urban,0.116,False,False
+C9,sonnet,SRSR02013902,Srinagar to Gulabagh,34.07457,74.820502,34.180148,74.816805,14.022,102.6,35,4,Urban,0.098,False,False
+C9,sonnet,SRSR02013903,Srinagar to Harwan,34.07457,74.820502,34.15981,74.903368,16.558,125.9,35,5,Urban,0.362,True,False
+C9,sonnet,SRPW02023901,Srinagar to Khrew,34.07457,74.820502,34.0196,74.999664,19.597,156.8,35,6,Urban,0.084,False,False
+C9,sonnet,SRPW02033904,Srinagar to NEW Khanda,34.07457,74.820502,33.915501,74.882603,22.786,157.5,35,6,Urban,0.122,False,False
+C9,sonnet,SRPW02023902,Srinagar to Pampore,34.07457,74.820502,34.010891,74.912941,12.883,80.8,35,4,Urban,0.034,False,False
+C9,sonnet,SRSR02023931,Srinagar to Railway,34.07457,74.820502,34.025914,74.825506,7.778,55.3,20,4,Urban,0.039,False,False
+C9,sonnet,SRSR02023934,Srinagar to Rasoo,34.07457,74.820502,34.105358,74.809909,4.174,33.4,20,3,Urban,0.023,False,False
+C9,sonnet,SRPW02033907,Srinagar to Ratnipura,34.07457,74.820502,33.917253,74.948452,25.991,179.1,35,7,Urban,0.09,False,False
+C9,sonnet,SRBG02014001,TRC Srinagar to Airport,34.075384,74.824467,33.993793,74.774698,14.524,116.2,35,5,Urban,0.092,False,False
+C9,sonnet,SRSR02014004,TRC to Hazratbal,34.075384,74.824467,34.127549,74.835646,8.127,65.0,35,3,Urban,0.095,False,False

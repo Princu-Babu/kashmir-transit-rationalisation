@@ -2,6 +2,13 @@
 *.log
 outputs/
 outputs_v3.3.*/
+outputs_v3.4.*/
+# large geodata binaries — regenerated locally, never committed
+*.tif
+*.osm.pbf
+ind_ppp_*
+india-latest.osm.pbf
+nul
 geocode_cache.json
 geocode_cache.*.json
 .claude/

@@ -3,7 +3,22 @@
 Read this first in a new chat, then `CLAUDE.md` for the run mechanics. This file
 is the living state-of-the-world; `CLAUDE.md` is the operating manual.
 
-_Last updated: 2026-06-23 (v3.4.3 — 50-min rural wait cap + route-by-route OSRM verification)._
+_Last updated: 2026-06-25 (v3.4.4 — AI real-world route deep-dive + audited distance corrections)._
+
+> **v3.4.4 (current):** All 186 active routes were independently verified against
+> the REAL world by an AI analyst (web research per route — Google Maps / JKRTC /
+> gazetteers / press), NOT a script. Result 93 PASS / 88 REVIEW / 5 FAIL. Root
+> cause: engine `Route_KM == OSRM km`; divergences are wrong endpoint coords or
+> OSRM detours (a re-run can't fix either), so we substituted the web-verified
+> real road km (cited per route) and recomputed cycle+fleet with the engine's
+> exact formulas (`apply_corrections_v344.py`, self-tested to reproduce all 186
+> v3.4.3 routes). **48 corrected, 45 deferred; fleet 1,044→1,003** (HPV 187/MPV
+> 747/LPV 69); 186 active / 30 SSCL / 10 districts unchanged. Closed-loop: 46/48
+> within ±15% of real. Final artifact: `ROUTE_VERIFICATION_RTO_APPENDIX.md` +
+> `outputs_v3.4.4/Kashmir_Route_Verification_Appendix_v3.4.4_RTO.xlsx`. Deep-dive
+> evidence: `ROUTE_DEEPDIVE_LEDGER.csv` / `_FINDINGS.md` / `_METHODOLOGY.md`.
+> NOT yet done: dashboard/deck regen, git commit (both repos), endpoint
+> re-geocode for the 2 coord-fix map lines (numbers already corrected).
 
 ---
 
