@@ -17,8 +17,13 @@ _Last updated: 2026-06-25 (v3.4.4 — AI real-world route deep-dive + audited di
 > within ±15% of real. Final artifact: `ROUTE_VERIFICATION_RTO_APPENDIX.md` +
 > `outputs_v3.4.4/Kashmir_Route_Verification_Appendix_v3.4.4_RTO.xlsx`. Deep-dive
 > evidence: `ROUTE_DEEPDIVE_LEDGER.csv` / `_FINDINGS.md` / `_METHODOLOGY.md`.
-> NOT yet done: dashboard/deck regen, git commit (both repos), endpoint
-> re-geocode for the 2 coord-fix map lines (numbers already corrected).
+> PROPAGATED + PUSHED (2026-06-26): Budgam + GBS re-geocoded & re-routed
+> (geometry redrawn) → fleet **1,004** (H187/M748/L69); regenerated pretty +
+> 9-sheet + legacy workbooks + decks + Passenger_Impact/Log from the corrected
+> CSV; dashboard synced + TS numbers updated. Both repos on main — engine
+> `b2f7046`, dashboard `5d0b3ff`. Still open: per-route HTML maps not regenerated
+> (engine-only; 2 rerouted lines lag); mountain-pass cycle scaled conservatively;
+> Garkote identity deferred to the RTO stop register.
 
 ---
 
