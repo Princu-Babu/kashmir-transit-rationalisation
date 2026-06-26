@@ -2,7 +2,7 @@
 
 **Kashmir Valley Transit Rationalisation Plan — verification appendix for the
 Principal Secretary (Transport) / RTO, J&K.**
-_Prepared 2026-06-25. Supersedes the route distances in v3.4.3 for the 48 routes
+_Prepared 2026-06-25. Supersedes the route distances in v3.4.3 for the 49 routes
 listed here; all other routes are carried forward unchanged._
 
 ---
@@ -48,8 +48,8 @@ web-verified real road distance** (each value cited in the ledger) for the
 affected routes and **recomputed Cycle Time and Fleet using the plan's exact
 published formulas** (verified to reproduce every v3.4.3 route before any change).
 
-- **48 routes corrected** — modelled distance replaced with verified real road km;
-  cycle and fleet recomputed. 42 were over-modelled (shrink), 6 under-modelled
+- **49 routes corrected** — modelled distance replaced with verified real road km;
+  cycle and fleet recomputed. 43 were over-modelled (shrink), 6 under-modelled
   (grow). Full list with before/after and citations: `corrections_applied_v344.csv`.
 - **93 PASS routes unchanged** — byte-identical to v3.4.3.
 - **SSCL e-bus trunks never touched** — their longer distances are legitimate
@@ -69,13 +69,13 @@ Every corrected route's `HPV + MPV + LPV = Fleet_Required` (checked, 0 exception
 | **GBS → Lal Chowk** | The two pins are ~0.3 km apart; engine 20.3 km is spurious | Origin **re-geocoded to General Bus Stand (Batamaloo)**; OSRM-rerouted = **2.93 km**; fleet 4→2. Map line redrawn. *(HIGH)* |
 | **Garkote → Baramulla** | Only documented "Garkote" in the district is in Uri (~37 km), but the pin sits ~3 km from Baramulla | **Deferred** — corridor identity unresolved; numbers left unchanged pending the RTO's surveyed stop register. |
 
-## R.5 Deferred items (45) — by reason
+## R.5 Deferred items (44) — by reason
 
 | Count | Reason | Action |
 |---:|---|---|
 | 14 | Within ±15 % tolerance after review | None — already correct |
 | 19 | Distance plausible but a village/mahalla **name could not be independently verified** | Confirm against the **RTO surveyed stop register** (already on our data-ask list) |
-| 12 | **SSCL e-bus trunk** — longer distance is a legitimate designed via-loop | None — by design |
+| 11 | **SSCL e-bus trunk** — longer distance is a legitimate designed via-loop | None — by design |
 
 Full list with per-route reasons: `corrections_deferred_v344.csv`.
 
@@ -102,8 +102,8 @@ Full list with per-route reasons: `corrections_deferred_v344.csv`.
 | `ROUTE_DEEPDIVE_METHODOLOGY.md` | How each route was verified, sources, verdict rules |
 | `ROUTE_DEEPDIVE_LEDGER.csv` | All 186 routes: real km, real time, real service, coord check, verdict, finding, **sources** |
 | `ROUTE_DEEPDIVE_FINDINGS.md` | Findings classified (FAIL / over / under / minor) |
-| `corrections_applied_v344.csv` | The 48 corrections: old→new km, old→new fleet, confidence, reason, sources |
-| `corrections_deferred_v344.csv` | The 45 deferred items with reasons |
+| `corrections_applied_v344.csv` | The 49 corrections: old→new km, old→new fleet, confidence, reason, sources |
+| `corrections_deferred_v344.csv` | The 44 deferred items with reasons |
 | `apply_corrections_v344.py` | The correction pass (self-tests the formulas, keyed by Route_Code) |
 | `outputs_v3.4.4/` | The corrected plan (CSV + GeoJSON) |
 

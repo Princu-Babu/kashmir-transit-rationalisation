@@ -17,7 +17,7 @@ def style_header(ws,row=1):
 
 ws=wb.active; ws.title='Summary'
 ws['A1']='Appendix R — Route Verification & Corrections (v3.4.4)'; ws['A1'].font=TITLE
-ws['A2']='Independent real-world verification of all 186 active routes; 48 distance corrections applied. Prepared 2026-06-25.'; ws['A2'].font=SUB
+ws['A2']='Independent real-world verification of all 186 active routes; 49 distance corrections applied. Prepared 2026-06-25.'; ws['A2'].font=SUB
 rows=[('','',''),
  ('Verification outcome','Routes','Note'),
  ('PASS — carried forward unchanged',93,'Distance within +/-15% of real road km'),
@@ -25,9 +25,9 @@ rows=[('','',''),
  ('FAIL — geocoding error',5,'4 corrected, 1 deferred to RTO stop register'),
  ('','',''),
  ('Corrections in v3.4.4','Count','Note'),
- ('Routes corrected (km set to verified real)',48,'42 over-modelled shrank, 6 under-modelled grew'),
- ('   incl. re-geocoded + re-routed','2','Srinagar-Budgam, GBS-Lal Chowk (geometry redrawn)'),
- ('Routes deferred',45,'12 SSCL via-loop, 19 name-unverifiable, 14 within tolerance'),
+ ('Routes corrected (km set to verified real)',49,'inc. 4 re-geocoded+re-routed; 43 shrank, 6 grew'),
+ ('   incl. re-geocoded + re-routed','4','Budgam, GBS, Hazratbal, Manigam (geometry redrawn)'),
+ ('Routes deferred',44,'11 SSCL via-loop, 19 name-unverifiable, 14 within tolerance'),
  ('PASS routes unchanged',93,'byte-identical to v3.4.3'),
  ('','',''),
  ('Fleet impact','v3.4.3','v3.4.4'),
