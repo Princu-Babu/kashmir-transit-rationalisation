@@ -1,14 +1,29 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Engine-v3.4.3-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.4.3"/>
+  <img src="https://img.shields.io/badge/Engine-v3.4.4-1A237E?style=for-the-badge&logo=python&logoColor=white" alt="v3.4.4"/>
   <img src="https://img.shields.io/badge/Kashmir_Fork-Jun_2026-00695C?style=for-the-badge" alt="Kashmir Fork"/>
   <img src="https://img.shields.io/badge/SSCL_CHALO-30_Trunk_Routes-D32F2F?style=for-the-badge" alt="SSCL"/>
   <img src="https://img.shields.io/badge/Active_Routes-186-6A1B9A?style=for-the-badge" alt="Routes"/>
-  <img src="https://img.shields.io/badge/Walkshed_Coverage-35%25-2E7D32?style=for-the-badge" alt="Coverage"/>
+  <img src="https://img.shields.io/badge/Fleet-1,004_buses-F57F17?style=for-the-badge" alt="Fleet"/>
+  <img src="https://img.shields.io/badge/Routes_Verified-186%2F186-2E7D32?style=for-the-badge" alt="Verified"/>
 </p>
 
-# 🚌 Kashmir Valley Transit Rationalisation Engine v3.4.3
+# 🚌 Kashmir Valley Transit Rationalisation Engine v3.4.4
 
 **A data-driven bus route optimisation system for the Srinagar / Kashmir Valley public transport network.**
+
+> ### 📌 Current plan at a glance (v3.4.4)
+> | Metric | Value |
+> |---|---|
+> | **Active routes** | **186** (32 trunk / 154 feeder) from 644 engine routes — engine in = out, 0 lost |
+> | **Total fleet** | **1,004 buses** (187 HPV / 748 MPV / 69 LPV) — **+67%** over today's ~600 |
+> | **SSCL e-bus backbone** | exactly **30 trunks** (the published CHALO routes), all active |
+> | **Districts reached** | all **10** of the Kashmir Division |
+> | **Headways** | city 15 / 20 / 35 min · rural lifelines demand-sized 35–50 (50-min hard max wait) |
+> | **Coverage** | **2.32M residents within 400 m = 35.2%** of the 6.58M division (point-in-polygon) |
+> | **Real-world verification** | all **186 routes** checked vs Google Maps / JKRTC / gazetteers → 93 PASS / 88 REVIEW / 5 FAIL → **49 distance corrections** applied; plan-wide distance error **37.4% → 13.3%** |
+> | **National benchmark** | **43 buses/lakh served** — meets the MoHUA Service Level Benchmark (40–60/lakh); today's ~600 = 26/lakh (below standard) |
+>
+> **RTO deliverables:** the Pretty bus-schedule Excel, the 9-sheet RTO Master Workbook, and the **Route Verification Appendix** (every route + its real-world check + corrections, cited). See [`ROUTE_VERIFICATION_RTO_APPENDIX.md`](ROUTE_VERIFICATION_RTO_APPENDIX.md), [`ROUTE_PLAN_ASSURANCE_v3.4.4.md`](ROUTE_PLAN_ASSURANCE_v3.4.4.md), [`ROUTE_DEEPDIVE_LEDGER.csv`](ROUTE_DEEPDIVE_LEDGER.csv).
 
 Built for the Principal Secretary of Transport, J&K — this engine ingests 613 registered route permits (minibuses, e-buses, MPS buses, JKRTC city/regional services), geocodes them district-aware, clips to the **Srinagar Valley study area**, and produces a rationalised frequency plan. In **v3.3.8** (after a village-geocode recovery pass) the corrected input yields **615 routes** (590 permit/JKRTC-derived + 30 synthetic SSCL/CHALO e-bus trunk injections), of which **172 are active** (the rest are duplicate permits consolidated into one service per corridor). Results are overlaid against WorldPop population rasters and OpenStreetMap Points of Interest to generate fleet allocation, headway schedules, and interactive maps.
 
@@ -21,6 +36,10 @@ Built for the Principal Secretary of Transport, J&K — this engine ingests 613 
 > **✅ v3.4.1 — once-and-for-all system audit: full-division bbox + double-count crackdown (June 2026).** A system-wide reconciliation (not another symptom fix) found two structural defects that earlier output-focused audits had missed. **(1)** The study bounding box was clipped to `lat[33.50,34.50] lon[74.40,75.20]` and the population raster pre-cropped to it — silently dropping/truncating **~29 legitimate routes** (Kupwara, Handwara, Tangdar, Gurez — and even Baramulla town & Uri, whose centres sit just west of the box) and shrinking the coverage denominator to the in-box 5.1M. The box is now the full **10-district division**, the raster is re-cropped from the all-India WorldPop layer, and the coverage denominator is the **10-district union population (6.58M)** by point-in-polygon. **(2)** Routes are sized on a *round-trip* cycle, so keeping both `A→B` and `B→A` as active routes **double-counted** ~10 corridors' fleet (Srinagar↔Kupwara, Srinagar↔Uri, …); corridor consolidation is now **undirected**. A complete **funnel reconciliation** (engine in = out = 644, 0 unexplained loss) and a **10-class bug crackdown** confirm nothing else is hiding. Net: **172→186 active routes, 1,005→1,144 buses, 9→10 districts (Kupwara recovered), 2.32M served / 35.2% of the 6.58M division, 0 true reverse-duplicates.** Full detail: [`SYSTEM_AUDIT_2026-06-22.md`](SYSTEM_AUDIT_2026-06-22.md).
 
 > **✅ v3.4.2 — route-level methodology audit + Hybrid demand-responsive rural sizing (June 2026).** A per-route check of all 186 active routes confirmed every route's *direction/geometry* is sound (speeds 15–40 km/h; the high-circuity routes are legitimate via-hub permitted corridors). It also showed the textbook constant-headway fleet rule — fine for the dense Srinagar core — **over-provisions the long rural lifelines**: the flat 35-min ceiling (an urban-intended RTO ask) gave every Regional route a uniform ~55 trips/day regardless of demand (a 121 km Tangdar lifeline = 13 buses for ~270 riders), tying up 481 buses (42% of the fleet) at 11% median load, while a few busy inter-district corridors were starved. Fix (Hybrid): Urban + Peri-Urban keep 15/20/35 min; **Regional_District lifelines are now sized by demand** (headway bucketed to 35/60/90/120 min with a 2-hourly lifeline floor — a *recommended year-round* level the RTO can reduce at execution). Net: rural Regional fleet **481 → 261**, total **1,144 → 924 buses** (+91% → **+54%** over today's ~600); Tangdar 13→5, Kupwara 11→4, Handwara 9→3; Urban/Peri-Urban and the SSCL backbone unchanged. Tourism/seasonality modelling was deliberately left year-round. Full detail: [`ROUTE_LEVEL_AUDIT_2026-06-22.md`](ROUTE_LEVEL_AUDIT_2026-06-22.md).
+
+> **✅ v3.4.3 — rural wait capped at 50 min (June 2026).** Following an RTO ask that *no* rider should wait beyond ~50 min, the demand-responsive rural buckets were tightened from 35/60/90/120 → **35/40/45/50** (a hard 50-min maximum wait). Rural lifelines were re-sized accordingly: total fleet **924 → 1,044** (185 HPV / 776 MPV / 83 LPV), e.g. Tangdar 5 → 10 buses. City + SSCL headways unchanged. 186 active / 30 SSCL / 35.2% coverage unchanged.
+
+> **✅ v3.4.4 — AI real-world route deep-dive + audited distance corrections (CURRENT, June 2026).** Instead of a script re-checking our own numbers, an **AI analyst verified all 186 active routes against the real world** (web research per route — Google Maps, JKRTC timetables, district gazetteers, local press): does the corridor exist, are the coordinates the actual places, does the modelled road distance match reality, is the service plausible? Result **93 PASS / 88 REVIEW / 5 FAIL** — every corridor is real; the issues were *distances*, not routes. **Root cause:** the engine's `Route_KM` equals the OSRM road distance for the input coordinates (no inflation), so divergences came from wrong endpoint coordinates or OSRM detours — which a blind re-run can't fix. So [`apply_corrections_v344.py`](apply_corrections_v344.py) **substitutes the web-verified real road km** (each cited per route in [`ROUTE_DEEPDIVE_LEDGER.csv`](ROUTE_DEEPDIVE_LEDGER.csv)) and recomputes cycle + fleet with the engine's exact formulas (self-tested to reproduce every v3.4.3 route), keyed by Route_Code so only audited routes change; SSCL untouched. **49 corrected / 44 deferred; fleet 1,044 → 1,004** (187 HPV / 748 MPV / 69 LPV); 4 endpoints (Budgam, GBS, Hazratbal, Manigam) re-geocoded + re-routed. A **final assurance pass** ([`ROUTE_PLAN_ASSURANCE_v3.4.4.md`](ROUTE_PLAN_ASSURANCE_v3.4.4.md)) then: benchmarked the plan against the **MoHUA Service Level Benchmark** (43 buses/lakh served → compliant; today ~26 → below), quantified **plan-wide distance accuracy (MAPE 37.4% → 13.3%)** and fleet robustness (1,004, envelope 996–1,014), and ran an **independent blind re-verification** (fresh agent, 18-route sample → 100% within-one-level agreement) that surfaced 2 more coordinate fixes. Method: [`ROUTE_DEEPDIVE_METHODOLOGY.md`](ROUTE_DEEPDIVE_METHODOLOGY.md); findings: [`ROUTE_DEEPDIVE_FINDINGS.md`](ROUTE_DEEPDIVE_FINDINGS.md); RTO appendix: [`ROUTE_VERIFICATION_RTO_APPENDIX.md`](ROUTE_VERIFICATION_RTO_APPENDIX.md).
 
 ---
 
@@ -395,13 +414,13 @@ All **30 SSCL (Srinagar Smart City Limited) e-bus routes** from CHALO ridership 
 
 ### Fleet context: SSCL deployed vs engine-recommended
 
-The engine's total fleet recommendation of **1,044 buses** (v3.4.3, full 10-district division) covers the entire 186-active-route rationalised network — not just the SSCL e-bus pilot. About **+54% over today's ~600 buses**: city + feeder routes run 15–35 min, while long rural lifelines are demand-sized (35–120 min, ≥2-hourly) rather than a flat 35-min clock:
+The engine's total fleet recommendation of **1,004 buses** (v3.4.4, full 10-district division, after the real-world distance corrections) covers the entire 186-active-route rationalised network — not just the SSCL e-bus pilot. About **+67% over today's ~600 buses**: city + feeder routes run 15–35 min, while long rural lifelines are demand-sized with a **hard 50-min maximum wait** (35/40/45/50 min) rather than a flat 35-min clock:
 
-| Segment | Currently deployed | Engine-recommended (v3.4.3) |
+| Segment | Currently deployed | Engine-recommended (v3.4.4) |
 |---|---|---|
 | SSCL e-buses (exactly the 30 published backbone routes) | **98** (CHALO data, Apr 2026) | **283** (demand-justified at 15-min headway) |
-| Private minibuses + JKRTC + MPS (156 active routes) | existing permits | **641** (city 15–35 min; rural lifelines demand-sized) |
-| **Total active network** | ~600 | **1,044** (HPV 185 / MPV 776 / LPV 83) |
+| Private minibuses + JKRTC + MPS (156 active routes) | existing permits | **721** (city 15–35 min; rural lifelines 35–50 min) |
+| **Total active network** | ~600 | **1,004** (HPV 187 / MPV 748 / LPV 69) |
 
 The non-SSCL bulk is the rural JKRTC network (Anantnag/Baramulla/Kupwara/Pulwama/Bandipora district services) recovered via the gazetteer — long regional routes that need more buses per route, which is why the total lands near the original v3.3.7 figure but is now **honest** (real district-aware geocodes, de-duplicated, no centroid collapse). See `cross_evaluate.py` for the SSCL calibration.
 
