@@ -1,0 +1,144 @@
+Master_Stop_Code,Stop_Name,District,Tehsil,Tehsil_Code,Sector_ID,Stop_No,Latitude,Longitude,N_Endpoints
+AN-01-01,Anantnag,Anantnag,Anantnag,AN,1,1,33.74535,75.18608,2
+AN-01-02,Mawan,Anantnag,Anantnag,AN,1,2,33.73022,75.14856,9
+AN-03-01,Qazigund,Anantnag,Dooru tehsil,AN,3,1,33.58883,75.15821,1
+AN-05-01,Phalgam,Anantnag,Pahalgam,AN,5,1,34.01555,75.32712,1
+AN-06-01,Shangus,Anantnag,Shangus tehsil,AN,6,1,33.74494,75.34668,1
+AN-06-02,Uttersoo,Anantnag,Shangus tehsil,AN,6,2,33.70768,75.30215,1
+BG-01-01,Airport,Budgam,Badgam tehsil,BG,1,1,33.99379,74.7747,1
+BG-01-02,Beeru,Budgam,Badgam tehsil,BG,1,2,34.0142,74.7187,10
+BG-01-03,Nasrullah Pora,Budgam,Badgam tehsil,BG,1,3,34.04402,74.73198,1
+BG-02-01,Agri Kalan Kanihama,Budgam,Beerwah Tehsil,BG,2,1,34.10003,74.64658,1
+BG-02-02,Badrun,Budgam,Beerwah Tehsil,BG,2,2,34.03422,74.54567,1
+BG-02-03,Budgam,Budgam,Beerwah Tehsil,BG,2,3,34.0179,74.7139,1
+BG-02-04,Chewdara,Budgam,Beerwah Tehsil,BG,2,4,34.02676,74.60552,1
+BG-02-05,Isganderpora,Budgam,Beerwah Tehsil,BG,2,5,34.02554,74.56765,1
+BG-02-06,Khag,Budgam,Beerwah Tehsil,BG,2,6,33.99921,74.52975,1
+BG-02-07,Mirpora Budgam,Budgam,Beerwah Tehsil,BG,2,7,34.04127,74.62045,1
+BG-02-08,Narbal,Budgam,Beerwah Tehsil,BG,2,8,34.0904,74.65825,1
+BG-02-09,Narwara Budgam,Budgam,Beerwah Tehsil,BG,2,9,34.03734,74.62426,1
+BG-02-10,Ratsun,Budgam,Beerwah Tehsil,BG,2,10,34.05887,74.5944,1
+BG-02-11,Shanglipora,Budgam,Beerwah Tehsil,BG,2,11,33.97165,74.53084,1
+BG-03-01,Chadora,Budgam,Chadoora tehsil,BG,3,1,33.94347,74.79875,2
+BG-03-02,Charesharief,Budgam,Chadoora tehsil,BG,3,2,33.88159,74.73756,1
+BG-04-01,Charishreef,Budgam,Charar-E-Shrief,BG,4,1,33.86239,74.76968,1
+BG-04-02,Loolpora,Budgam,Charar-E-Shrief,BG,4,2,33.85654,74.68949,1
+BG-04-03,Pakherpora,Budgam,Charar-E-Shrief,BG,4,3,33.81519,74.76418,1
+BG-06-01,Arizal,Budgam,Khansahib Tehsil,BG,6,1,33.85029,74.56456,1
+BG-06-02,Dc Office Budgam,Budgam,Khansahib Tehsil,BG,6,2,33.99056,74.71254,1
+BP-01-01,Arin,Bandipore,Bandipora,BP,1,1,34.41793,74.64294,3
+BP-01-02,Bandipora,Bandipore,Bandipora,BP,1,2,34.42307,74.63596,1
+BP-01-03,Safapora,Bandipore,Bandipora,BP,1,3,34.37689,74.7181,1
+BP-03-01,Hajin,Bandipore,Sonawari,BP,3,1,34.28719,74.62079,1
+BP-03-02,Vijipopra,Bandipore,Sonawari,BP,3,2,34.27866,74.61707,1
+BR-01-01,Baramula,Baramulla,Baramulla,BR,1,1,34.20873,74.34259,2
+BR-01-02,Ijara,Baramulla,Baramulla,BR,1,2,34.1981,74.36465,7
+BR-02-01,Kamalkote,Baramulla,Boniyar,BR,2,1,34.08555,74.04541,1
+BR-02-02,URI,Baramulla,Boniyar,BR,2,2,34.14508,74.18385,2
+BR-04-01,Palhalan,Baramulla,Pattan,BR,4,1,34.18312,74.54375,1
+BR-05-01,Zaloora,Baramulla,Rafiabad,BR,5,1,34.38033,74.37492,1
+BR-06-01,Botingue,Baramulla,Sopore,BR,6,1,34.37177,74.48927,1
+BR-06-02,Sopore,Baramulla,Sopore,BR,6,2,34.28703,74.46268,1
+BR-07-01,Aboora,Baramulla,Tangmarg,BR,7,1,34.05692,74.53683,1
+BR-07-02,Baderkote,Baramulla,Tangmarg,BR,7,2,34.04183,74.45901,1
+BR-07-03,Karhama,Baramulla,Tangmarg,BR,7,3,34.06194,74.51838,1
+BR-07-04,Tangmarg,Baramulla,Tangmarg,BR,7,4,34.05825,74.42274,1
+GB-01-01,Beehama Ganderbal,Ganderbal,Ganderbal,GB,1,1,34.23874,74.80199,1
+GB-01-02,Gadoora,Ganderbal,Ganderbal,GB,1,2,34.17601,74.78149,1
+GB-01-03,Ganderbal,Ganderbal,Ganderbal,GB,1,3,34.19275,74.76975,1
+GB-02-01,Gund,Ganderbal,Kangan,GB,2,1,34.2579,75.08868,1
+GB-02-02,Kangan,Ganderbal,Kangan,GB,2,2,34.23988,74.97562,1
+GB-02-03,Manigam,Ganderbal,Kangan,GB,2,3,34.2816,74.7996,1
+GB-03-01,Central University Ganderbal,Ganderbal,Lar,GB,3,1,34.27256,74.8244,1
+GB-03-02,Safapora GBL,Ganderbal,Lar,GB,3,2,34.26398,74.67695,1
+GB-03-03,Safapora Sumbal,Ganderbal,Lar,GB,3,3,34.2549,74.66405,1
+GB-03-04,Sumbal,Ganderbal,Lar,GB,3,4,34.26425,74.65946,1
+KG-01-01,Nehama,Kulgam,Damhal Hanjipora,KG,1,1,33.63439,74.89534,1
+KG-02-01,Devsur,Kulgam,Devsar,KG,2,1,33.63941,75.09412,1
+KG-03-01,Bugam,Kulgam,Kulgam,KG,3,1,33.69012,75.02563,1
+KG-03-02,Dhpora,Kulgam,Kulgam,KG,3,2,33.64499,75.018853,3
+KG-03-03,Katrosoo,Kulgam,Kulgam,KG,3,3,33.68666,74.99478,1
+KG-03-04,Pariwan,Kulgam,Kulgam,KG,3,4,33.66297,74.9242,1
+KG-03-05,Yaripora,Kulgam,Kulgam,KG,3,5,33.72223,75.01625,1
+KW-01-01,Chowkibal,Kupwara,Handwara tehsil,KW,1,1,34.52207,74.18503,1
+KW-01-02,Handwara,Kupwara,Handwara tehsil,KW,1,2,34.39939,74.28302,1
+KW-01-03,Trehgam KUP,Kupwara,Handwara tehsil,KW,1,3,34.51752,74.17431,1
+KW-03-01,Dardpora,Kupwara,Kupwara,KW,3,1,34.50927,74.08367,1
+KW-03-02,Khoor,Kupwara,Kupwara,KW,3,2,34.5929,74.13625,1
+KW-03-03,Kupwara,Kupwara,Kupwara,KW,3,3,34.60382,74.23032,1
+KW-03-04,Kupwra,Kupwara,Kupwara,KW,3,4,34.52614,74.2549,3
+KW-03-05,Sogam,Kupwara,Kupwara,KW,3,5,34.49704,74.37747,1
+KW-03-06,Tangdar,Kupwara,Kupwara,KW,3,6,34.64305,74.15,1
+PW-02-01,Khrew,Pulwama,Pampore,PW,2,1,34.0196,74.99966,1
+PW-02-02,Pampore,Pulwama,Pampore,PW,2,2,34.01089,74.91294,1
+PW-02-03,Pinglena Pampore,Pulwama,Pampore,PW,2,3,33.99893,74.94048,1
+PW-02-04,Wadwan,Pulwama,Pampore,PW,2,4,34.02032,74.92923,1
+PW-03-01,Drussu Pulwama,Pulwama,Pulwama tehsil,PW,3,1,33.88354,74.92612,1
+PW-03-02,Koil,Pulwama,Pulwama tehsil,PW,3,2,33.87548,74.94941,1
+PW-03-03,Lettar,Pulwama,Pulwama tehsil,PW,3,3,33.87412,74.89833,3
+PW-03-04,NEW Khanda,Pulwama,Pulwama tehsil,PW,3,4,33.9155,74.8826,1
+PW-03-05,Pulwama,Pulwama,Pulwama tehsil,PW,3,5,33.87563,74.90046,1
+PW-03-06,Ratnipora,Pulwama,Pulwama tehsil,PW,3,6,33.91927,74.94361,1
+PW-03-07,Ratnipura,Pulwama,Pulwama tehsil,PW,3,7,33.91725,74.94845,1
+PW-03-08,Sangerwani,Pulwama,Pulwama tehsil,PW,3,8,33.79761,74.72736,1
+PW-03-09,Wasoora,Pulwama,Pulwama tehsil,PW,3,9,33.82621,74.97197,1
+PW-04-01,Dadsara Tral,Pulwama,Tral,PW,4,1,33.93024,75.11,1
+PW-04-02,Pasthoon,Pulwama,Tral,PW,4,2,33.99207,75.07524,1
+PW-04-03,Pinglish,Pulwama,Tral,PW,4,3,33.91371,75.13223,1
+PW-04-04,Tral Nowdal,Pulwama,Tral,PW,4,4,33.92811,75.10684,1
+SP-01-01,Harman,Shopian,Shopian,SP,1,1,33.71715,74.83127,1
+SP-01-02,Heff,Shopian,Shopian,SP,1,2,33.79586,74.97331,1
+SP-01-03,Kaprin,Shopian,Shopian,SP,1,3,33.66973,74.90444,1
+SP-01-04,Keller,Shopian,Shopian,SP,1,4,33.76268,74.76595,1
+SP-01-05,Sedow,Shopian,Shopian,SP,1,5,33.66424,74.78488,1
+SP-01-06,Shopian,Shopian,Shopian,SP,1,6,33.71923,74.83327,1
+SR-01-01,Buchpora,Srinagar,Srinagar (North),SR,1,1,34.1507,74.80311,1
+SR-01-02,Gulabagh,Srinagar,Srinagar (North),SR,1,2,34.18015,74.81681,1
+SR-01-03,Harwan,Srinagar,Srinagar (North),SR,1,3,34.15981,74.90337,1
+SR-01-04,Hazratbal,Srinagar,Srinagar (North),SR,1,4,34.127,74.836,1
+SR-01-05,Lalbazar,Srinagar,Srinagar (North),SR,1,5,34.12557,74.81737,1
+SR-01-06,Malbagh,Srinagar,Srinagar (North),SR,1,6,34.14423,74.82548,1
+SR-01-07,Naseem Bagh,Srinagar,Srinagar (North),SR,1,7,34.13341,74.83855,1
+SR-01-08,Pandach,Srinagar,Srinagar (North),SR,1,8,34.16137,74.817165,2
+SR-01-09,Sora,Srinagar,Srinagar (North),SR,1,9,34.1377,74.8021,2
+SR-02-01,Arath,Srinagar,Srinagar (South),SR,2,1,34.04093,74.84688,1
+SR-02-02,Baghat Shora,Srinagar,Srinagar (South),SR,2,2,34.04171,74.80248,1
+SR-02-03,Baghi Mehtab,Srinagar,Srinagar (South),SR,2,3,34.01652,74.81267,1
+SR-02-04,Batamaalo,Srinagar,Srinagar (South),SR,2,4,34.06934,74.79181,2
+SR-02-05,Batamaloo,Srinagar,Srinagar (South),SR,2,5,34.06871,74.77963,2
+SR-02-06,Batmaloo,Srinagar,Srinagar (South),SR,2,6,34.07901,74.79445,1
+SR-02-07,Batwara,Srinagar,Srinagar (South),SR,2,7,34.05838,74.85221,1
+SR-02-08,Bemina,Srinagar,Srinagar (South),SR,2,8,34.07618,74.76824,1
+SR-02-09,Bone Joint Hospital Barzalla,Srinagar,Srinagar (South),SR,2,9,34.05799,74.78969,1
+SR-02-10,Bypass,Srinagar,Srinagar (South),SR,2,10,34.09094,74.76088,1
+SR-02-11,Chanapora,Srinagar,Srinagar (South),SR,2,11,34.03399,74.808,1
+SR-02-12,Chuntwaliwar,Srinagar,Srinagar (South),SR,2,12,34.09461,74.80021,1
+SR-02-13,Dalgate,Srinagar,Srinagar (South),SR,2,13,34.08163,74.82689,1
+SR-02-14,District Court Srinagar,Srinagar,Srinagar (South),SR,2,14,34.10054,74.79755,1
+SR-02-15,GBS,Srinagar,Srinagar (South),SR,2,15,34.073,74.786,1
+SR-02-16,HMT,Srinagar,Srinagar (South),SR,2,16,34.10851,74.74716,1
+SR-02-17,Humhama,Srinagar,Srinagar (South),SR,2,17,34.02093,74.77077,1
+SR-02-18,JVC,Srinagar,Srinagar (South),SR,2,18,34.08514,74.76221,1
+SR-02-19,Jawahirnagar,Srinagar,Srinagar (South),SR,2,19,34.06067,74.81172,2
+SR-02-20,Jehangir Chowk,Srinagar,Srinagar (South),SR,2,20,34.07188,74.80472,1
+SR-02-21,Jkpdc Jehangir Chowk,Srinagar,Srinagar (South),SR,2,21,34.07721,74.80362,1
+SR-02-22,LD,Srinagar,Srinagar (South),SR,2,22,34.08195,74.80589,2
+SR-02-23,Lalchowk,Srinagar,Srinagar (South),SR,2,23,34.07126,74.81053,2
+SR-02-24,Lawaypora,Srinagar,Srinagar (South),SR,2,24,34.1173,74.69875,1
+SR-02-25,Ma Road,Srinagar,Srinagar (South),SR,2,25,34.04003,74.87796,1
+SR-02-26,Old City Loop Downtown Srinagar,Srinagar,Srinagar (South),SR,2,26,34.09421,74.81279,1
+SR-02-27,Panthachok,Srinagar,Srinagar (South),SR,2,27,34.02857,74.90578,4
+SR-02-28,Panzinara,Srinagar,Srinagar (South),SR,2,28,34.15091,74.70024,1
+SR-02-29,Parimpora,Srinagar,Srinagar (South),SR,2,29,34.11119,74.74745,2
+SR-02-30,Qamarwari,Srinagar,Srinagar (South),SR,2,30,34.09482,74.76608,1
+SR-02-31,Railway,Srinagar,Srinagar (South),SR,2,31,34.02591,74.82551,1
+SR-02-32,Rangrath,Srinagar,Srinagar (South),SR,2,32,34.01316,74.79941,1
+SR-02-33,Rangreth,Srinagar,Srinagar (South),SR,2,33,34.02471,74.79041,1
+SR-02-34,Rasoo,Srinagar,Srinagar (South),SR,2,34,34.10536,74.80991,1
+SR-02-35,Rawalpora,Srinagar,Srinagar (South),SR,2,35,34.01977,74.79973,1
+SR-02-36,SMHS,Srinagar,Srinagar (South),SR,2,36,34.08642,74.79848,1
+SR-02-37,Safakadal,Srinagar,Srinagar (South),SR,2,37,34.09322,74.7917,1
+SR-02-38,Saidakadal,Srinagar,Srinagar (South),SR,2,38,34.10362,74.82795,1
+SR-02-39,Srinagar,Srinagar,Srinagar (South),SR,2,39,34.07457,74.8205,1
+SR-02-40,TRC,Srinagar,Srinagar (South),SR,2,40,34.07538,74.82447,2
+SR-02-41,Womens College Batpora,Srinagar,Srinagar (South),SR,2,41,34.08749,74.8083,1
