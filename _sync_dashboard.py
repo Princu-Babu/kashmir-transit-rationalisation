@@ -37,7 +37,9 @@ COPY_FILES = [
     "Passenger_Impact_Kashmir_v3.csv",
     "Rationalisation_Log_Kashmir_v3.csv",
     "Kashmir_Route_Frequency_Plan_v3.xlsx",
-    "Kashmir_Route_Frequency_Plan_v3.4.4_RTO.xlsx",
+    # NOTE: the 9-sheet "..._RTO.xlsx" master workbook is intentionally NOT pushed
+    # to the dashboard (user ask — internal detail pack, not for public download).
+    # It is also listed in STALE_FILES below so any previously-copied build is purged.
     "Kashmir_Route_Frequency_Plan_v3.4.4_RTO_Pretty.xlsx",
     "Kashmir_Route_Verification_Appendix_v3.4.4_RTO.xlsx",
     "Routes_with_Codes.xlsx",
@@ -65,6 +67,8 @@ STALE_FILES = [
     "Kashmir_Route_Frequency_Plan_v3.4.2_RTO_Pretty.xlsx",
     "Kashmir_Route_Frequency_Plan_v3.4.3_RTO.xlsx",
     "Kashmir_Route_Frequency_Plan_v3.4.3_RTO_Pretty.xlsx",
+    # 9-sheet master workbook — hidden from the dashboard (user ask); purge if present
+    "Kashmir_Route_Frequency_Plan_v3.4.4_RTO.xlsx",
     "Formatted_Kashmir_Routes_Pretty.xlsx",
     "Formatted_Kashmir_Routes.xlsx",
     "generate_route_codes (1).py",
