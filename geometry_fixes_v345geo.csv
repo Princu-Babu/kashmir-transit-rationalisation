@@ -1,0 +1,19 @@
+route_id,route,stated_km,old_drawn_km,new_drawn_km,status,source,obs_runs,drawn_km,note,new_km,band
+FDR-488,Parimpora to Budgam,17.0,22.7,14.9,FIXED,osrm_reanchored(current/master),0.0,,,,
+FDR-271,Parimpora to Hazratbal,10.5,14.4,9.4,FIXED,osrm_reanchored(researched/researched),0.0,,,,
+FDR-429,Parimpora to Chadora,18.0,26.0,18.4,FIXED,osrm_reanchored(current/researched),0.0,,,,
+FDR-147,Hazratbal to LD,6.5,9.3,7.3,FIXED,osrm_reanchored(observed_stop/researched),0.0,,,,
+FDR-199,Qamarwari to Hazratbal,8.0,12.8,8.6,FIXED,osrm_reanchored(researched/observed_stop),0.0,,,,
+FDR-401,Jehangir Chowk to Panzinara,10.0,15.8,9.6,FIXED,osrm_reanchored(researched/researched),0.0,,,,
+FDR-261,JVC to Batwara,9.5,14.5,9.4,FIXED,osrm_reanchored(researched/current),0.0,,,,
+FDR-525,LD to Budgam,14.0,21.8,14.1,FIXED,osrm_reanchored(current/master),0.0,,,,
+FDR-384,Srinagar to Beeru,25.0,15.3,22.5,FIXED,osrm_reanchored(observed_stop/current),0.0,,,,
+FDR-538,Sedow to Srinagar,46.0,57.8,50.9,FIXED,osrm_reanchored(current/observed_stop),0.0,,,,
+FDR-039,Koil to Srinagar,17.5,32.8,19.8,FIXED,osrm_reanchored(current/observed_stop),0.0,,,,
+FDR-269,Jehangir Chowk to JVC,,,,REVIEW,,,,"best 6.4 km via Jehangir Chowk/JVC SKIMS Bemina outside band (4, 5) (+15% grace)",,
+FDR-467,Jehangir Chowk to Budgam,,,,FIXED,osrm_reanchored(Jehangir Chowk -> Budgam town),0.0,,,14.0,"(10, 13)"
+FDR-108,Saidakadal to Bypass,,,,REVIEW,,,,"best 9.8 km via Saidakadal/Parimpora bypass outside band (7, 8) (+15% grace)",,
+FDR-080,Batmaloo to Dalgate,,,,FIXED,osrm_reanchored(Batamaloo stand 2 -> Dalgate),0.0,,,4.4,"(3, 4)"
+FDR-406,Qamarwari to Parimpora,,,,REVIEW,,,,"best 4.7 km via Qamarwari 2/Parimpora stand outside band (2, 3) (+15% grace)",,
+FDR-466,Srinagar to Isganderpora,,,,FIXED,osrm_reanchored(Srinagar Lal Chowk -> Beerwah town),0.0,,,31.1,"(25, 28)"
+FDR-464,Srinagar to Badrun,,,,FIXED,"osrm_reanchored(Srinagar Lal Chowk -> Badran, Budgam (nominatim))",0.0,,,26.9,"(24, 26)"
