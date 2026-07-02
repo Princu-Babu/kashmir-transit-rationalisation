@@ -286,6 +286,14 @@ Standalone study PDFs in `E:\kash`:
 | `generate_outputs_guide_pdf.py` | Outputs-explained PDF |
 | `_beautify_rto_master.py` | 4-sheet pretty RTO workbook |
 | `_sync_dashboard.py` | Copy assets + rebuild dashboard JSON with codes |
+| `generate_timetables.py` | Departure-board timetables (Kashmir_Timetables_v1.xlsx, one sheet/district; service day 08:00–19:00 from the measured GPS operating day, SSCL 07:00–20:00) |
+| `_export_route_json.py` | Slim evidence.json (fragment road coverage) + verification.json (deep-dive verdicts) per route → dashboard `data/` for the route drawer + chatbot |
+| `apply_reality_v345.py` | v3.4.5 measured-cycle corrections (5 GPS-verified corridors → fleet 1,004→1,011) |
+| `_patch_rto_master_v345.py` | Patch the 9-sheet RTO master to v3.4.5 (rows+totals+cover) |
+
+**App-data ground-truth layer** lives in the companion repo `bus-sathi-trace-intelligence`
+(`E:\bus-sathi-trace`) — mines the Bus Sathi app's real driver GPS into the dashboard
+Reality Layer + the v3.4.5 measured-cycle correction. See that repo's README/AUDIT.md.
 
 PPTX gotcha: `python-pptx` skips creating a run when cell text is `""` — always
 pass a space placeholder, else `p.runs[0]` raises IndexError. Both deck
