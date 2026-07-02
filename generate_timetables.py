@@ -72,8 +72,12 @@ def main():
          "SSCL e-bus backbone uses its design day 07:00–20:00.", None),
         ("", None),
         ("HOW TO READ", Font(bold=True, size=11, color=TEAL)),
-        ("One row per route: code · name · a bus every N min · round-trip cycle · buses assigned · "
-         "first/last departure · the full board. Sheets are grouped by ORIGIN district (route-code prefix).", None),
+        ("One row per route: code · name · a bus every N min · round-trip cycle · buses assigned with the "
+         "HPV (12 m) / MPV (9 m) / LPV (minibus) split · trips per day from each terminus · first/last "
+         "departure · the full board. Sheets are grouped by ORIGIN district (route-code prefix).", None),
+        ("VEHICLE TYPES: the HPV/MPV/LPV columns show the route's recommended fleet composition. The plan "
+         "does not pin a vehicle class to a specific departure time — rostering which bus takes which trip "
+         "is a depot-level decision; the split is shown so allocation planning has it at hand.", None),
         ("These are PLAN timetables (design frequencies), not a transcription of current informal "
          "operations. Extending service past 19:00 is a policy decision the measured data flags as a gap.", None),
     ]
@@ -84,7 +88,10 @@ def main():
     ws.column_dimensions["A"].width = 105
 
     act["d2"] = act.Route_Code.astype(str).str[:2]
-    cols = ["Route code", "Route", "Every (min)", "Cycle (min)", "Buses", "First dep", "Last dep", "Departures (from each terminus)"]
+    cols = ["Route code", "Route", "Every (min)", "Cycle (min)", "Buses",
+            "HPV (12 m)", "MPV (9 m)", "LPV (mini)", "Trips/day per terminus",
+            "First dep", "Last dep", "Departures (from each terminus)"]
+    DEP_COL = len(cols)
     n_rows = 0
     for d2 in sorted(act.d2.unique(), key=lambda x: (x != "SR", x)):
         dname = DISTRICT.get(d2, d2)
@@ -101,15 +108,18 @@ def main():
             hw = int(row.Headway_Min)
             b = board(hw, s, e)
             vals = [row.Route_Code, row.Route_Name, hw, round(float(row.Cycle_Time_Min), 0),
-                    int(row.Fleet_Required), b[0], b[-1], "  ".join(b)]
+                    int(row.Fleet_Required),
+                    int(row.HPV_Count) or "", int(row.MPV_Count) or "", int(row.LPV_Count) or "",
+                    len(b), b[0], b[-1], "  ".join(b)]
             for j, v in enumerate(vals, 1):
                 c = ws.cell(r, j, v); c.border = THIN
                 c.font = Font(size=9.5, name="Calibri")
-                c.alignment = Alignment(wrap_text=(j == 8), vertical="top")
+                c.alignment = Alignment(wrap_text=(j == DEP_COL), vertical="top",
+                                        horizontal="center" if 3 <= j <= 11 else "left")
                 if (r % 2) == 0: c.fill = ALT
             ws.row_dimensions[r].height = max(14, 12 * (len("  ".join(b)) // 95 + 1))
             r += 1; n_rows += 1
-        widths = [14, 30, 9, 9, 7, 9, 9, 95]
+        widths = [14, 30, 8.5, 8.5, 7, 9, 9, 9, 10, 8.5, 8.5, 95]
         for j, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(j)].width = w
         ws.freeze_panes = "A4"

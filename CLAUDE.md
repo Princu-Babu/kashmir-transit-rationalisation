@@ -286,7 +286,7 @@ Standalone study PDFs in `E:\kash`:
 | `generate_outputs_guide_pdf.py` | Outputs-explained PDF |
 | `_beautify_rto_master.py` | 4-sheet pretty RTO workbook |
 | `_sync_dashboard.py` | Copy assets + rebuild dashboard JSON with codes |
-| `generate_timetables.py` | Departure-board timetables (Kashmir_Timetables_v1.xlsx, one sheet/district; service day 08:00–19:00 from the measured GPS operating day, SSCL 07:00–20:00) |
+| `generate_timetables.py` | Departure-board timetables (Kashmir_Timetables_v1.xlsx, one sheet/district; per-route HPV/MPV/LPV mix + trips/day columns; service day 08:00–19:00 from the measured GPS operating day, SSCL 07:00–20:00; totals self-reconcile to 1,011/187/754/70) |
 | `_export_route_json.py` | Slim evidence.json (fragment road coverage) + verification.json (deep-dive verdicts) per route → dashboard `data/` for the route drawer + chatbot |
 | `apply_reality_v345.py` | v3.4.5 measured-cycle corrections (5 GPS-verified corridors → fleet 1,004→1,011) |
 | `_patch_rto_master_v345.py` | Patch the 9-sheet RTO master to v3.4.5 (rows+totals+cover) |
