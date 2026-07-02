@@ -1,0 +1,6 @@
+"Route_Code","Route_Name","Corridor","Old_Cycle","New_Cycle","Old_Fleet","New_Fleet","Note"
+"SRSR01020901","Soura to Railway Station","C4","94.0","186.6","4","7","measured moving 18.1 km/h over 93 runs/12 drivers (observed one-way 85.2 min); cap lifted (directly measured)"
+"SRSR01020930","Soura to Qamarwari","C7","74.4","107.1","4","5","measured moving 18.5 km/h over 47 runs/11 drivers (observed one-way 64.3 min); cap lifted (directly measured)"
+"SRSR02023720","Safakadal to Jehangir Chowk","C8","25.2","32.6","3","3","measured moving 17.5 km/h over 40 runs/5 drivers (observed one-way 26.6 min); cap lifted (directly measured)"
+"SRSR01020923","Soura to Lalchowk","C1","76.0","100.8","5","7","measured moving 18.2 km/h over 211 runs/32 drivers (observed one-way 75.9 min); cap lifted (directly measured)"
+"SRPW02023902","Srinagar to Pampore","C6","80.8","111.2","4","5","measured moving 20.6 km/h over 79 runs/9 drivers (observed one-way 78.7 min); cap lifted (directly measured)"

@@ -22,7 +22,7 @@ try:
 except Exception:
     pass
 
-ENGINE_OUT = Path("E:/kash/outputs_v3.4.4")
+ENGINE_OUT = Path("E:/kash/outputs_v3.4.5")
 ENGINE_LOG = Path("E:/kash/engine_run_v3.4.4.log")
 
 DASH_PUBLIC = Path("E:/dash/bus-sathi-dashboard/public/route-rationalization-kashmir")
@@ -40,8 +40,8 @@ COPY_FILES = [
     # NOTE: the 9-sheet "..._RTO.xlsx" master workbook is intentionally NOT pushed
     # to the dashboard (user ask — internal detail pack, not for public download).
     # It is also listed in STALE_FILES below so any previously-copied build is purged.
-    "Kashmir_Route_Frequency_Plan_v3.4.4_RTO_Pretty.xlsx",
-    "Kashmir_Route_Verification_Appendix_v3.4.4_RTO.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.4.5_RTO_Pretty.xlsx",
+    "Kashmir_Route_Verification_Appendix_v3.4.5_RTO.xlsx",
     "Routes_with_Codes.xlsx",
     "Master_Transit_Map_Kashmir_v3.html",
 ]
@@ -69,6 +69,9 @@ STALE_FILES = [
     "Kashmir_Route_Frequency_Plan_v3.4.3_RTO_Pretty.xlsx",
     # 9-sheet master workbook — hidden from the dashboard (user ask); purge if present
     "Kashmir_Route_Frequency_Plan_v3.4.4_RTO.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.4.5_RTO.xlsx",
+    "Kashmir_Route_Frequency_Plan_v3.4.4_RTO_Pretty.xlsx",
+    "Kashmir_Route_Verification_Appendix_v3.4.4_RTO.xlsx",
     "Formatted_Kashmir_Routes_Pretty.xlsx",
     "Formatted_Kashmir_Routes.xlsx",
     "generate_route_codes (1).py",
